@@ -1,0 +1,14 @@
+# Secrets — never commit. Only .env.example is tracked.
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+!.env.example
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.eslintcache
+*.log

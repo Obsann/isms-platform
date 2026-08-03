@@ -1,0 +1,38 @@
+.cursor/
+TASK (3).md
+TEAM_ASSIGNMENTS (3).md
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Secrets — .env is never committed, in backend/ or frontend/. Only .env.example is.
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# Test / coverage
+coverage/
+*.lcov
+
+# Caches
+.eslintcache
+*.tsbuildinfo
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

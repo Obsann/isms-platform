@@ -1,0 +1,36 @@
+/* globals.css — ISMS Platform design tokens */
+:root {
+  --font-inter: "Inter", sans-serif;
+
+  /* Brand palette */
+  --color-primary: hsl(222, 89%, 55%);
+  --color-primary-dark: hsl(222, 89%, 42%);
+  --color-surface: hsl(220, 20%, 97%);
+  --color-surface-dark: hsl(224, 24%, 12%);
+  --color-text: hsl(222, 22%, 14%);
+  --color-text-muted: hsl(222, 12%, 50%);
+  --color-border: hsl(220, 16%, 88%);
+  --color-white: #ffffff;
+
+  /* Portal accent colours */
+  --portal-super-admin: hsl(262, 83%, 58%);
+  --portal-tenant-admin: hsl(199, 89%, 48%);
+  --portal-teller: hsl(152, 69%, 40%);
+  --portal-member: hsl(28, 94%, 52%);
+
+  --radius: 0.75rem;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }

@@ -6,6 +6,7 @@ Expected contents as the project progresses:
 
 | File / folder | Owner | Task |
 |---|---|---|
+| `TEAM_STATUS.md` — who owns what, current branch, merge blockers | Obsan (lead) | ongoing |
 | `openapi/` — API spec, including the mobile money C2B/B2C webhook and USSD session contracts | Liya | 26 |
 | `rbac-matrix.md` — role-to-endpoint permission matrix the `@Roles(...)` guard is built against | Obsan | 22 |
 | `test-case-matrix.md` — every functional requirement traced to a test case | Melkamu + Biruk | 30 |

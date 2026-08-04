@@ -1,16 +1,22 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { buildDataSourceOptions } from './data-source';
 
 /**
  * Owns the database connection for the whole app.
  *
- * TODO(Task 2 — Obsan): register `TypeOrmModule.forRootAsync` here using
- * `buildDataSourceOptions()` from `./data-source`, with `autoLoadEntities: true`,
- * once `tenants`, `members`, `staff_accounts`, `roles_permissions`, and `accounts`
- * exist as entities.
- *
- * Task 1 intentionally opens no connection: the scaffold has no entities to map and
- * must start on a machine where Postgres isn't running yet. The migration CLI
- * already works off `data-source.ts`.
+ * From Task 2 on, the API requires Postgres to be reachable at boot — an API that
+ * starts up healthy without its database is worse than one that refuses to start.
+ * Schema changes arrive only through migrations (`synchronize` stays false).
  */
-@Module({})
+@Module({
+  imports: [
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        ...buildDataSourceOptions(),
+        autoLoadEntities: true,
+      }),
+    }),
+  ],
+})
 export class DatabaseModule {}

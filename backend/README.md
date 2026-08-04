@@ -9,11 +9,25 @@ tenant scoping.
 
 ## Local setup
 
+Everyone uses the same Postgres 16 via Docker at the repo root — not an embedded
+engine, not a per-person install. That keeps RLS and migrations identical across
+the team (see `.cursor/rules/git-workflow (1).mdc`).
+
 ```bash
+# from repo root
+docker compose up -d
+
+# then in backend/
 npm install
 cp .env.example .env    # PowerShell: Copy-Item .env.example .env
+npm run migration:run   # connect as DB_USERNAME=postgres
 npm run start:dev
 ```
+
+From Task 2 on the API needs a reachable database at boot and will refuse to start
+without one. Compose creates the `isms_dev` database; the migration creates the
+tables. For Task 3 RLS checks, switch `DB_USERNAME` in `.env` to `isms_app` (created
+by `docker/postgres/init/`) — the `postgres` superuser bypasses RLS.
 
 Then check the health route:
 
@@ -43,10 +57,11 @@ TypeScript is pinned to `^6` because `ts-jest` does not yet support TypeScript 7
 src/
 ├── main.ts                  bootstrap: global prefix, validation, exception filter, CORS
 ├── app.module.ts            composition root — the only place that names every module
-├── common/                  guards, decorators, filters shared by every module
+├── common/                  entity base classes, guards, decorators, filters
 ├── database/                TypeORM data source + migrations
 ├── health/                  GET /api/health
 ├── types/                   shared contracts (Task 5 fills these in)
+├── tenants/                 the platform-global tenants table — Obsan
 ├── members/                 Member Management — Melkamu
 ├── savings-shares/          Savings & Shares — Jerry
 ├── loans/                   Loans & Credit — Abenezer
@@ -59,6 +74,48 @@ Every vertical module currently exports typed method signatures whose bodies thr
 `NotImplementedException`, so an unimplemented endpoint answers `501` with the
 standard error body instead of pretending to succeed. The owning vertical replaces
 the bodies in its own task.
+
+## Database — schema v1 (Task 2)
+
+| Table | Tenant scoping | Owner from here |
+|---|---|---|
+| `tenants` | platform-global; its own `id` is the scope key | Obsan, then Biruk (Task 19) |
+| `members` | `tenant_id` NOT NULL, indexed | Melkamu (Task 8) |
+| `staff_accounts` | `tenant_id` indexed, NULL = platform-level staff | Obsan (Task 3) |
+| `roles_permissions` | `tenant_id` indexed, NULL = platform-wide default role | Obsan (Task 22) |
+| `accounts` | `tenant_id` NOT NULL, indexed | Jerry (Task 12) |
+
+Choices worth knowing before you extend this:
+
+- Status/type columns are `varchar` with a `CHECK`, not Postgres `enum` types. Adding a
+  value later is one migration instead of an `ALTER TYPE` dance.
+- Money is `numeric(18,2)`, which `pg` returns as a decimal string — that's why `Amount`
+  in `src/types` is a string. `balance` and `held_amount` are written only by the ledger
+  (Task 13), and a `CHECK` enforces `0 <= held_amount <= balance`.
+- `accounts` has a composite foreign key to `members (tenant_id, id)`, so an account
+  cannot reference a member in another tenant even if RLS were misconfigured.
+- Every table extends `BaseEntity` (uuid `id`, `created_at`, `updated_at`), and
+  tenant-scoped tables extend `TenantScopedEntity`, which is what guarantees the
+  `tenant_id` column exists.
+
+### RLS, and the two ways to fool yourself
+
+Each table has RLS enabled with a policy comparing its tenant column to
+`app_current_tenant_id()`, which reads the `app.tenant_id` session variable that the
+tenant-context guard will set per request (Task 3). Unset resolves to NULL, which matches
+no row — an unscoped connection sees nothing rather than everything.
+
+1. **Don't connect as a superuser.** Superusers bypass RLS unconditionally, so every
+   isolation test passes and proves nothing. `FORCE ROW LEVEL SECURITY` is set so the
+   table *owner* is also subject to policies, but that can't save you from a superuser.
+   Create a dedicated non-superuser role for `DB_USERNAME` before trusting Task 3's
+   verify step, and use it in the deployment runbook (Task 32).
+2. **Login has to resolve the tenant before it can read `staff_accounts`.** The policies
+   are fail-closed, so there is no "look up the user first, then figure out the tenant"
+   path. Task 3's login takes a tenant code alongside the credentials, resolves it, sets
+   `app.tenant_id`, and only then queries. Platform-level rows (`tenant_id IS NULL`,
+   Super Admin) are invisible to tenant-scoped sessions by design and need a role with
+   `BYPASSRLS` — that's Task 19's problem to wire, not something to weaken the policy for.
 
 ## Module rules, in short
 
@@ -76,7 +133,6 @@ the bodies in its own task.
 
 | Piece | Arrives in |
 |---|---|
-| `TypeOrmModule` connection (no entities yet, and the scaffold must start without Postgres) | Task 2 |
 | `TenantContextGuard` — present but fail-closed and unregistered | Task 3 |
 | `RolesGuard` enforcing `@Roles(...)` — the decorator is safe to attach now | Task 22 |
 | `LedgerModule` | Task 13 |

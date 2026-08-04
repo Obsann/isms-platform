@@ -1,0 +1,29 @@
+# Local Postgres for every developer. Same image, same version, same credentials.
+#
+#   docker compose up -d
+#   # then in backend/: copy .env.example → .env and run `npm run migration:run`
+#
+# Do not use embedded/in-process Postgres for day-to-day work. RLS, migrations, and
+# Task 28's concurrent tenant check all need real Postgres 16 semantics.
+services:
+  postgres:
+    image: postgres:16
+    container_name: isms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: isms_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d isms_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

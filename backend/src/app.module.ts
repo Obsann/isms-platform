@@ -8,6 +8,7 @@ import { LoanModule } from './loans';
 import { MemberModule } from './members';
 import { SavingsSharesModule } from './savings-shares';
 import { SecurityAuditModule } from './security-audit';
+import { TenantsModule } from './tenants';
 
 /**
  * Composition root. This is the one place that references every module — modules
@@ -23,6 +24,7 @@ import { SecurityAuditModule } from './security-audit';
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
     DatabaseModule,
     HealthModule,
+    TenantsModule,
     MemberModule,
     SavingsSharesModule,
     LoanModule,

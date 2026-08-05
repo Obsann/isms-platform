@@ -2,12 +2,25 @@
 
 Specs, runbooks, the OpenAPI document, and recorded team decisions live here.
 
-Expected contents as the project progresses:
+## Start here (everyone)
+
+| File | What it is |
+|---|---|
+| [`TASKS.md`](./TASKS.md) | Master build order — every task, owner, dependency, verify step |
+| [`TEAM_ASSIGNMENTS.md`](./TEAM_ASSIGNMENTS.md) | Same plan organized by person / vertical |
+| [`CONVENTIONS.md`](./CONVENTIONS.md) | Coding conventions (module boundaries, ledger, RLS, naming) |
+| [`GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) | Branching, PR review, merge order |
+| [`TEAM_STATUS.md`](./TEAM_STATUS.md) | Who is on what right now, blockers |
+
+**Agent rules (Cursor / Antigravity):** also committed under
+[`.cursor/rules/`](../.cursor/rules/) as `.mdc` files. After `git pull`, those
+IDEs pick them up automatically — no copy-paste needed.
+
+## Expected later
 
 | File / folder | Owner | Task |
 |---|---|---|
-| `TEAM_STATUS.md` — who owns what, current branch, merge blockers | Obsan (lead) | ongoing |
-| `openapi/` — API spec, including the mobile money C2B/B2C webhook and USSD session contracts | Liya | 26 |
+| `openapi/` — API spec, including mobile money C2B/B2C webhook and USSD session contracts | Liya | 26 |
 | `rbac-matrix.md` — role-to-endpoint permission matrix the `@Roles(...)` guard is built against | Obsan | 22 |
 | `test-case-matrix.md` — every functional requirement traced to a test case | Melkamu + Biruk | 30 |
 | `deployment-runbook.md` — Postgres provisioning, API deploy, frontend deploy, credential rotation | Obsan | 32 |

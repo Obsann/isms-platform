@@ -129,10 +129,35 @@ no row — an unscoped connection sees nothing rather than everything.
 - Errors are thrown as NestJS exceptions and shaped by `AllExceptionsFilter` into
   `{ statusCode, message, error }`.
 
+## Auth & tenant-context (Task 3)
+
+- `POST /api/auth/login` takes `{ tenantCode, email, password }` and returns a JWT
+  with `staff_id` (`sub`), `tenant_id`, and `role` claims. `GET /api/auth/me` is the
+  concrete proof the pipeline works: it re-reads `staff_accounts` through the tenant
+  context resolved from the caller's own token.
+- **Every route except `@Public()` ones now requires a valid Bearer token.** Mark a
+  route `@Public()` (see `common/decorators/public.decorator.ts`) only for things
+  that must work with no tenant context at all — currently just health and login.
+- **Every RLS-scoped query must go through `TenantContextService.repo(Entity)` or
+  `.getManager()`**, never a plain `@InjectRepository(Entity)`. The latter uses the
+  untouched pool connection with no `app.tenant_id` set — under `FORCE ROW LEVEL
+  SECURITY` that's zero rows, not an error, so this fails silently instead of loudly
+  if you get it wrong. `TenantContextService` is `@Global()`, so it's injectable
+  anywhere without importing anything extra.
+- `tenants` has the same fail-closed RLS as every other table, which creates a
+  bootstrap problem: resolving a login's `tenantCode` has to happen *before* any
+  tenant context exists. `resolve_tenant_by_code` (migration `TenantBootstrapLookup`)
+  is a narrow `SECURITY DEFINER` function that returns only `id`/`status` for a code,
+  bypassing RLS for that one lookup only — `isms_app` has `EXECUTE` on it and nothing
+  more.
+- `npm run seed` creates two dev tenants with one staff account each (see
+  `src/database/seeds/dev-seed.ts`) — useful for exercising the login flow and for
+  reproducing the cross-tenant isolation check by hand.
+
 ## Not wired yet, on purpose
 
 | Piece | Arrives in |
 |---|---|
-| `TenantContextGuard` — present but fail-closed and unregistered | Task 3 |
 | `RolesGuard` enforcing `@Roles(...)` — the decorator is safe to attach now | Task 22 |
 | `LedgerModule` | Task 13 |
+| Refresh tokens | deferred — access token only for now |

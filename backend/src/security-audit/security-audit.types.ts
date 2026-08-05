@@ -1,14 +1,11 @@
-import type { StaffId, TenantId } from '../types';
+import type { AuthUser, StaffId } from '../types';
 
-/** Safe to return to a client — never includes `passwordHash`. */
-export interface StaffAccountSummary {
-  id: StaffId;
-  tenantId: TenantId | null;
-  email: string;
-  fullName: string;
-  role: string;
-  isActive: boolean;
-}
+/**
+ * Safe to return to a client — never includes `passwordHash`. Structurally the
+ * shared `AuthUser` contract; the alias keeps the module's own vocabulary while
+ * guaranteeing the two can't drift.
+ */
+export type StaffAccountSummary = AuthUser;
 
 /**
  * For `AuthService`'s own credential check only. Crossing the module boundary with

@@ -7,13 +7,11 @@ import {
   type ExceptionFilter,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import type { ApiErrorBody } from '../../types';
 
-/** The only error shape the API returns, per the project conventions. */
-export interface ApiErrorBody {
-  statusCode: number;
-  message: string | string[];
-  error: string;
-}
+// The only error shape the API returns. Canonical definition lives in `src/types`
+// (Task 5) so the frontend mirrors exactly this. Re-exported for existing importers.
+export type { ApiErrorBody };
 
 /**
  * Registered globally in `main.ts`. Controllers and services throw NestJS

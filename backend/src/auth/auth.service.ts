@@ -1,12 +1,12 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { TenantContextService } from '../common';
 import { StaffAccountService } from '../security-audit';
 import { TenantsService } from '../tenants';
+import type { LoginResponse } from '../types';
 import type { LoginDto } from './dto/login.dto';
-import type { JwtPayload, LoginResult } from './auth.types';
+import type { JwtPayload } from './auth.types';
 
 const INVALID_CREDENTIALS = 'Invalid tenant code, email, or password';
 
@@ -17,10 +17,9 @@ export class AuthService {
     private readonly staffAccountService: StaffAccountService,
     private readonly tenantContext: TenantContextService,
     private readonly jwtService: JwtService,
-    private readonly config: ConfigService,
   ) {}
 
-  async login(dto: LoginDto): Promise<LoginResult> {
+  async login(dto: LoginDto): Promise<LoginResponse> {
     // Resolves via the SECURITY DEFINER function — bypasses RLS for this one lookup
     // only, since no tenant context can exist yet at this point in the flow.
     const tenant = await this.tenantsService.resolveActiveByCode(dto.tenantCode);
@@ -51,14 +50,31 @@ export class AuthService {
 
     return {
       accessToken,
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '8h'),
-      staff: {
+      expiresIn: this.secondsUntilExpiry(accessToken),
+      user: {
         id: staff.id,
         tenantId: staff.tenantId,
         email: staff.email,
         fullName: staff.fullName,
         role: staff.role,
+        isActive: staff.isActive,
       },
     };
+  }
+
+  /**
+   * Read back off the token's own claims rather than parsing `JWT_EXPIRES_IN`. The
+   * config value is a duration string like `8h`, the client wants a number of seconds
+   * to schedule against, and deriving it from `exp - iat` means the two can never
+   * disagree about when the token actually dies.
+   */
+  private secondsUntilExpiry(accessToken: string): number {
+    const decoded = this.jwtService.decode<JwtPayload & { exp?: number; iat?: number }>(
+      accessToken,
+    );
+    if (!decoded?.exp || !decoded.iat) {
+      return 0;
+    }
+    return decoded.exp - decoded.iat;
   }
 }

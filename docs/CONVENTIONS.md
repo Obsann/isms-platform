@@ -1,0 +1,68 @@
+# ISMS — Conventions
+
+Human-readable copy of the project conventions. **Cursor / Antigravity agents
+also load** [`.cursor/rules/conventions.mdc`](../.cursor/rules/conventions.mdc)
+automatically for everything under `backend/` and `frontend/`. Prefer editing the
+`.mdc` file when changing a rule, then keep this file in sync.
+
+## Repo layout
+- Nothing lives at repo root except `.gitignore` and standard repo files.
+  Everything else goes in `backend/`, `frontend/`, or `docs/`.
+
+## Module boundaries — backend
+- No module imports another module's internals directly. Cross-module calls go
+  through the other module's exported service via NestJS DI — never reach into
+  `../other-module/internal/...`.
+- Each module exports only its service class(es) and public DTOs/types.
+  Controllers, repositories, internal helpers stay unexported.
+- **The ledger is never bypassed.** Any balance change goes through the `ledger`
+  service's posting function. No direct balance writes anywhere, including
+  migrations/seed scripts after Week 2.
+- RLS-scoped tables are never queried with tenant filtering left to the caller.
+  Don't add a manual `WHERE tenant_id = ?` as a substitute for the tenant-context
+  guard — if you're doing that, the guard isn't wired to that route; fix the guard.
+
+## Module boundaries — frontend
+- Each portal route group — `(super-admin)`, `(tenant-admin)`, `(teller)`,
+  `(member)` — only imports from `components/` (shared) and its own group. Never
+  import across portals; promote shared pieces to `components/` instead.
+- All backend calls go through `lib/api-client/` — no scattered `fetch()` calls
+  in components.
+- Currency always displays as full unabbreviated figures (`45,230.00 ETB`, never
+  `45.2K`) — use the shared formatting helper in `components/`.
+
+## Secrets
+- `.env` gitignored in both `backend/` and `frontend/` — check every PR.
+- `.env.example` (no real values) is the only env file committed.
+- Provider keys (Fayda sandbox, SMTP) live in `backend/` only, via `process.env`,
+  never hardcoded, never in `frontend/` even for local mocks.
+
+## Naming
+- Branches: `task<N>-<yourname>-<short-desc>`
+- Commits: `Task <N>: <what you did>`
+- Backend files: `member.service.ts`, `member.controller.ts`, `member.entity.ts`,
+  `create-member.dto.ts`
+- Frontend components: PascalCase file + export name, e.g. `MemberSearchTable.tsx`
+- Database: snake_case tables/columns (`staff_accounts`, `tenant_id`)
+
+## Migrations
+- Regenerate against a freshly-pulled `main` before starting any schema change.
+- Every non-platform-global table carries an indexed `tenant_id`.
+- Never edit a merged/applied migration — add a new one on top.
+
+## Error handling
+- API errors return `{ statusCode, message, error }` via NestJS exception
+  filters, not ad hoc try/catch shapes.
+- Frontend never shows a raw error object or stack trace — surface `message` or
+  a generic fallback.
+- Rejected/failed actions show a clear state — never swallowed, never treated as
+  a crash.
+
+## Before every PR — checklist
+- [ ] No module imports another's internals (backend) / another portal's folder
+      (frontend)
+- [ ] No balance change bypasses the ledger
+- [ ] `.env` gitignored on both `backend/` and `frontend/`
+- [ ] New/changed tables migrated against a freshly-pulled `main`
+- [ ] Naming matches conventions above
+- [ ] API errors follow the standard shape; frontend shows no raw error

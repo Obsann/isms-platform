@@ -7,7 +7,7 @@
 -- Migrations create tables as `postgres`, so default privileges are granted FOR ROLE
 -- postgres — objects created later inherit the grant automatically.
 
-CREATE ROLE isms_app LOGIN PASSWORD 'devpassword' NOSUPERUSER NOBYPASSRLS;
+CREATE ROLE isms_app LOGIN PASSWORD 'abebebesobela' NOSUPERUSER NOBYPASSRLS;
 
 GRANT CONNECT ON DATABASE isms_dev TO isms_app;
 GRANT USAGE ON SCHEMA public TO isms_app;

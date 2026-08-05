@@ -7,7 +7,7 @@ new task. Branch names must match `task<N>-<owner>-<short-desc>` from
 **How to refresh:** `git fetch --prune`, then check `git branch -r` and open PRs
 against the table below. Statuses: `blocked` · `ready` · `in progress` · `in review` · `merged` · `not started`.
 
-Last refreshed: 2026-08-04 (after Task 1 merge).
+Last refreshed: 2026-08-05 (after Task 2 + Task 6 merged).
 
 ---
 
@@ -15,20 +15,24 @@ Last refreshed: 2026-08-04 (after Task 1 merge).
 
 | Owner | Vertical | Current / next task | Expected branch | Status | Depends on |
 |---|---|---|---|---|---|
-| **Obsan** | Platform | Task 2 — Database schema v1 | `task2-obsan-database-schema-v1` | in progress (local) | Task 1 ✅ |
-| **Melkamu** | Member Management | Task 6 — Frontend scaffold | `task6-melkamu-frontend-scaffold` | ready (parallel with Task 1) | nothing |
+| **Obsan** | Platform | Task 3 — Auth & tenant-context | `task3-obsan-auth-tenant-context` | not started | Task 2 ✅ |
+| **Melkamu** | Member Management | Task 8 — Member API | `task8-melkamu-member-api` | blocked | Tasks 1–5 (Task 6 ✅, Task 5 still open) |
 | **Jerry** | Transactions / Teller | Task 12 — Savings & Shares backend | `task12-jerry-savings-shares` | blocked | Tasks 1–5 |
 | **Abenezer** | Loans & Credit | Task 16 — Loan backend | `task16-abenezer-loans` | blocked | Obsan's Task 13 |
 | **Biruk** | Admin & Reporting | Task 19 — Super Admin console | `task19-biruk-super-admin` | blocked | Tasks 7, 4 |
-| **Liya** | Member Self-Service | Task 7 — Design system | `task7-liya-design-system` | blocked | Melkamu's Task 6 |
+| **Liya** | Member Self-Service | Task 7 — Design system | `task7-liya-design-system` | ready | Melkamu's Task 6 ✅ |
 
 ### Week 0 still open
 
 | Item | Owner | Status |
 |---|---|---|
-| Docker Compose Postgres (everyone runs the same `postgres:16`) | Obsan | shipping with Task 2 |
-| Local Postgres confirmed by each person | everyone | waiting on Docker Desktop install |
+| Docker Compose Postgres (everyone runs the same `postgres:16`) | Obsan | **shipped with Task 2** — note: default password changed from `devpassword` to a new value post-merge; everyone must re-pull `main`, update `backend/.env`, and run `docker compose down -v && docker compose up -d` |
+| Local Postgres confirmed by each person | everyone | Obsan confirmed; others still pending Docker Desktop setup |
 | Fayda sandbox verification call | Melkamu | not started (must land before Task 9) |
+
+### Open process note
+
+- Task 6 (Melkamu) landed on `main` as commits `51b6b58` / `711aaa5` with no visible `task6-melkamu-frontend-scaffold` branch and no PR merge commit — commit messages also don't follow the `Task <N>: <what you did>` convention. Content itself is clean (portal groups, shared `api-client`, no secrets), but worth confirming with Melkamu whether this went through review per the branch-model rule ("no direct pushes").
 
 ---
 
@@ -37,8 +41,8 @@ Last refreshed: 2026-08-04 (after Task 1 merge).
 | Task | Branch | Status | Notes |
 |---|---|---|---|
 | 1 Backend scaffold | `task1-obsan-backend-scaffold` | **merged** (PR #1) | on `main` |
-| 2 Database schema v1 | `task2-obsan-database-schema-v1` | in progress | entities + migration written; needs `docker compose up` to verify |
-| 3 Auth & tenant-context | `task3-obsan-auth-tenant-context` | not started | after Task 2 |
+| 2 Database schema v1 | `task2-obsan-database-schema-v1` | **merged** (PR #2, #4) | Verified end-to-end against real Postgres (migration up/down, RLS tenant isolation, API boot-gating on DB) |
+| 3 Auth & tenant-context | `task3-obsan-auth-tenant-context` | not started | after Task 2 ✅ — next up |
 | 4 Login & role routing | `task4-obsan-login-routing` | not started | needs Task 3 + Liya Task 7 |
 | 5 Shared types | (live with Melkamu — one branch) | not started | not two parallel branches |
 | 13 Ledger engine | `task13-obsan-ledger` | blocked | after Jerry Task 12 |
@@ -51,7 +55,7 @@ Last refreshed: 2026-08-04 (after Task 1 merge).
 | Task | Branch | Status | Notes |
 |---|---|---|---|
 | 5 Shared types | (live with Obsan) | not started | |
-| 6 Frontend scaffold | `task6-melkamu-frontend-scaffold` | ready | can start now on `main` |
+| 6 Frontend scaffold | — | **merged** (commits `51b6b58`, `711aaa5`) | landed on `main` without a matching branch/PR — confirm review happened |
 | 8 Member API | `task8-melkamu-member-api` | blocked | Tasks 1–5 |
 | 9 Fayda verification | `task9-melkamu-fayda` | blocked | Week 0 sandbox call first |
 | 10 Member UI | `task10-melkamu-member-ui` | blocked | Tasks 8, 9, 7 |
@@ -115,5 +119,8 @@ shared platform migrations.
 
 Fill from `git branch -r` after fetch. As of last refresh:
 
-- `origin/main` — Task 1 merged
+- `origin/main` — Tasks 1, 2, 6 merged (through commit `8e62316`)
 - `origin/task1-obsan-backend-scaffold` — stale after merge; delete when convenient
+- `origin/task2-obsan-database-schema-v1` — stale after merge; delete when convenient
+- `origin/docs-obsan-team-status` — stale after merge; delete when convenient
+- No branches yet from Jerry, Abenezer, Biruk, or Liya

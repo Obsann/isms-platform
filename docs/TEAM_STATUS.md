@@ -7,7 +7,7 @@ new task. Branch names must match `task<N>-<owner>-<short-desc>` from
 **How to refresh:** `git fetch --prune`, then check `git branch -r` and open PRs
 against the table below. Statuses: `blocked` · `ready` · `in progress` · `in review` · `merged` · `not started`.
 
-Last refreshed: 2026-08-04 (after Task 1 merge).
+Last refreshed: 2026-08-05 (after Task 6 merge).
 
 ---
 
@@ -16,11 +16,11 @@ Last refreshed: 2026-08-04 (after Task 1 merge).
 | Owner | Vertical | Current / next task | Expected branch | Status | Depends on |
 |---|---|---|---|---|---|
 | **Obsan** | Platform | Task 2 — Database schema v1 | `task2-obsan-database-schema-v1` | in progress (local) | Task 1 ✅ |
-| **Melkamu** | Member Management | Task 6 — Frontend scaffold | `task6-melkamu-frontend-scaffold` | ready (parallel with Task 1) | nothing |
+| **Melkamu** | Member Management | Task 5 — Shared types / Task 8 | `task8-melkamu-member-api` | blocked | Tasks 1–5 |
 | **Jerry** | Transactions / Teller | Task 12 — Savings & Shares backend | `task12-jerry-savings-shares` | blocked | Tasks 1–5 |
 | **Abenezer** | Loans & Credit | Task 16 — Loan backend | `task16-abenezer-loans` | blocked | Obsan's Task 13 |
 | **Biruk** | Admin & Reporting | Task 19 — Super Admin console | `task19-biruk-super-admin` | blocked | Tasks 7, 4 |
-| **Liya** | Member Self-Service | Task 7 — Design system | `task7-liya-design-system` | blocked | Melkamu's Task 6 |
+| **Liya** | Member Self-Service | Task 7 — Design system | `task7-liya-design-system` | ready | Melkamu's Task 6 ✅ |
 
 ### Week 0 still open
 
@@ -51,7 +51,7 @@ Last refreshed: 2026-08-04 (after Task 1 merge).
 | Task | Branch | Status | Notes |
 |---|---|---|---|
 | 5 Shared types | (live with Obsan) | not started | |
-| 6 Frontend scaffold | `task6-melkamu-frontend-scaffold` | ready | can start now on `main` |
+| 6 Frontend scaffold | `task6-melkamu-frontend-scaffold` | **merged** | directly to main (commits 51b6b58, 711aaa5) |
 | 8 Member API | `task8-melkamu-member-api` | blocked | Tasks 1–5 |
 | 9 Fayda verification | `task9-melkamu-fayda` | blocked | Week 0 sandbox call first |
 | 10 Member UI | `task10-melkamu-member-ui` | blocked | Tasks 8, 9, 7 |
@@ -88,7 +88,7 @@ Last refreshed: 2026-08-04 (after Task 1 merge).
 
 | Task | Branch | Status | Notes |
 |---|---|---|---|
-| 7 Design system | `task7-liya-design-system` | blocked | Melkamu Task 6 |
+| 7 Design system | `task7-liya-design-system` | ready | Melkamu Task 6 ✅ |
 | 23 Member self-service API | `task23-liya-member-api` | blocked | Tasks 12, 16 |
 | 24 Member portal UI | `task24-liya-member-portal` | blocked | Tasks 23, 7 |
 | 25 Notifications | `task25-liya-notifications` | blocked | Tasks 12, 16 |

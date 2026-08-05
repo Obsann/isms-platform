@@ -1,9 +1,11 @@
 import { SetMetadata, type CustomDecorator } from '@nestjs/common';
+import type { RoleName } from '../../types';
 
 export const ROLES_METADATA_KEY = 'isms:roles';
 
-/** TODO(Task 22 — Obsan): replace with the union from the RBAC matrix in `docs/`. */
-export type RoleName = string;
+// Was `string` until Task 5 defined the union. Task 22 extends it as the RBAC matrix
+// is written. Re-exported for existing importers.
+export type { RoleName };
 
 /**
  * Declares which roles may reach a route. Attaching this is safe now; the guard

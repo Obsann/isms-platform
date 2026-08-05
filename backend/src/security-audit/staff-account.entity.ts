@@ -1,5 +1,6 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../common/entities/base.entity';
+import type { RoleName } from '../types';
 
 /**
  * A staff login. Doesn't extend `TenantScopedEntity` because `tenant_id` is nullable
@@ -25,7 +26,7 @@ export class StaffAccountEntity extends BaseEntity {
 
   /** Matches `role` in `roles_permissions` and the JWT `role` claim issued by Task 3. */
   @Column({ type: 'varchar', length: 64 })
-  role!: string;
+  role!: RoleName;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;

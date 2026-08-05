@@ -1,7 +1,10 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../common/entities/base.entity';
+import type { TenantStatus } from '../types';
 
-export type TenantStatus = 'provisioning' | 'active' | 'suspended';
+// Canonical definition lives in `src/types` (Task 5) so the CHECK constraint, the
+// entity, and the API contract can't drift apart. Re-exported for existing importers.
+export type { TenantStatus };
 
 /**
  * The one platform-global table: a tenant is a SACCO. Its `id` *is* the tenant scope,

@@ -1,7 +1,9 @@
 import { Column, Entity, Index } from 'typeorm';
 import { TenantScopedEntity } from '../common/entities/tenant-scoped.entity';
+import type { MemberStatus } from '../types';
 
-export type MemberStatus = 'pending' | 'active' | 'inactive';
+// Canonical definition lives in `src/types` (Task 5). Re-exported for existing importers.
+export type { MemberStatus };
 
 /**
  * Schema v1 (Task 2) — deliberately the minimum a SACCO member needs. Task 8 adds

@@ -13,7 +13,7 @@ services:
     environment:
       POSTGRES_DB: isms_dev
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devpassword
+      POSTGRES_PASSWORD: abebebesobela
     ports:
       - '5432:5432'
     volumes:

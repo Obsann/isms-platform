@@ -7,7 +7,7 @@ new task. Branch names must match `task<N>-<owner>-<short-desc>` from
 **How to refresh:** `git fetch --prune`, then check `git branch -r` and open PRs
 against the table below. Statuses: `blocked` · `ready` · `in progress` · `in review` · `merged` · `not started`.
 
-Last refreshed: 2026-08-05 (after Task 2 + Task 6 merged).
+Last refreshed: 2026-08-05 (Task 3 implemented and verified locally, not yet merged).
 
 ---
 
@@ -15,7 +15,7 @@ Last refreshed: 2026-08-05 (after Task 2 + Task 6 merged).
 
 | Owner | Vertical | Current / next task | Expected branch | Status | Depends on |
 |---|---|---|---|---|---|
-| **Obsan** | Platform | Task 3 — Auth & tenant-context | `task3-obsan-auth-tenant-context` | not started | Task 2 ✅ |
+| **Obsan** | Platform | Task 3 — Auth & tenant-context | `task3-obsan-auth-tenant-context` | in review (PR not yet opened) | Task 2 ✅ |
 | **Melkamu** | Member Management | Task 8 — Member API | `task8-melkamu-member-api` | blocked | Tasks 1–5 (Task 6 ✅, Task 5 still open) |
 | **Jerry** | Transactions / Teller | Task 12 — Savings & Shares backend | `task12-jerry-savings-shares` | blocked | Tasks 1–5 |
 | **Abenezer** | Loans & Credit | Task 16 — Loan backend | `task16-abenezer-loans` | blocked | Obsan's Task 13 |
@@ -42,7 +42,7 @@ Last refreshed: 2026-08-05 (after Task 2 + Task 6 merged).
 |---|---|---|---|
 | 1 Backend scaffold | `task1-obsan-backend-scaffold` | **merged** (PR #1) | on `main` |
 | 2 Database schema v1 | `task2-obsan-database-schema-v1` | **merged** (PR #2, #4) | Verified end-to-end against real Postgres (migration up/down, RLS tenant isolation, API boot-gating on DB) |
-| 3 Auth & tenant-context | `task3-obsan-auth-tenant-context` | not started | after Task 2 ✅ — next up |
+| 3 Auth & tenant-context | `task3-obsan-auth-tenant-context` | implemented, verified locally | Found and fixed a real bootstrap deadlock in Task 2's RLS on `tenants` (see migration `TenantBootstrapLookup`). Verified end-to-end against real Postgres as `isms_app` (not superuser): login for two seeded tenants, `GET /api/auth/me` round-trip, and a direct data-layer check proving a tenant-A-scoped connection gets zero rows for a tenant-B row queried by id with no tenant filter in the query at all — RLS itself blocks it, not app code. PR not yet opened. |
 | 4 Login & role routing | `task4-obsan-login-routing` | not started | needs Task 3 + Liya Task 7 |
 | 5 Shared types | (live with Melkamu — one branch) | not started | not two parallel branches |
 | 13 Ledger engine | `task13-obsan-ledger` | blocked | after Jerry Task 12 |

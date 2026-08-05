@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { Public } from '../common';
 import { HealthService, type HealthStatus } from './health.service';
 
 /**
@@ -9,6 +10,7 @@ import { HealthService, type HealthStatus } from './health.service';
 export class HealthController {
   constructor(private readonly health: HealthService) {}
 
+  @Public()
   @Get()
   getHealth(): HealthStatus {
     return this.health.getStatus();

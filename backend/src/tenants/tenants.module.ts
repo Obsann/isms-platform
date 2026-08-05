@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantEntity } from './tenant.entity';
+import { TenantsService } from './tenants.service';
 
 /**
  * Home of the platform-global `tenants` table.
@@ -11,5 +12,7 @@ import { TenantEntity } from './tenant.entity';
  */
 @Module({
   imports: [TypeOrmModule.forFeature([TenantEntity])],
+  providers: [TenantsService],
+  exports: [TenantsService],
 })
 export class TenantsModule {}

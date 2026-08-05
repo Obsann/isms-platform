@@ -1,4 +1,22 @@
-import type { StaffId } from '../types';
+import type { StaffId, TenantId } from '../types';
+
+/** Safe to return to a client — never includes `passwordHash`. */
+export interface StaffAccountSummary {
+  id: StaffId;
+  tenantId: TenantId | null;
+  email: string;
+  fullName: string;
+  role: string;
+  isActive: boolean;
+}
+
+/**
+ * For `AuthService`'s own credential check only. Crossing the module boundary with
+ * this is deliberate — it's still a plain DTO, never the `StaffAccountEntity` itself.
+ */
+export interface StaffCredential extends StaffAccountSummary {
+  passwordHash: string;
+}
 
 export interface AuditLogEntryInput {
   /** Who acted. Resolved from the JWT, never accepted from the request body. */

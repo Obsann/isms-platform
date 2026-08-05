@@ -1,6 +1,8 @@
 .cursor/
 TASK (3).md
 TEAM_ASSIGNMENTS (3).md
+GIT_WORKFLOW (3).md
+CONVENTIONS.md
 
 # Dependencies
 node_modules/

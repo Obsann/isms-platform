@@ -2,14 +2,15 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MemberEntity } from './member.entity';
 import { MemberService } from './member.service';
+import { MemberController } from './member.controller';
 
 /**
- * TODO(Task 8 — Melkamu): add `member.controller.ts` and inject the repository.
- * The controller and entity stay out of `index.ts` — only `MemberService` and the
- * public types in `member.types.ts` are visible to other modules.
+ * Member Management module configuration.
+ * Exposes MemberController and registers the MemberEntity with TypeORM.
  */
 @Module({
   imports: [TypeOrmModule.forFeature([MemberEntity])],
+  controllers: [MemberController],
   providers: [MemberService],
   exports: [MemberService],
 })

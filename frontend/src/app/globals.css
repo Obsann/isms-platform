@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* globals.css — ISMS Platform design tokens */
 :root {
   --font-inter: "Inter", sans-serif;

@@ -1,22 +1,28 @@
-import type { AccountId, Amount, MemberId } from '../types';
+import type { AccountId, Amount, MemberId, StaffId } from '../types';
 
 export interface DepositInput {
   accountId: AccountId;
   amount: Amount;
   /** Teller-supplied reference; also the idempotency anchor for offline sync (Task 15). */
   reference?: string;
+  narration?: string;
+  postedByStaffId?: StaffId | null;
 }
 
 export interface WithdrawalInput {
   accountId: AccountId;
   amount: Amount;
   reference?: string;
+  narration?: string;
+  postedByStaffId?: StaffId | null;
 }
 
 export interface SharePurchaseInput {
   memberId: MemberId;
   shareCount: number;
   amount: Amount;
+  reference?: string;
+  postedByStaffId?: StaffId | null;
 }
 
 export interface AccountBalance {

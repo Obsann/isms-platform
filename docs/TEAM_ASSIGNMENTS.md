@@ -5,8 +5,10 @@ Each vertical below is full-stack — backend and frontend both owned by the sam
 person, end to end.
 
 Companion documents: [`TASKS.md`](./TASKS.md) (task-numbered master plan),
-[`GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) (branching, review, and merge process),
-[`CONVENTIONS.md`](./CONVENTIONS.md) / `.cursor/rules/` (coding rules).
+[`.cursor/rules/git-workflow.mdc`](../.cursor/rules/git-workflow.mdc) (branching,
+review, merge), [`.cursor/rules/conventions.mdc`](../.cursor/rules/conventions.mdc)
+(coding rules), [`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc)
+(MVP scope).
 
 ---
 
@@ -25,7 +27,7 @@ land first and get merged before the verticals that depend on them branch.
 > and `database/`. Each module exports typed function signatures with TODO bodies —
 > no module imports another directly. Add a health-check route.
 
-**Verify:** server starts locally; folder structure matches `docs/CONVENTIONS.md`;
+**Verify:** server starts locally; folder structure matches `.cursor/rules/conventions.mdc`;
 `.env` is gitignored.
 
 ### Task 2 — Database schema v1 (Week 1)
@@ -177,7 +179,7 @@ legacy data onboarding — backend and frontend, end to end.
 **Verify:** all four endpoints work, correctly scoped to a single tenant.
 
 ### Task 9 — ~~Fayda National ID verification~~ **CANCELLED** (Week 2)
-See [`DECISIONS.md`](./DECISIONS.md) D1. Manual ID capture only — no live verify.
+See [`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1. Manual ID capture only — no live verify.
 
 ### Task 10 — Member registration & profile UI (Week 2)
 **Depends on:** Task 8, Liya's Task 7.
@@ -373,7 +375,7 @@ as "pending confirmation."
 **Depends on:** Task 12, 16.
 
 > Document the webhook contract for mobile money C2B/B2C in the OpenAPI spec —
-> mocked only this phase. No USSD session contract ([`DECISIONS.md`](./DECISIONS.md) D1).
+> mocked only this phase. No USSD session contract ([`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1).
 
 **Verify:** the MoMo webhook spec is complete enough for someone outside the team
 to mock against it without a follow-up question.

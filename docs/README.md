@@ -1,31 +1,39 @@
 # docs/
 
-Specs, runbooks, the OpenAPI document, and recorded team decisions live here.
+Team process and background specs live here. **Agent-enforced rules** live only
+under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this folder.
 
-## Start here (everyone)
+## Classification
+
+### Cursor rules (`.cursor/rules/`) — agents load these
+
+| Rule | Mode | What it is |
+|---|---|---|
+| [`conventions.mdc`](../.cursor/rules/conventions.mdc) | always + `backend/**`, `frontend/**` | Module boundaries, ledger, RLS, naming, secrets |
+| [`decisions.mdc`](../.cursor/rules/decisions.mdc) | always | MVP decisions (no Fayda/USSD, CoA, eligibility, seed, tests) |
+| [`docs-map.mdc`](../.cursor/rules/docs-map.mdc) | always | This classification — where to read what |
+| [`git-workflow.mdc`](../.cursor/rules/git-workflow.mdc) | on request | Branching, PR review, merge order |
+| [`task-plan.mdc`](../.cursor/rules/task-plan.mdc) | on request | Pointer into TASKS / assignments / status |
+
+### Docs only (`docs/`) — humans + read on demand
 
 | File | What it is |
 |---|---|
 | [`TASKS.md`](./TASKS.md) | Master build order — every task, owner, dependency, verify step |
 | [`TEAM_ASSIGNMENTS.md`](./TEAM_ASSIGNMENTS.md) | Same plan organized by person / vertical |
-| [`CONVENTIONS.md`](./CONVENTIONS.md) | Coding conventions (module boundaries, ledger, RLS, naming) |
-| [`GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) | Branching, PR review, merge order |
 | [`TEAM_STATUS.md`](./TEAM_STATUS.md) | Who is on what right now, blockers |
-| [`DECISIONS.md`](./DECISIONS.md) | Recorded MVP decisions (scope changes, CoA, eligibility, seed) |
+| [`SACCO_PROPOSAL.md`](./SACCO_PROPOSAL.md) | Background SDS — **not** MVP truth; prefer `decisions.mdc` |
+| [`README.md`](./README.md) | This index |
 
-**Agent rules (Cursor / Antigravity):** also committed under
-[`.cursor/rules/`](../.cursor/rules/) as `.mdc` files. After `git pull`, those
-IDEs pick them up automatically — no copy-paste needed.
-
-## Expected later
+## Expected later (docs only until written)
 
 | File / folder | Owner | Task |
 |---|---|---|
 | `openapi/` — API spec, including mobile money C2B/B2C webhook contracts (no USSD) | Liya | 26 |
-| `rbac-matrix.md` — role-to-endpoint permission matrix the `@Roles(...)` guard is built against (staff roles only; no USSD/Fayda system actors) | Obsan | 22 |
-| `test-case-matrix.md` — every functional requirement traced to a test case (use `DECISIONS.md` for MVP FR deltas) | Melkamu + Biruk | 30 |
-| `deployment-runbook.md` — Postgres provisioning, API deploy, frontend deploy, credential rotation | Obsan | 32 |
-| `manuals/` — admin manual and per-portal end-user manuals | whole team, compiled by Liya | 34 |
+| `rbac-matrix.md` — role-to-endpoint permission matrix | Obsan | 22 |
+| `test-case-matrix.md` — FR → test case (use decisions for MVP deltas) | Melkamu + Biruk | 30 |
+| `deployment-runbook.md` | Obsan | 32 |
+| `manuals/` — admin + portal manuals | whole team, compiled by Liya | 34 |
 
 Nothing in here is generated. If a decision was made in a meeting and code depends
-on it, write it down here rather than leaving it in chat.
+on it, record it in `.cursor/rules/decisions.mdc`.

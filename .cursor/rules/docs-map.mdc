@@ -1,0 +1,29 @@
+---
+description: Where ISMS docs live — what Cursor loads vs what stays in docs/
+alwaysApply: true
+---
+
+# Docs → Cursor rules map
+
+Do **not** duplicate rule text into `docs/`. Load the right source:
+
+## Always applied (this folder)
+| Rule | Covers |
+|---|---|
+| `conventions.mdc` | Coding boundaries, ledger, RLS, naming, secrets |
+| `decisions.mdc` | MVP scope deltas (no Fayda/USSD, CoA, eligibility, seed) |
+
+## Request when relevant
+| Rule | When |
+|---|---|
+| `git-workflow.mdc` | Branches, commits, PRs, merge order, migration conflicts |
+| `task-plan.mdc` | Picking next work, ownership, task dependencies |
+
+## Stay in `docs/` only (read on demand — do not invent from memory)
+| File | Use for |
+|---|---|
+| `docs/TASKS.md` | Master build order, verify steps |
+| `docs/TEAM_ASSIGNMENTS.md` | Same plan by person / vertical |
+| `docs/TEAM_STATUS.md` | Who is blocked / in progress right now |
+| `docs/SACCO_PROPOSAL.md` | Background SDS only — **MVP truth is `decisions.mdc`** |
+| `docs/README.md` | Index of the docs folder |

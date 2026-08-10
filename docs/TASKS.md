@@ -18,21 +18,22 @@ backend/frontend split:
 | **Liya** | Member Self-Service — member portal, notifications, mobile money webhook contracts |
 
 Two codebases in one repo: `backend/` (NestJS) and `frontend/` (Next.js). See
-[`GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) for branching and review,
-[`TEAM_ASSIGNMENTS.md`](./TEAM_ASSIGNMENTS.md) for this same plan organized by
-person, and [`CONVENTIONS.md`](./CONVENTIONS.md) / `.cursor/rules/` for coding
-rules (Cursor and Antigravity both load the `.mdc` rules).
+[`.cursor/rules/git-workflow.mdc`](../.cursor/rules/git-workflow.mdc) for
+branching and review, [`TEAM_ASSIGNMENTS.md`](./TEAM_ASSIGNMENTS.md) for this
+same plan organized by person, and
+[`.cursor/rules/conventions.mdc`](../.cursor/rules/conventions.mdc) for coding
+rules. MVP scope: [`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc).
 
 ---
 
 ## Week 0 — Before Week 1 starts
 
-- [ ] Repo created, `docs/CONVENTIONS.md` + `.cursor/rules/`, `backend/` and
+- [ ] Repo created, `.cursor/rules/conventions.mdc`, `backend/` and
       `frontend/` folders exist — **Obsan**
 - [ ] `.env.example` committed (no real secrets); everyone has local Postgres
       running — **Obsan**, verified by everyone individually
 - [x] ~~Fayda National ID sandbox test~~ — **cancelled** (MVP drops live Fayda;
-      see [`DECISIONS.md`](./DECISIONS.md) D1).
+      see [`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1).
 - [ ] TypeORM confirmed as the ORM/migration tool — **Obsan**
 
 ---
@@ -45,12 +46,12 @@ rules (Cursor and Antigravity both load the `.mdc` rules).
 > Set up a NestJS (TypeScript) project. Create module folders matching the Clean/
 > Multi-Layered Architecture: `members`, `savings-shares`, `loans`,
 > `documents-reporting`, `security-audit`, `channel-integration` (notifications +
-> mobile-money contracts; no USSD — see DECISIONS.md D1), plus `common/`
+> mobile-money contracts; no USSD — see .cursor/rules/decisions.mdc D1), plus `common/`
 > (guards, decorators, filters) and `database/` (TypeORM config + migrations). Each
 > module exports typed function signatures with TODO bodies — no module imports
 > another directly. Add a health-check route.
 
-**Verify:** server starts locally; folder structure matches `docs/CONVENTIONS.md`;
+**Verify:** server starts locally; folder structure matches `.cursor/rules/conventions.mdc`;
 `.env` is gitignored.
 
 ### Task 2 — Database schema v1
@@ -130,7 +131,7 @@ without portal-specific overrides.
 scoped to a single tenant.
 
 ### Task 9 — ~~Fayda National ID verification service~~ **CANCELLED**
-**Owner: Melkamu** · **Cancelled:** 2026-08-10 — see [`DECISIONS.md`](./DECISIONS.md) D1.
+**Owner: Melkamu** · **Cancelled:** 2026-08-10 — see [`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1.
 
 > Live Fayda verification is out of MVP. Member ID is a stored field pair
 > (`nationalId` + `idType`) captured manually at registration — no outbound call,
@@ -314,7 +315,7 @@ as "pending confirmation," never a false success.
 > Not implemented against a live gateway this phase. Document the webhook
 > contract for mobile money C2B/B2C in the OpenAPI spec, so Task 24's mocked UI
 > builds against a documented shape. **No USSD** — self-service is web-only for
-> MVP ([`DECISIONS.md`](./DECISIONS.md) D1).
+> MVP ([`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1).
 
 **Verify:** the MoMo webhook spec is complete enough that someone outside the
 team could implement a mock server against it without a follow-up question.
@@ -408,11 +409,11 @@ production.
 ## After every task, before opening a PR (30 seconds, every time)
 
 - [ ] Does the generated code match the interface/contract in this file?
-- [ ] Does it violate `docs/CONVENTIONS.md` (module-to-module direct imports,
+- [ ] Does it violate `.cursor/rules/conventions.mdc` (module-to-module direct imports,
       provider keys outside `backend/`, a ledger write that bypasses Task 13's
       posting service)?
 - [ ] Did your editor "helpfully" refactor something outside this task's scope? If
       yes, revert that part.
 - [ ] If this task depended on someone else's output — did you pull `main` and
       confirm it's actually there before building against it, per
-      `docs/GIT_WORKFLOW.md`'s sequencing notes?
+      `.cursor/rules/git-workflow.mdc`'s sequencing notes?

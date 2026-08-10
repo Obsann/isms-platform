@@ -1,17 +1,15 @@
 ---
-description: ISMS git workflow — branching, review, merge order, migrations. Apply when creating branches, writing commits, or opening/reviewing PRs.
-globs: 
+description: ISMS git workflow — branching, PR review, merge order, migrations
 alwaysApply: false
 ---
 
 # ISMS — Git Workflow
 
-This file is the source of truth for agent-enforced branching, review, and merge
-order. A human-readable mirror lives at `docs/GIT_WORKFLOW.md`.
+Apply when creating branches, writing commits, or opening/reviewing PRs.
 
 ## Repo
 - `isms-platform`, one monorepo: `backend/` (NestJS), `frontend/` (Next.js),
-  `docs/`. Conventions live in `.cursor/rules/conventions.mdc`.
+  `docs/`. Conventions: `.cursor/rules/conventions.mdc`.
 - Obsan scaffolds Task 1 and pushes the initial repo; Melkamu scaffolds Task 6
   on top in the same repo. Everyone else clones — nobody scaffolds their own copy.
 

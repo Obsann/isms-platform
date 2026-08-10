@@ -1,14 +1,10 @@
 ---
-description: ISMS project conventions — module boundaries, ledger, RLS, naming, secrets, error handling. Enforce on every backend/frontend suggestion.
-globs: backend/**,frontend/**
+description: ISMS coding conventions — module boundaries, ledger, RLS, naming, PR checklist
+globs: backend/**/*,frontend/**/*
 alwaysApply: true
 ---
 
 # ISMS — Conventions
-
-This file is the source of truth for agent-enforced conventions. A human-readable
-mirror lives at `docs/CONVENTIONS.md`. Cursor / Antigravity apply this rule
-automatically to everything under `backend/` and `frontend/`.
 
 ## Repo layout
 - Nothing lives at repo root except `.gitignore` and standard repo files.
@@ -39,8 +35,8 @@ automatically to everything under `backend/` and `frontend/`.
 ## Secrets
 - `.env` gitignored in both `backend/` and `frontend/` — check every PR.
 - `.env.example` (no real values) is the only env file committed.
-- Provider keys (SMTP and future gateways) live in `backend/` only, via `process.env`,
-  never hardcoded, never in `frontend/` even for local mocks.
+- Provider keys (SMTP and future gateways) live in `backend/` only, via
+  `process.env`, never hardcoded, never in `frontend/` even for local mocks.
 
 ## Naming
 - Branches: `task<N>-<yourname>-<short-desc>`

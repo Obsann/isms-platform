@@ -2,13 +2,13 @@
 
 Obsan maintains this. Update it when a PR opens, merges, or a teammate starts a
 new task. Branch names must match `task<N>-<owner>-<short-desc>` from
-`.cursor/rules/git-workflow.mdc` (also `docs/GIT_WORKFLOW.md`).
+[`.cursor/rules/git-workflow.mdc`](../.cursor/rules/git-workflow.mdc).
 
 **How to refresh:** `git fetch --prune`, then check `git branch -r` and open PRs
 against the table below. Statuses: `blocked` · `ready` · `in progress` · `in review` · `merged` · `not started` · `cancelled`.
 
 Last refreshed: 2026-08-10 (scope change: Fayda + USSD dropped from MVP — see
-[`DECISIONS.md`](./DECISIONS.md) D1). Tasks 1–3, 5, 6, 8 on `main`. Task 12 on
+[`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1). Tasks 1–3, 5, 6, 8 on `main`. Task 12 on
 branch, not merged.
 
 ---
@@ -33,7 +33,7 @@ Still waiting on Liya Task 7 (gates Task 4, 10, 14, 19, 21, 24).
 |---|---|---|
 | Docker Compose Postgres | Obsan | **shipped with Task 2** |
 | Local Postgres confirmed by each person | everyone | Obsan confirmed; others still pending Docker Desktop setup |
-| Fayda sandbox verification call | Melkamu | **cancelled** ([`DECISIONS.md`](./DECISIONS.md) D1) |
+| Fayda sandbox verification call | Melkamu | **cancelled** ([`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1) |
 
 ### Process notes
 
@@ -98,7 +98,7 @@ Mirrored in `backend/src/types` and `frontend/src/types`:
 | 9 Fayda verification | — | **cancelled** | D1 |
 | 10 Member UI | `task10-melkamu-member-ui` | blocked on Task 7 | Deps: 8 ✅, 7 — no Fayda UI |
 | 11 Legacy onboarding | `task11-melkamu-legacy-import` | blocked | Task 8 ✅ |
-| 30 Test matrix / UAT | — | later | with Biruk; trace FRs via DECISIONS.md |
+| 30 Test matrix / UAT | — | later | with Biruk; trace FRs via .cursor/rules/decisions.mdc |
 
 ## Jerry — Transactions / Teller Desk
 

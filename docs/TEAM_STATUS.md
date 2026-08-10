@@ -2,12 +2,12 @@
 
 Obsan maintains this. Update it when a PR opens, merges, or a teammate starts a
 new task. Branch names must match `task<N>-<owner>-<short-desc>` from
-`.cursor/rules/git-workflow (1).mdc`.
+`.cursor/rules/git-workflow.mdc` (also `docs/GIT_WORKFLOW.md`).
 
 **How to refresh:** `git fetch --prune`, then check `git branch -r` and open PRs
 against the table below. Statuses: `blocked` · `ready` · `in progress` · `in review` · `merged` · `not started`.
 
-Last refreshed: 2026-08-05 (after Task 5 merged, PR #9). Tasks 1, 2, 3, 5, 6 are on `main`.
+Last refreshed: 2026-08-06 (Melkamu Task 8 in progress). Tasks 1–3, 5, 6 + shared docs/rules on `main` (through PR #10).
 
 ---
 
@@ -15,16 +15,16 @@ Last refreshed: 2026-08-05 (after Task 5 merged, PR #9). Tasks 1, 2, 3, 5, 6 are
 
 | Owner | Vertical | Current / next task | Expected branch | Status | Depends on |
 |---|---|---|---|---|---|
-| **Obsan** | Platform | Task 4 — Login & role routing *(blocked)* / Task 22 ready | `task4-obsan-login-routing` | waiting on Liya Task 7 | Task 3 ✅, Task 7 open |
-| **Melkamu** | Member Management | Task 8 — Member API | `task8-melkamu-member-api` | **ready** | Tasks 1–5 ✅ |
-| **Jerry** | Transactions / Teller | Task 12 — Savings & Shares backend | `task12-jerry-savings-shares` | **ready** | Tasks 1–5 ✅ |
+| **Obsan** | Platform | Task 4 blocked / Task 22 ready | `task4-obsan-login-routing` | waiting on Liya Task 7 | Task 3 ✅ |
+| **Melkamu** | Member Management | Task 8 — Member API | `task8-melkamu-member-api` | **in progress** (branch pushed ~14h ago) | Tasks 1–5 ✅ |
+| **Jerry** | Transactions / Teller | Task 12 — Savings & Shares backend | `task12-jerry-savings-shares` | **ready, not started** | Tasks 1–5 ✅ |
 | **Abenezer** | Loans & Credit | Task 16 — Loan backend | `task16-abenezer-loans` | blocked | Obsan's Task 13 |
 | **Biruk** | Admin & Reporting | Task 19 — Super Admin console | `task19-biruk-super-admin` | blocked | Tasks 7, 4 |
-| **Liya** | Member Self-Service | Task 7 — Design system | `task7-liya-design-system` | **ready, not started — unblocked since 2026-08-04** | Melkamu's Task 6 ✅ |
+| **Liya** | Member Self-Service | Task 7 — Design system | `task7-liya-design-system` | **ready, not started — idle since 2026-08-04** | Melkamu's Task 6 ✅ |
 
-**What moves the board now:** Melkamu Task 8 and Jerry Task 12 are unblocked by
-Task 5. Liya's Task 7 still gates Obsan Task 4, Melkamu Task 10, and Biruk Tasks
-19/21. Obsan can start Task 22 (RBAC) in parallel while waiting on Task 7.
+**Active work:** Melkamu is coding Task 8 (create/search/get/patch members via
+`TenantContextService.repo` — looks correctly scoped). Still waiting on Jerry
+Task 12 and Liya Task 7.
 
 ### Week 0 still open
 
@@ -90,7 +90,7 @@ Mirrored in `backend/src/types` and `frontend/src/types`:
 |---|---|---|---|
 | 5 Shared types | `task5-obsan-melkamu-shared-types` | **merged** (PR #9) | Read PR #9 decisions before Task 8 |
 | 6 Frontend scaffold | `task6-melkamu-gitignore` | **merged** (PR #8 + earlier scaffold commits) | |
-| 8 Member API | `task8-melkamu-member-api` | **ready** | Read "What Task 3 / Task 5 changed" first |
+| 8 Member API | `task8-melkamu-member-api` | **in progress** | Branch pushed (`2110473`). DTOs + controller + service; uses `TenantContextService`. Open a PR when ready for review. |
 | 9 Fayda verification | `task9-melkamu-fayda` | blocked | Week 0 sandbox call first |
 | 10 Member UI | `task10-melkamu-member-ui` | blocked | Tasks 8, 9, 7 |
 | 11 Legacy onboarding | `task11-melkamu-legacy-import` | blocked | Task 8 |
@@ -100,7 +100,7 @@ Mirrored in `backend/src/types` and `frontend/src/types`:
 
 | Task | Branch | Status | Notes |
 |---|---|---|---|
-| 12 Savings & Shares backend | `task12-jerry-savings-shares` | **ready** | Task 5 ✅ — use `Amount` string + `TenantContextService.repo()` |
+| 12 Savings & Shares backend | `task12-jerry-savings-shares` | **ready, not started** | Task 5 ✅ — no branch yet. Use `Amount` string + `TenantContextService.repo()` |
 | 14 Teller Desk UI | `task14-jerry-teller-desk` | blocked | Tasks 12, 7 |
 | 29 Offline outbox test | — | later | with Obsan |
 
@@ -126,7 +126,7 @@ Mirrored in `backend/src/types` and `frontend/src/types`:
 
 | Task | Branch | Status | Notes |
 |---|---|---|---|
-| 7 Design system | `task7-liya-design-system` | **ready, not started** | Highest-leverage idle task — gates Task 4, 10, 19, 21, 24 |
+| 7 Design system | `task7-liya-design-system` | **ready, not started** | Still the highest-leverage idle task — gates Task 4, 10, 19, 21, 24. No branch yet. |
 | 23 Member self-service API | `task23-liya-member-api` | blocked | Tasks 12, 16 |
 | 24 Member portal UI | `task24-liya-member-portal` | blocked | Tasks 23, 7 |
 | 25 Notifications | `task25-liya-notifications` | blocked | Tasks 12, 16 |
@@ -151,9 +151,9 @@ shared platform migrations.
 
 ## Remote branches (raw)
 
-As of last refresh (`main` @ `a8bf57f`):
+As of last refresh (`main` @ `5acc5f7`):
 
-- `origin/main` — Tasks 1, 2, 3, 5, 6 merged
-- `origin/task1-obsan-backend-scaffold`, `task2-…`, `task3-…`, `task5-…`, `task6-melkamu-gitignore` — stale after merge; delete when convenient
-- `origin/docs-obsan-team-status`, `docs-obsan-team-status-refresh`, `docs-obsan-status-after-task3` — stale; delete when convenient
+- `origin/main` — Tasks 1, 2, 3, 5, 6 + docs/rules share (PR #10)
+- `origin/task8-melkamu-member-api` — active (Melkamu)
+- Stale after merge: `task1`…`task5`, `task6-melkamu-gitignore`, older `docs-obsan-*` branches — delete when convenient
 - Still no branches from Jerry, Abenezer, Biruk, or Liya

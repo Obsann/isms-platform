@@ -67,7 +67,7 @@ src/
 ├── loans/                   Loans & Credit — Abenezer
 ├── documents-reporting/     Documents & Reporting — Biruk
 ├── security-audit/          Security & Audit — Obsan
-└── channel-integration/     Notifications, mobile money/USSD contracts — Liya
+└── channel-integration/     Notifications + mobile money webhook contracts — Liya
 ```
 
 Every vertical module currently exports typed method signatures whose bodies throw

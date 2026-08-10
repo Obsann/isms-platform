@@ -46,6 +46,8 @@ export type IsoDateTime = string;
 
 export type TenantStatus = "provisioning" | "active" | "suspended";
 export type MemberStatus = "pending" | "active" | "inactive";
+/** Manual ID capture only — no live verification (DECISIONS.md D1). */
+export type IdType = "national_id" | "passport" | "other";
 export type AccountType = "savings" | "share";
 export type AccountStatus = "active" | "dormant" | "closed";
 
@@ -157,9 +159,10 @@ export interface Member {
   lastName: string;
   /** Composed by the API. Use this for display rather than joining the parts here. */
   fullName: string;
+  /** Government / other ID number as typed by staff — not live-verified. */
   nationalId: string | null;
-  nationalIdVerified: boolean;
-  nationalIdVerifiedAt: IsoDateTime | null;
+  /** What kind of ID `nationalId` refers to. Null when no ID was entered. */
+  idType: IdType | null;
   phone: string | null;
   email: string | null;
   dateOfBirth: IsoDate | null;

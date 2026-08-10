@@ -11,6 +11,7 @@ Specs, runbooks, the OpenAPI document, and recorded team decisions live here.
 | [`CONVENTIONS.md`](./CONVENTIONS.md) | Coding conventions (module boundaries, ledger, RLS, naming) |
 | [`GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) | Branching, PR review, merge order |
 | [`TEAM_STATUS.md`](./TEAM_STATUS.md) | Who is on what right now, blockers |
+| [`DECISIONS.md`](./DECISIONS.md) | Recorded MVP decisions (scope changes, CoA, eligibility, seed) |
 
 **Agent rules (Cursor / Antigravity):** also committed under
 [`.cursor/rules/`](../.cursor/rules/) as `.mdc` files. After `git pull`, those
@@ -20,9 +21,9 @@ IDEs pick them up automatically — no copy-paste needed.
 
 | File / folder | Owner | Task |
 |---|---|---|
-| `openapi/` — API spec, including mobile money C2B/B2C webhook and USSD session contracts | Liya | 26 |
-| `rbac-matrix.md` — role-to-endpoint permission matrix the `@Roles(...)` guard is built against | Obsan | 22 |
-| `test-case-matrix.md` — every functional requirement traced to a test case | Melkamu + Biruk | 30 |
+| `openapi/` — API spec, including mobile money C2B/B2C webhook contracts (no USSD) | Liya | 26 |
+| `rbac-matrix.md` — role-to-endpoint permission matrix the `@Roles(...)` guard is built against (staff roles only; no USSD/Fayda system actors) | Obsan | 22 |
+| `test-case-matrix.md` — every functional requirement traced to a test case (use `DECISIONS.md` for MVP FR deltas) | Melkamu + Biruk | 30 |
 | `deployment-runbook.md` — Postgres provisioning, API deploy, frontend deploy, credential rotation | Obsan | 32 |
 | `manuals/` — admin manual and per-portal end-user manuals | whole team, compiled by Liya | 34 |
 

@@ -151,8 +151,8 @@ production.
 
 ## Melkamu — Member Management
 
-Registration, profile, search, Fayda ID verification, and legacy data onboarding —
-backend and frontend, end to end.
+Registration, profile, search, manual ID fields (`nationalId` + `idType`), and
+legacy data onboarding — backend and frontend, end to end.
 
 ### Task 5 — Shared type contracts (Week 1)
 **Shared with:** Obsan — done together, live.
@@ -176,21 +176,14 @@ backend and frontend, end to end.
 
 **Verify:** all four endpoints work, correctly scoped to a single tenant.
 
-### Task 9 — Fayda National ID verification service (Week 2)
-**Depends on:** Week 0's sandbox test.
-
-> Isolated `fayda-verification` service — one function,
-> `verify(nationalId): Promise<VerificationResult>` — wrapping the outbound call to
-> the Fayda sandbox endpoint. Call it from member registration; reject on failure.
-
-**Verify:** a valid sandbox ID succeeds; an invalid one is rejected with a clear
-error.
+### Task 9 — ~~Fayda National ID verification~~ **CANCELLED** (Week 2)
+See [`DECISIONS.md`](./DECISIONS.md) D1. Manual ID capture only — no live verify.
 
 ### Task 10 — Member registration & profile UI (Week 2)
-**Depends on:** Task 8, 9, Liya's Task 7.
+**Depends on:** Task 8, Liya's Task 7.
 
 > Registration form and profile/search screen for the Tenant Admin and Teller
-> portals. Surface the Fayda verification result inline.
+> portals. Capture `nationalId` + `idType` as ordinary fields — no verification UI.
 
 **Verify:** registering a member end to end works against the real backend.
 
@@ -335,8 +328,8 @@ sums to zero.
 
 ## Liya — Member Self-Service
 
-Member portal, notifications, and the mobile money/USSD contracts — backend and
-frontend, end to end.
+Member portal, notifications, and the mobile money webhook contracts — backend and
+frontend, end to end. No USSD for MVP.
 
 ### Task 7 — Design system & shared UI kit (Week 1)
 **Depends on:** Melkamu's Task 6.
@@ -376,14 +369,14 @@ as "pending confirmation."
 
 **Verify:** a deposit triggers a real email to a test inbox within a few seconds.
 
-### Task 26 — Mobile Money & USSD contracts (Week 4)
+### Task 26 — Mobile Money webhook contracts (Week 4)
 **Depends on:** Task 12, 16.
 
-> Document the webhook contract for mobile money C2B/B2C and the USSD session
-> shape in the OpenAPI spec — not implemented against a live gateway this phase.
+> Document the webhook contract for mobile money C2B/B2C in the OpenAPI spec —
+> mocked only this phase. No USSD session contract ([`DECISIONS.md`](./DECISIONS.md) D1).
 
-**Verify:** the spec is complete enough for someone outside the team to mock
-against it without a follow-up question.
+**Verify:** the MoMo webhook spec is complete enough for someone outside the team
+to mock against it without a follow-up question.
 
 ### Task 34 — Documentation compilation (Week 6)
 **Shared with:** whole team (each person writes their own section).
@@ -399,12 +392,12 @@ against it without a follow-up question.
 
 | Area | Status |
 |---|---|
-| Member Mgmt + Fayda verification + legacy onboarding | Covered — Melkamu |
+| Member Mgmt + manual ID fields + legacy onboarding | Covered — Melkamu |
 | Savings/Shares + Teller Desk | Covered — Jerry |
 | Loans, eligibility, guarantors | Covered — Abenezer |
 | Ledger, offline-sync, auth, RLS, RBAC framework | Covered — Obsan |
 | Documents, reporting, admin consoles | Covered — Biruk |
-| Member portal, notifications, mobile money/USSD spec | Covered — Liya |
+| Member portal, notifications, mobile money webhook spec | Covered — Liya |
 
 Nothing is left without an owner. Task ordering in [`TASKS.md`](./TASKS.md)
 reflects dependency order (Platform → Member Management/Transactions → Loans →

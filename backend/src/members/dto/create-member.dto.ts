@@ -1,5 +1,5 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
-import { MemberStatus } from '../../types';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Length, Matches, ValidateIf } from 'class-validator';
+import { IdType, MemberStatus } from '../../types';
 
 export class CreateMemberDto {
   @IsString()
@@ -26,6 +26,11 @@ export class CreateMemberDto {
   @IsOptional()
   @Length(1, 32)
   nationalId?: string;
+
+  /** Required when `nationalId` is provided. */
+  @ValidateIf((o: CreateMemberDto) => o.nationalId != null && o.nationalId !== '')
+  @IsEnum(['national_id', 'passport', 'other'])
+  idType?: IdType;
 
   @IsString()
   @IsOptional()

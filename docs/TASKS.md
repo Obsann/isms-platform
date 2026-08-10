@@ -11,11 +11,11 @@ backend/frontend split:
 | Owner | Vertical |
 |---|---|
 | **Obsan** | Platform — auth, multi-tenancy/RLS, RBAC framework, ledger engine, offline-sync infrastructure, deployment |
-| **Melkamu** | Member Management — registration, profile, search, Fayda ID verification, legacy data onboarding |
+| **Melkamu** | Member Management — registration, profile, search, manual ID fields, legacy data onboarding |
 | **Jerry** | Transactions / Teller Desk — savings & shares, deposits/withdrawals, the Teller Desk UI |
 | **Abenezer** | Loans & Credit — application, eligibility, guarantors, approval, disbursement |
 | **Biruk** | Admin & Reporting — Super Admin console, Tenant Admin dashboard, Document & Reporting engine |
-| **Liya** | Member Self-Service — member portal, notifications, mobile money/USSD contracts |
+| **Liya** | Member Self-Service — member portal, notifications, mobile money webhook contracts |
 
 Two codebases in one repo: `backend/` (NestJS) and `frontend/` (Next.js). See
 [`GIT_WORKFLOW.md`](./GIT_WORKFLOW.md) for branching and review,
@@ -31,10 +31,8 @@ rules (Cursor and Antigravity both load the `.mdc` rules).
       `frontend/` folders exist — **Obsan**
 - [ ] `.env.example` committed (no real secrets); everyone has local Postgres
       running — **Obsan**, verified by everyone individually
-- [ ] **Fayda National ID sandbox test — Melkamu**, since it feeds directly into the
-      Member Management vertical. Fire one real verification call against the Fayda
-      sandbox endpoint with a test ID before Task 9 gets built against a guess at
-      the contract.
+- [x] ~~Fayda National ID sandbox test~~ — **cancelled** (MVP drops live Fayda;
+      see [`DECISIONS.md`](./DECISIONS.md) D1).
 - [ ] TypeORM confirmed as the ORM/migration tool — **Obsan**
 
 ---
@@ -46,7 +44,8 @@ rules (Cursor and Antigravity both load the `.mdc` rules).
 
 > Set up a NestJS (TypeScript) project. Create module folders matching the Clean/
 > Multi-Layered Architecture: `members`, `savings-shares`, `loans`,
-> `documents-reporting`, `security-audit`, `channel-integration`, plus `common/`
+> `documents-reporting`, `security-audit`, `channel-integration` (notifications +
+> mobile-money contracts; no USSD — see DECISIONS.md D1), plus `common/`
 > (guards, decorators, filters) and `database/` (TypeORM config + migrations). Each
 > module exports typed function signatures with TODO bodies — no module imports
 > another directly. Add a health-check route.
@@ -130,22 +129,19 @@ without portal-specific overrides.
 **Verify:** all four endpoints work against a local Postgres instance, correctly
 scoped to a single tenant.
 
-### Task 9 — Fayda National ID verification service
-**Owner: Melkamu** · **Depends on:** Week 0's sandbox test
+### Task 9 — ~~Fayda National ID verification service~~ **CANCELLED**
+**Owner: Melkamu** · **Cancelled:** 2026-08-10 — see [`DECISIONS.md`](./DECISIONS.md) D1.
 
-> Isolated `fayda-verification` service — one function,
-> `verify(nationalId: string): Promise<VerificationResult>` — wrapping the outbound
-> call to the Fayda sandbox endpoint. Call it from member registration; reject
-> registration if verification fails.
-
-**Verify:** registering a member with a valid sandbox ID succeeds; an invalid ID is
-rejected with a clear error.
+> Live Fayda verification is out of MVP. Member ID is a stored field pair
+> (`nationalId` + `idType`) captured manually at registration — no outbound call,
+> no `VerificationResult`, registration not blocked on ID checks.
 
 ### Task 10 — Member registration & profile UI
-**Owner: Melkamu** · **Depends on:** Task 8, 9, 7
+**Owner: Melkamu** · **Depends on:** Task 8, 7
 
 > Registration form and profile/search screen for the Tenant Admin and Teller
-> portals. Surface the Fayda verification result inline.
+> portals. Capture `nationalId` and `idType` (`national_id` | `passport` | `other`)
+> as ordinary form fields — no verification status UI.
 
 **Verify:** registering a member end to end works against the real backend.
 
@@ -312,15 +308,16 @@ as "pending confirmation," never a false success.
 
 **Verify:** a deposit triggers a real email to a test inbox within a few seconds.
 
-### Task 26 — Mobile Money & USSD contracts
+### Task 26 — Mobile Money webhook contracts
 **Owner: Liya** · **Depends on:** Task 12, 16
 
 > Not implemented against a live gateway this phase. Document the webhook
-> contract for mobile money C2B/B2C and the USSD session shape in the OpenAPI
-> spec, so Task 24's mocked UI builds against a documented shape.
+> contract for mobile money C2B/B2C in the OpenAPI spec, so Task 24's mocked UI
+> builds against a documented shape. **No USSD** — self-service is web-only for
+> MVP ([`DECISIONS.md`](./DECISIONS.md) D1).
 
-**Verify:** the spec is complete enough that someone outside the team could
-implement a mock server against it without a follow-up question.
+**Verify:** the MoMo webhook spec is complete enough that someone outside the
+team could implement a mock server against it without a follow-up question.
 
 ---
 

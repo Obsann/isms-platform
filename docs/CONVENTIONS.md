@@ -34,8 +34,8 @@ automatically for everything under `backend/` and `frontend/`. Prefer editing th
 ## Secrets
 - `.env` gitignored in both `backend/` and `frontend/` — check every PR.
 - `.env.example` (no real values) is the only env file committed.
-- Provider keys (Fayda sandbox, SMTP) live in `backend/` only, via `process.env`,
-  never hardcoded, never in `frontend/` even for local mocks.
+- Provider keys (SMTP and future gateways) live in `backend/` only, via
+  `process.env`, never hardcoded, never in `frontend/` even for local mocks.
 
 ## Naming
 - Branches: `task<N>-<yourname>-<short-desc>`

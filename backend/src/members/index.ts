@@ -10,5 +10,4 @@ export type {
   MemberSearchQuery,
   MemberSearchResult,
   UpdateMemberInput,
-  VerificationResult,
 } from './member.types';

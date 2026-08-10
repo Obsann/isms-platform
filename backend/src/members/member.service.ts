@@ -12,13 +12,13 @@ import type {
 } from './member.types';
 
 /**
- * Member Management vertical — owner: **Melkamu** (Tasks 8–11).
+ * Member Management vertical — owner: **Melkamu** (Tasks 8, 10, 11).
  *
  * The only entry point other modules may use. Tenant scoping is applied by the
  * tenant-context guard (Task 3), so no method here takes or filters on a tenant id.
  *
- * TODO(Task 9 — Melkamu): add the isolated `fayda-verification` service inside this
- * module and call it from `create`, rejecting registration when verification fails.
+ * ID fields (`nationalId`, `idType`) are stored as typed by staff — no live
+ * verification call (DECISIONS.md D1).
  */
 @Injectable()
 export class MemberService {
@@ -32,18 +32,24 @@ export class MemberService {
       throw new UnauthorizedException('No tenant context found');
     }
 
-    // Check for membership number conflicts within the current tenant scope
     const existing = await repo.findOne({ where: { memberNumber: input.memberNumber } });
     if (existing) {
       throw new ConflictException(`Member number "${input.memberNumber}" already exists in this tenant`);
     }
 
     const member = repo.create({
-      ...input,
-      tenantId,
+      memberNumber: input.memberNumber,
+      firstName: input.firstName,
+      middleName: input.middleName ?? null,
+      lastName: input.lastName,
+      nationalId: input.nationalId ?? null,
+      idType: input.nationalId ? (input.idType ?? null) : null,
+      phone: input.phone ?? null,
+      email: input.email ?? null,
+      dateOfBirth: input.dateOfBirth ?? null,
       status: input.status ?? 'pending',
-      nationalIdVerified: false,
-      nationalIdVerifiedAt: null,
+      joinedAt: input.joinedAt ?? null,
+      tenantId,
     });
 
     const saved = await repo.save(member);
@@ -68,8 +74,8 @@ export class MemberService {
     if (query.search) {
       const searchPattern = `%${query.search}%`;
       qb.andWhere(
-        '(member.firstName ILIKE :search OR member.middleName ILIKE :search OR member.lastName ILIKE :search OR member.email ILIKE :search OR member.phone ILIKE :search OR member.memberNumber ILIKE :search)',
-        { search: searchPattern }
+        '(member.firstName ILIKE :search OR member.middleName ILIKE :search OR member.lastName ILIKE :search OR member.email ILIKE :search OR member.phone ILIKE :search OR member.memberNumber ILIKE :search OR member.nationalId ILIKE :search)',
+        { search: searchPattern },
       );
     }
 
@@ -82,7 +88,7 @@ export class MemberService {
 
     const [entities, total] = await qb.getManyAndCount();
     return {
-      items: entities.map(entity => this.mapToContract(entity)),
+      items: entities.map((entity) => this.mapToContract(entity)),
       total,
     };
   }
@@ -95,7 +101,6 @@ export class MemberService {
       throw new NotFoundException(`Member with ID "${memberId}" not found`);
     }
 
-    // Check for membership number conflicts if it is being changed
     if (changes.memberNumber && changes.memberNumber !== member.memberNumber) {
       const existing = await repo.findOne({ where: { memberNumber: changes.memberNumber } });
       if (existing) {
@@ -103,8 +108,15 @@ export class MemberService {
       }
     }
 
-    // Merge non-null/undefined properties manually
     Object.assign(member, changes);
+    if (changes.nationalId === undefined) {
+      // leave as-is
+    } else if (!changes.nationalId) {
+      member.nationalId = null;
+      member.idType = null;
+    } else if (changes.idType !== undefined) {
+      member.idType = changes.idType;
+    }
 
     const saved = await repo.save(member);
     return this.mapToContract(saved);
@@ -133,8 +145,7 @@ export class MemberService {
         ? `${entity.firstName} ${entity.middleName} ${entity.lastName}`
         : `${entity.firstName} ${entity.lastName}`,
       nationalId: entity.nationalId,
-      nationalIdVerified: entity.nationalIdVerified,
-      nationalIdVerifiedAt: entity.nationalIdVerifiedAt ? entity.nationalIdVerifiedAt.toISOString() : null,
+      idType: entity.idType,
       phone: entity.phone,
       email: entity.email,
       dateOfBirth: entity.dateOfBirth,

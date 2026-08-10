@@ -12,7 +12,7 @@
  * retrying.
  */
 
-import type { ApiErrorBody, LoginResponse } from "@/types";
+import type { ApiErrorBody, LoginResponse, Member, PaginatedResult } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -135,5 +135,46 @@ export const apiClient = {
     return request<T>(path, { ...options, method: "DELETE" });
   },
 };
+
+// ---------------------------------------------------------------------------
+// Members API (Task 10 — Melkamu)
+// ---------------------------------------------------------------------------
+
+export interface CreateMemberPayload {
+  memberNumber: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  nationalId?: string;
+  idType?: 'national_id' | 'passport' | 'other';
+  phone?: string;
+  email?: string;
+  dateOfBirth?: string;
+  status?: 'pending' | 'active' | 'inactive';
+  joinedAt?: string;
+}
+
+export type UpdateMemberPayload = Partial<CreateMemberPayload>;
+
+export function getMembers(params?: { search?: string; limit?: number; offset?: number }) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  return apiClient.get<PaginatedResult<Member>>(`/members${qs ? `?${qs}` : ''}`);
+}
+
+export function getMember(id: string) {
+  return apiClient.get<Member>(`/members/${id}`);
+}
+
+export function createMember(payload: CreateMemberPayload) {
+  return apiClient.post<Member>('/members', payload);
+}
+
+export function updateMember(id: string, payload: UpdateMemberPayload) {
+  return apiClient.patch<Member>(`/members/${id}`, payload);
+}
 
 export default apiClient;

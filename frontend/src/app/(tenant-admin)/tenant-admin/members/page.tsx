@@ -103,6 +103,7 @@ export default function TenantAdminMembersPage() {
           onSearch={handleSearch}
           onMemberClick={(member) => router.push(`/tenant-admin/members/${member.id}`)}
           onRegisterClick={() => router.push("/tenant-admin/members/register")}
+          onImportClick={() => router.push("/tenant-admin/members/import")}
           limit={limit}
           offset={offset}
           onPageChange={setOffset}

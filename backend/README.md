@@ -2,16 +2,16 @@
 
 ISMS platform API — NestJS + TypeScript + TypeORM (Postgres).
 
-Read `.cursor/rules/conventions.mdc` before adding code here — that file is the
-project's conventions, and Cursor applies it automatically to everything under
-`backend/`. The rules that bite most often are module boundaries, the ledger, and
-tenant scoping.
+Read [`.cursor/rules/conventions.mdc`](../.cursor/rules/conventions.mdc) and
+[`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) before adding
+code here — Cursor applies conventions automatically under `backend/`. The rules
+that bite most often are module boundaries, the ledger, and tenant scoping.
 
 ## Local setup
 
 Everyone uses the same Postgres 16 via Docker at the repo root — not an embedded
 engine, not a per-person install. That keeps RLS and migrations identical across
-the team (see `.cursor/rules/git-workflow (1).mdc`).
+the team (see [`.cursor/rules/git-workflow.mdc`](../.cursor/rules/git-workflow.mdc)).
 
 ```bash
 # from repo root
@@ -60,14 +60,14 @@ src/
 ├── common/                  entity base classes, guards, decorators, filters
 ├── database/                TypeORM data source + migrations
 ├── health/                  GET /api/health
-├── types/                   shared contracts (Task 5 fills these in)
+├── types/                   shared contracts (Task 5 — mirror in frontend/src/types)
 ├── tenants/                 the platform-global tenants table — Obsan
 ├── members/                 Member Management — Melkamu
 ├── savings-shares/          Savings & Shares — Jerry
 ├── loans/                   Loans & Credit — Abenezer
 ├── documents-reporting/     Documents & Reporting — Biruk
 ├── security-audit/          Security & Audit — Obsan
-└── channel-integration/     Notifications + mobile money webhook contracts — Liya
+└── channel-integration/     SMTP notifications + mobile-money webhook contracts (no live gateway / no USSD in MVP) — Liya
 ```
 
 Every vertical module currently exports typed method signatures whose bodies throw
@@ -150,9 +150,10 @@ no row — an unscoped connection sees nothing rather than everything.
   is a narrow `SECURITY DEFINER` function that returns only `id`/`status` for a code,
   bypassing RLS for that one lookup only — `isms_app` has `EXECUTE` on it and nothing
   more.
-- `npm run seed` creates two dev tenants with one staff account each (see
-  `src/database/seeds/dev-seed.ts`) — useful for exercising the login flow and for
-  reproducing the cross-tenant isolation check by hand.
+- `npm run seed` creates two dev tenants plus seeded staff (see
+  `src/database/seeds/dev-seed.ts` and decisions D5): one platform `super-admin`,
+  and per tenant `tenant-admin`, `teller`, and `loan-officer` (same known password).
+  Useful for login, portal routing (Task 4), and cross-tenant isolation checks.
 
 ## Not wired yet, on purpose
 

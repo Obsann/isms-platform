@@ -177,35 +177,4 @@ export function updateMember(id: string, payload: UpdateMemberPayload) {
   return apiClient.patch<Member>(`/members/${id}`, payload);
 }
 
-// ---------------------------------------------------------------------------
-// Legacy Import API (Task 11 — Melkamu)
-// ---------------------------------------------------------------------------
-
-export interface LegacyRowError {
-  row: number;
-  column?: string;
-  message: string;
-}
-
-export interface LegacyImportPreview {
-  stagingId: string;
-  totalRows: number;
-  validRows: number;
-  errors: LegacyRowError[];
-}
-
-export interface LegacyImportCommitResult {
-  stagingId: string;
-  importedRows: number;
-  skippedRows: number;
-}
-
-export function stageImport(csvContent: string, mappings: Record<string, string>) {
-  return apiClient.post<LegacyImportPreview>('/members/import/stage', { csvContent, mappings });
-}
-
-export function commitImport(stagingId: string) {
-  return apiClient.post<LegacyImportCommitResult>(`/members/import/commit/${stagingId}`, {});
-}
-
 export default apiClient;

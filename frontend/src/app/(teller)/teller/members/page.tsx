@@ -103,7 +103,6 @@ export default function TellerMembersPage() {
           onSearch={handleSearch}
           onMemberClick={(member) => router.push(`/teller/members/${member.id}`)}
           onRegisterClick={() => router.push("/teller/members/register")}
-          onImportClick={() => router.push("/teller/members/import")}
           limit={limit}
           offset={offset}
           onPageChange={setOffset}

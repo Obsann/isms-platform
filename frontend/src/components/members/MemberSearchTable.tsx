@@ -15,7 +15,6 @@ interface MemberSearchTableProps {
   onSearch: () => void;
   onMemberClick?: (member: Member) => void;
   onRegisterClick?: () => void;
-  onImportClick?: () => void;
   limit: number;
   offset: number;
   onPageChange: (newOffset: number) => void;
@@ -30,7 +29,6 @@ export const MemberSearchTable: React.FC<MemberSearchTableProps> = ({
   onSearch,
   onMemberClick,
   onRegisterClick,
-  onImportClick,
   limit,
   offset,
   onPageChange,
@@ -126,27 +124,15 @@ export const MemberSearchTable: React.FC<MemberSearchTableProps> = ({
           </Button>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
-          {onImportClick && (
-            <Button
-              variant="outline"
-              onClick={onImportClick}
-              disabled={isLoading}
-              className="flex-1 sm:flex-initial text-midnight border-slate-200 hover:bg-slate-50 font-semibold px-5"
-            >
-              Import Legacy List
-            </Button>
-          )}
-          {onRegisterClick && (
-            <Button
-              onClick={onRegisterClick}
-              disabled={isLoading}
-              className="flex-1 sm:flex-initial bg-gold hover:bg-gold/90 text-midnight font-bold px-6 shadow-sm border border-gold/15"
-            >
-              + Register Member
-            </Button>
-          )}
-        </div>
+        {onRegisterClick && (
+          <Button
+            onClick={onRegisterClick}
+            disabled={isLoading}
+            className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-midnight font-bold px-6 shadow-sm border border-gold/15"
+          >
+            + Register Member
+          </Button>
+        )}
       </div>
 
       {/* Data Table */}

@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import PortalShell from "@/components/layout/PortalShell";
 import StatusBadge from "@/components/badges/StatusBadge";
@@ -130,10 +132,10 @@ export default function Task7VerifyPage() {
       portalBadgeColor="tenant-admin"
       user={{ name: "Liya Fitsum", role: "UI / Design Engineer" }}
       navItems={[
-        { label: "Overview",     href: "#overview",      active: true, icon: <IconShield /> },
-        { label: "Members",      href: "#members",       icon: <IconUsers /> },
-        { label: "Transactions", href: "#transactions",  icon: <IconWallet /> },
-        { label: "Reports",      href: "#reports",       icon: <IconTrend /> },
+        { label: "Overview",     href: "#overview",     icon: <IconShield /> },
+        { label: "Members",      href: "#members",      icon: <IconUsers /> },
+        { label: "Transactions", href: "#transactions", icon: <IconWallet /> },
+        { label: "Reports",      href: "#reports",      icon: <IconTrend /> },
       ]}
     >
       <div className="max-w-5xl space-y-7">

@@ -2,17 +2,17 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  NotImplementedException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TenantContextService } from '../common/tenant-context/tenant-context.service';
-import { MemberEntity } from '../members/member.entity';
-import type { Account, AccountId, Amount, MemberId, Transaction, TransactionType } from '../types';
+import { MemberService } from '../members';
+import type { Account, AccountId, Amount, MemberId, Transaction } from '../types';
 import { AccountEntity } from './account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { FundsHoldEntity } from './funds-hold.entity';
-import { SavingsTransactionEntity } from './savings-transaction.entity';
 import type {
   AccountBalance,
   DepositInput,
@@ -34,6 +34,7 @@ export class SavingsSharesService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly configService: ConfigService,
+    private readonly memberService: MemberService,
   ) {}
 
   /** Create a new savings or share account for a member. */
@@ -43,11 +44,8 @@ export class SavingsSharesService {
       throw new UnauthorizedException('No tenant context found');
     }
 
-    const memberRepo = this.tenantContext.repo(MemberEntity);
-    const member = await memberRepo.findOne({ where: { id: dto.memberId } });
-    if (!member) {
-      throw new NotFoundException(`Member with ID "${dto.memberId}" not found`);
-    }
+    // Check member existence using MemberService via NestJS DI (module boundary compliant)
+    await this.memberService.findById(dto.memberId);
 
     const accountRepo = this.tenantContext.repo(AccountEntity);
     const accountNumber = this.generateAccountNumber(dto.type);
@@ -81,15 +79,11 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    return this.applyMonetaryMovement({
-      account,
-      type: 'deposit',
-      amount: input.amount,
-      isCredit: true,
-      reference: input.reference ?? null,
-      narration: input.narration ?? 'Deposit',
-      postedByStaffId: input.postedByStaffId ?? null,
-    });
+    // Ledger posting integration seam (Task 13 — Obsan).
+    // Ledger service will post balanced entry pair and update accounts.balance atomically.
+    throw new NotImplementedException(
+      `Ledger posting required (Task 13). Deposit validation passed for amount ${input.amount} ETB on account ${input.accountId}.`,
+    );
   }
 
   /** Withdraw available funds from an active savings account. */
@@ -112,15 +106,11 @@ export class SavingsSharesService {
       );
     }
 
-    return this.applyMonetaryMovement({
-      account,
-      type: 'withdrawal',
-      amount: input.amount,
-      isCredit: false,
-      reference: input.reference ?? null,
-      narration: input.narration ?? 'Withdrawal',
-      postedByStaffId: input.postedByStaffId ?? null,
-    });
+    // Ledger posting integration seam (Task 13 — Obsan).
+    // Ledger service will post balanced entry pair and update accounts.balance atomically.
+    throw new NotImplementedException(
+      `Ledger posting required (Task 13). Withdrawal validation passed for amount ${input.amount} ETB on account ${input.accountId}.`,
+    );
   }
 
   /** Purchase shares for a member. */
@@ -144,15 +134,11 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    return this.applyMonetaryMovement({
-      account: shareAccount,
-      type: 'share-purchase',
-      amount: input.amount,
-      isCredit: true,
-      reference: input.reference ?? null,
-      narration: `Share purchase (${input.shareCount} shares)`,
-      postedByStaffId: input.postedByStaffId ?? null,
-    });
+    // Ledger posting integration seam (Task 13 — Obsan).
+    // Ledger service will post balanced entry pair and update accounts.balance atomically.
+    throw new NotImplementedException(
+      `Ledger posting required (Task 13). Share purchase validation passed for amount ${input.amount} ETB on account ${shareAccount.id}.`,
+    );
   }
 
   /** Read account balance details (balance, heldAmount, availableBalance). */
@@ -189,29 +175,11 @@ export class SavingsSharesService {
       );
     }
 
-    const manager = this.tenantContext.getManager();
-    await manager.query(
-      `UPDATE "accounts" SET "held_amount" = "held_amount" + $1, "updated_at" = NOW() WHERE "id" = $2`,
-      [input.amount, input.accountId],
+    // Ledger posting integration seam (Task 13 — Obsan).
+    // Ledger service will manage accounts.held_amount updates and hold recording.
+    throw new NotImplementedException(
+      `Ledger integration required (Task 13). Hold funds validation passed for amount ${input.amount} ETB on account ${input.accountId}.`,
     );
-
-    const holdRepo = this.tenantContext.repo(FundsHoldEntity);
-    const tenantId = this.tenantContext.getTenantId();
-    const hold = holdRepo.create({
-      tenantId: tenantId!,
-      accountId: input.accountId,
-      amount: input.amount,
-      reason: input.reason,
-      releasedAt: null,
-    });
-
-    const saved = await holdRepo.save(hold);
-    return {
-      holdId: saved.id,
-      accountId: saved.accountId,
-      amount: saved.amount,
-      releasedAt: saved.releasedAt ? saved.releasedAt.toISOString() : null,
-    };
   }
 
   /** Release a previously placed collateral hold. */
@@ -225,21 +193,11 @@ export class SavingsSharesService {
       throw new ConflictException(`Funds hold with ID "${holdId}" has already been released`);
     }
 
-    const manager = this.tenantContext.getManager();
-    await manager.query(
-      `UPDATE "accounts" SET "held_amount" = GREATEST(0, "held_amount" - $1), "updated_at" = NOW() WHERE "id" = $2`,
-      [hold.amount, hold.accountId],
+    // Ledger posting integration seam (Task 13 — Obsan).
+    // Ledger service will manage accounts.held_amount updates and release recording.
+    throw new NotImplementedException(
+      `Ledger integration required (Task 13). Release hold validation passed for hold ID ${holdId}.`,
     );
-
-    hold.releasedAt = new Date();
-    const updated = await holdRepo.save(hold);
-
-    return {
-      holdId: updated.id,
-      accountId: updated.accountId,
-      amount: updated.amount,
-      releasedAt: updated.releasedAt ? updated.releasedAt.toISOString() : new Date().toISOString(),
-    };
   }
 
   /** Calculate loan eligibility ceiling based on member's savings balance multiplier. */
@@ -267,49 +225,6 @@ export class SavingsSharesService {
       multiplier,
       maxLoanAmount,
     };
-  }
-
-  /**
-   * TASK 13 INTEGRATION SEAM:
-   * Performs atomic Postgres monetary update and persists immutable transaction log.
-   * When Obsan's Task 13 Ledger lands, this internal body delegates to ledgerService.post().
-   */
-  private async applyMonetaryMovement(params: {
-    account: AccountEntity;
-    type: TransactionType;
-    amount: Amount;
-    isCredit: boolean;
-    reference: string | null;
-    narration: string | null;
-    postedByStaffId: string | null;
-  }): Promise<Transaction> {
-    const manager = this.tenantContext.getManager();
-    const operator = params.isCredit ? '+' : '-';
-
-    const result = await manager.query(
-      `UPDATE "accounts" SET "balance" = "balance" ${operator} $1, "updated_at" = NOW() WHERE "id" = $2 RETURNING "balance"`,
-      [params.amount, params.account.id],
-    );
-
-    const newBalance: string = result[0][0]?.balance ?? result[0]?.balance;
-
-    const txRepo = this.tenantContext.repo(SavingsTransactionEntity);
-    const tenantId = this.tenantContext.getTenantId();
-
-    const tx = txRepo.create({
-      tenantId: tenantId!,
-      accountId: params.account.id,
-      type: params.type,
-      amount: params.amount,
-      balanceAfter: newBalance,
-      currency: params.account.currency,
-      reference: params.reference,
-      narration: params.narration,
-      postedByStaffId: params.postedByStaffId,
-    });
-
-    const saved = await txRepo.save(tx);
-    return this.mapTransactionToContract(saved);
   }
 
   private validatePositiveAmount(amount: Amount): void {
@@ -346,22 +261,6 @@ export class SavingsSharesService {
       availableBalance: this.calculateAvailableBalance(entity.balance, entity.heldAmount),
       currency: entity.currency,
       openedAt: entity.openedAt,
-    };
-  }
-
-  private mapTransactionToContract(entity: SavingsTransactionEntity): Transaction {
-    return {
-      id: entity.id,
-      tenantId: entity.tenantId,
-      accountId: entity.accountId,
-      type: entity.type,
-      amount: entity.amount,
-      currency: entity.currency,
-      balanceAfter: entity.balanceAfter,
-      reference: entity.reference,
-      narration: entity.narration,
-      postedByStaffId: entity.postedByStaffId,
-      postedAt: entity.postedAt.toISOString(),
     };
   }
 }

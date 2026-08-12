@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MemberModule } from '../members';
 import { AccountEntity } from './account.entity';
 import { FundsHoldEntity } from './funds-hold.entity';
 import { SavingsSharesController } from './savings-shares.controller';
@@ -16,6 +17,7 @@ import { SavingsTransactionEntity } from './savings-transaction.entity';
 @Module({
   imports: [
     ConfigModule,
+    MemberModule,
     TypeOrmModule.forFeature([AccountEntity, SavingsTransactionEntity, FundsHoldEntity]),
   ],
   controllers: [SavingsSharesController],
@@ -23,3 +25,4 @@ import { SavingsTransactionEntity } from './savings-transaction.entity';
   exports: [SavingsSharesService],
 })
 export class SavingsSharesModule {}
+

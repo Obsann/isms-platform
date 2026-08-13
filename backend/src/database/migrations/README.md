@@ -12,7 +12,8 @@ npm run migration:run
 npm run migration:revert
 ```
 
-Rules from `.cursor/rules/conventions.mdc` and `.cursor/rules/git-workflow (1).mdc`:
+Rules from [`.cursor/rules/conventions.mdc`](../../../../.cursor/rules/conventions.mdc)
+and [`.cursor/rules/git-workflow.mdc`](../../../../.cursor/rules/git-workflow.mdc):
 
 - Pull `main` and regenerate against it before starting any schema change.
 - Every non-platform-global table carries an indexed `tenant_id`.

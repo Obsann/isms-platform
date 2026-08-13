@@ -1,0 +1,55 @@
+---
+description: Recorded MVP decisions — scope (no Fayda/USSD), CoA, eligibility, seed, tests
+alwaysApply: true
+---
+
+# ISMS — Recorded decisions
+
+Prefer this over rewriting or inventing scope from the SDS
+(`docs/SACCO_PROPOSAL.md`).
+
+## D1 — MVP drops live Fayda verification and all USSD (2026-08-10)
+
+- No outbound Fayda (or other live ID) verification call. No `VerificationResult`
+  status in API or UI. Registration is not blocked on ID checks.
+- Tellers/admins type an ID number (`nationalId`) and an ID type (`idType`:
+  `national_id` | `passport` | `other`). Both are stored fields only.
+- No USSD channel at all for MVP — not even an OpenAPI session contract.
+  Self-service is web-portal-only.
+- Mobile money stays **documented + mocked only** (Task 24 UI mocks; Task 26
+  OpenAPI webhook shapes). No live gateway.
+- `channel-integration` module is kept for SMTP notifications (Task 25) and
+  mobile-money webhook contracts (Task 26). It is not deleted.
+- Tasks 9 cancelled; Task 10 depends on Tasks 8 + 7 only.
+
+## D2 — Chart of accounts for MVP (2026-08-10)
+
+Internship MVP does **not** ship a tenant-editable chart-of-accounts table.
+Task 13’s ledger service hard-codes minimal posting pairs (cash deposit/withdraw,
+share purchase, loan disbursement, loan repayment principal). Named GL codes /
+a provisioned CoA table are post-MVP.
+
+## D3 — Loan eligibility multiplier (2026-08-10)
+
+- Ceiling = sum of member’s **available** savings balances × multiplier
+  (`availableBalance` = `balance - heldAmount`).
+- Multiplier from `SAVINGS_LOAN_MULTIPLIER` env, default `3`.
+
+## D4 — Held-balance release (2026-08-10)
+
+- Task 12 exposes `holdFunds` / `releaseHold` primitives.
+- Task 17 owns calling release when a loan is fully repaid or cancelled.
+- Each hold should reference the loan (or pledge) id once Loans lands.
+- Manual `releaseHold` remains for correction paths only.
+
+## D5 — Dev seed roles (2026-08-10)
+
+`npm run seed` provisions (same known password for all): one platform
+`super-admin` (`tenant_id` NULL); per tenant `tenant-admin`, `teller`,
+`loan-officer`.
+
+## D6 — Test policy (internship) (2026-08-10)
+
+Jest stays the runner. Before Week 5 integration, require unit tests at least
+for ledger balanced-posting rejection and RLS cross-tenant isolation. No
+coverage gate / CI fail threshold yet.

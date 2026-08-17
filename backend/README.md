@@ -129,6 +129,15 @@ no row — an unscoped connection sees nothing rather than everything.
 - Errors are thrown as NestJS exceptions and shaped by `AllExceptionsFilter` into
   `{ statusCode, message, error }`.
 
+## Ledger (Task 13)
+
+Every monetary movement is a balanced debit/credit pair in `ledger_entries`
+(same `posting_id`) plus the member-account `balance` update, all in the request
+transaction. Unbalanced postings throw `422` before any write. Collateral holds
+change `held_amount` only — they are not GL postings. MVP GL codes are hard-coded
+(`CASH`, `MEMBER_SAVINGS`, `SHARE_CAPITAL`, `LOANS_RECEIVABLE`); there is no
+chart-of-accounts table.
+
 ## Auth & tenant-context (Task 3)
 
 - `POST /api/auth/login` takes `{ tenantCode, email, password }` and returns a JWT
@@ -164,5 +173,4 @@ no row — an unscoped connection sees nothing rather than everything.
 | Piece | Arrives in |
 |---|---|
 | `RolesGuard` enforcing `@Roles(...)` — the decorator is safe to attach now | Task 22 |
-| `LedgerModule` | Task 13 |
 | Refresh tokens | deferred — access token only for now |

@@ -1,18 +1,22 @@
 import {
-  ConflictException,
   Injectable,
   NotFoundException,
-  NotImplementedException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TenantContextService } from '../common/tenant-context/tenant-context.service';
+import { TenantContextService } from '../common';
+import {
+  LedgerService,
+  addAmounts,
+  fromCents,
+  subtractAmounts,
+  toCents,
+} from '../ledger';
 import { MemberService } from '../members';
 import type { Account, AccountId, Amount, MemberId, Transaction } from '../types';
 import { AccountEntity } from './account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
-import { FundsHoldEntity } from './funds-hold.entity';
 import type {
   AccountBalance,
   DepositInput,
@@ -26,8 +30,8 @@ import type {
 /**
  * Savings & Shares vertical — owner: **Jerry** (Task 12).
  *
- * Provides core account management, deposits, withdrawals, share purchases,
- * collateral fund holds, and loan eligibility calculations.
+ * Account records live here; every balance and hold change is posted through
+ * `LedgerService` (Task 13), never written in this module.
  */
 @Injectable()
 export class SavingsSharesService {
@@ -35,6 +39,7 @@ export class SavingsSharesService {
     private readonly tenantContext: TenantContextService,
     private readonly configService: ConfigService,
     private readonly memberService: MemberService,
+    private readonly ledger: LedgerService,
   ) {}
 
   /** Create a new savings or share account for a member. */
@@ -79,11 +84,14 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    // Ledger posting integration seam (Task 13 — Obsan).
-    // Ledger service will post balanced entry pair and update accounts.balance atomically.
-    throw new NotImplementedException(
-      `Ledger posting required (Task 13). Deposit validation passed for amount ${input.amount} ETB on account ${input.accountId}.`,
-    );
+    return this.ledger.postDeposit({
+      accountId: account.id,
+      amount: input.amount,
+      currency: account.currency,
+      reference: input.reference ?? null,
+      narration: input.narration ?? null,
+      postedByStaffId: input.postedByStaffId ?? null,
+    });
   }
 
   /** Withdraw available funds from an active savings account. */
@@ -99,18 +107,14 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    const available = this.calculateAvailableBalance(account.balance, account.heldAmount);
-    if (parseFloat(input.amount) > parseFloat(available)) {
-      throw new UnprocessableEntityException(
-        `Insufficient available funds. Requested: ${input.amount} ETB, Available: ${available} ETB`,
-      );
-    }
-
-    // Ledger posting integration seam (Task 13 — Obsan).
-    // Ledger service will post balanced entry pair and update accounts.balance atomically.
-    throw new NotImplementedException(
-      `Ledger posting required (Task 13). Withdrawal validation passed for amount ${input.amount} ETB on account ${input.accountId}.`,
-    );
+    return this.ledger.postWithdrawal({
+      accountId: account.id,
+      amount: input.amount,
+      currency: account.currency,
+      reference: input.reference ?? null,
+      narration: input.narration ?? null,
+      postedByStaffId: input.postedByStaffId ?? null,
+    });
   }
 
   /** Purchase shares for a member. */
@@ -134,11 +138,13 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    // Ledger posting integration seam (Task 13 — Obsan).
-    // Ledger service will post balanced entry pair and update accounts.balance atomically.
-    throw new NotImplementedException(
-      `Ledger posting required (Task 13). Share purchase validation passed for amount ${input.amount} ETB on account ${shareAccount.id}.`,
-    );
+    return this.ledger.postSharePurchase({
+      accountId: shareAccount.id,
+      amount: input.amount,
+      currency: shareAccount.currency,
+      reference: input.reference ?? null,
+      postedByStaffId: input.postedByStaffId ?? null,
+    });
   }
 
   /** Read account balance details (balance, heldAmount, availableBalance). */
@@ -168,36 +174,16 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    const available = this.calculateAvailableBalance(account.balance, account.heldAmount);
-    if (parseFloat(input.amount) > parseFloat(available)) {
-      throw new UnprocessableEntityException(
-        `Insufficient available funds to place hold. Requested: ${input.amount} ETB, Available: ${available} ETB`,
-      );
-    }
-
-    // Ledger posting integration seam (Task 13 — Obsan).
-    // Ledger service will manage accounts.held_amount updates and hold recording.
-    throw new NotImplementedException(
-      `Ledger integration required (Task 13). Hold funds validation passed for amount ${input.amount} ETB on account ${input.accountId}.`,
-    );
+    return this.ledger.holdFunds({
+      accountId: account.id,
+      amount: input.amount,
+      reason: input.reason,
+    });
   }
 
   /** Release a previously placed collateral hold. */
   async releaseHold(holdId: string): Promise<FundsHold> {
-    const holdRepo = this.tenantContext.repo(FundsHoldEntity);
-    const hold = await holdRepo.findOne({ where: { id: holdId } });
-    if (!hold) {
-      throw new NotFoundException(`Funds hold with ID "${holdId}" not found`);
-    }
-    if (hold.releasedAt !== null) {
-      throw new ConflictException(`Funds hold with ID "${holdId}" has already been released`);
-    }
-
-    // Ledger posting integration seam (Task 13 — Obsan).
-    // Ledger service will manage accounts.held_amount updates and release recording.
-    throw new NotImplementedException(
-      `Ledger integration required (Task 13). Release hold validation passed for hold ID ${holdId}.`,
-    );
+    return this.ledger.releaseHold(holdId);
   }
 
   /** Calculate loan eligibility ceiling based on member's savings balance multiplier. */
@@ -207,17 +193,20 @@ export class SavingsSharesService {
       where: { memberId, type: 'savings', status: 'active' },
     });
 
-    const totalSavingsFloat = accounts.reduce(
-      (sum, acc) => sum + parseFloat(acc.balance),
-      0,
+    const savingsBalance = accounts.reduce(
+      (sum, acc) => addAmounts(sum, this.calculateAvailableBalance(acc.balance, acc.heldAmount)),
+      '0.00',
     );
-    const savingsBalance = totalSavingsFloat.toFixed(2);
 
     const multiplierStr = this.configService.get<string>('SAVINGS_LOAN_MULTIPLIER', '3');
-    const multiplier = parseFloat(multiplierStr);
+    const multiplier = Number(multiplierStr);
+    if (!Number.isInteger(multiplier) || multiplier < 0) {
+      throw new UnprocessableEntityException(
+        'SAVINGS_LOAN_MULTIPLIER must be a non-negative integer',
+      );
+    }
 
-    const maxLoanFloat = totalSavingsFloat * multiplier;
-    const maxLoanAmount = maxLoanFloat.toFixed(2);
+    const maxLoanAmount = fromCents(toCents(savingsBalance) * BigInt(multiplier));
 
     return {
       memberId,
@@ -228,17 +217,13 @@ export class SavingsSharesService {
   }
 
   private validatePositiveAmount(amount: Amount): void {
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) {
+    if (toCents(amount) <= 0n) {
       throw new UnprocessableEntityException('Amount must be a positive decimal figure');
     }
   }
 
   private calculateAvailableBalance(balance: Amount, heldAmount: Amount): Amount {
-    const bal = parseFloat(balance);
-    const held = parseFloat(heldAmount);
-    const avail = Math.max(0, bal - held);
-    return avail.toFixed(2);
+    return subtractAmounts(balance, heldAmount);
   }
 
   private generateAccountNumber(type: 'savings' | 'share'): string {

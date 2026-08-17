@@ -57,7 +57,7 @@ export type IdType = 'national_id' | 'passport' | 'other';
 export type AccountType = 'savings' | 'share';
 export type AccountStatus = 'active' | 'dormant' | 'closed';
 
-/** No table yet — the ledger owns this from Task 13. */
+/** Owned by the ledger (Task 13). */
 export type TransactionType =
   | 'deposit'
   | 'withdrawal'

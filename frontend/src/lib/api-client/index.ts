@@ -12,7 +12,7 @@
  * retrying.
  */
 
-import type { ApiErrorBody, LoginResponse } from "@/types";
+import { ROLE_PORTAL, type ApiErrorBody, type AuthUser, type LoginRequest, type LoginResponse, type PortalName, type RoleName } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -22,6 +22,19 @@ import type { ApiErrorBody, LoginResponse } from "@/types";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 const TOKEN_KEY = "isms_access_token";
+const USER_KEY = "isms_auth_user";
+const EXPIRES_AT_KEY = "isms_token_expires_at";
+
+export const PORTAL_HOME: Readonly<Record<PortalName, string>> = {
+  "super-admin": "/super-admin/dashboard",
+  "tenant-admin": "/tenant-admin/dashboard",
+  teller: "/teller/dashboard",
+  member: "/member/dashboard",
+};
+
+export function portalHome(role: RoleName): string {
+  return PORTAL_HOME[ROLE_PORTAL[role]];
+}
 
 // ---------------------------------------------------------------------------
 // Token helpers (browser-only)
@@ -29,15 +42,57 @@ const TOKEN_KEY = "isms_access_token";
 
 function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
+  if (isSessionExpired()) {
+    clearSession();
+    return null;
+  }
   return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getSessionUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  if (isSessionExpired()) {
+    clearSession();
+    return null;
+  }
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+function isSessionExpired(): boolean {
+  if (typeof window === "undefined") return true;
+  const raw = localStorage.getItem(EXPIRES_AT_KEY);
+  if (!raw) return false;
+  const expiresAt = Number(raw);
+  return Number.isFinite(expiresAt) && Date.now() >= expiresAt;
 }
 
 export function saveSession(login: LoginResponse): void {
   localStorage.setItem(TOKEN_KEY, login.accessToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(login.user));
+  localStorage.setItem(EXPIRES_AT_KEY, String(Date.now() + login.expiresIn * 1000));
 }
 
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(EXPIRES_AT_KEY);
+}
+
+export async function login(body: LoginRequest): Promise<LoginResponse> {
+  const result = await apiClient.post<LoginResponse>("/auth/login", body, { skipAuth: true });
+  saveSession(result);
+  return result;
+}
+
+export function logout(): void {
+  clearSession();
 }
 
 // ---------------------------------------------------------------------------
@@ -89,6 +144,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   if (!response.ok) {
+    if (response.status === 401 && !skipAuth && typeof window !== "undefined") {
+      clearSession();
+      window.location.assign("/login");
+    }
+
     const fallback: ApiErrorBody = {
       statusCode: response.status,
       message: response.statusText || "Request failed",

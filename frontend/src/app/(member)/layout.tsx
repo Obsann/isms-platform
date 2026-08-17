@@ -1,7 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import PortalShell, { NavSection } from '@/components/layout/PortalShell';
+import PortalGuard from '@/components/auth/PortalGuard';
+import { formatRoleLabel, useAuthUser } from '@/components/auth/useAuthUser';
+import { logout } from '@/lib/api-client';
 import { GlobalToast, HelpModal } from '@/components/ui/GlobalModals';
 import { LayoutDashboard, User, HelpCircle } from 'lucide-react';
 
@@ -17,20 +21,29 @@ const navSections: NavSection[] = [
 ];
 
 function MemberShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const authUser = useAuthUser();
   const { darkMode, toggleDarkMode, notifications, markNotificationRead, setHelpModalOpen, userProfile, members } = useApp();
   // Find the current member by email match
-  const myMember = members.find((m) => m.email === userProfile.email) ?? members[0];
+  const myMember = members.find((m) => m.email === (authUser?.email ?? userProfile.email)) ?? members[0];
   return (
     <PortalShell
       portalName="Member"
       portalBadgeColor="member"
       navSections={navSections}
-      user={{ name: myMember?.fullName ?? userProfile.name, role: `${myMember?.membershipType ?? 'Full'} Member` }}
+      user={{
+        name: authUser?.fullName ?? myMember?.fullName ?? userProfile.name,
+        role: authUser ? formatRoleLabel(authUser.role) : `${myMember?.membershipType ?? 'Full'} Member`,
+      }}
       darkMode={darkMode}
       onToggleDarkMode={toggleDarkMode}
       notifications={notifications}
       onMarkNotificationRead={markNotificationRead}
       onOpenHelp={() => setHelpModalOpen(true)}
+      onLogout={() => {
+        logout();
+        router.replace('/login');
+      }}
     >
       {children}
       <GlobalToast />
@@ -42,7 +55,9 @@ function MemberShell({ children }: { children: React.ReactNode }) {
 export default function MemberLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppProvider>
-      <MemberShell>{children}</MemberShell>
+      <PortalGuard portal="member">
+        <MemberShell>{children}</MemberShell>
+      </PortalGuard>
     </AppProvider>
   );
 }

@@ -126,7 +126,7 @@ async function seed(): Promise<void> {
 
       const loginHint =
         account.tenantCode === null
-          ? `platform super-admin — email="${account.email}" (no tenantCode / platform login path)`
+          ? `tenantCode="platform", email="${account.email}"`
           : `tenantCode="${account.tenantCode}", email="${account.email}"`;
       console.log(`  staff ${account.role}: ${loginHint}, password="${DEV_PASSWORD}"`);
     }

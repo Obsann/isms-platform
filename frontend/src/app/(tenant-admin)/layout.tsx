@@ -1,7 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import PortalShell, { NavSection } from '@/components/layout/PortalShell';
+import PortalGuard from '@/components/auth/PortalGuard';
+import { formatRoleLabel, useAuthUser } from '@/components/auth/useAuthUser';
+import { logout } from '@/lib/api-client';
 import { GlobalToast, VendorDetailModal, QuickScanModal, SearchModal, HelpModal } from '@/components/ui/GlobalModals';
 import {
   LayoutDashboard, Users, ShieldCheck, AlertTriangle, Server,
@@ -36,19 +40,25 @@ const navSections: NavSection[] = [
 ];
 
 function TenantAdminShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const authUser = useAuthUser();
   const { darkMode, toggleDarkMode, notifications, markNotificationRead, setSearchModalOpen, setHelpModalOpen, userProfile } = useApp();
   return (
     <PortalShell
       portalName="Tenant Admin"
       portalBadgeColor="tenant-admin"
       navSections={navSections}
-      user={{ name: userProfile.name, role: userProfile.role }}
+      user={{ name: authUser?.fullName ?? userProfile.name, role: authUser ? formatRoleLabel(authUser.role) : userProfile.role }}
       darkMode={darkMode}
       onToggleDarkMode={toggleDarkMode}
       notifications={notifications}
       onMarkNotificationRead={markNotificationRead}
       onOpenSearch={() => setSearchModalOpen(true)}
       onOpenHelp={() => setHelpModalOpen(true)}
+      onLogout={() => {
+        logout();
+        router.replace('/login');
+      }}
     >
       {children}
       <GlobalToast />
@@ -63,7 +73,9 @@ function TenantAdminShell({ children }: { children: React.ReactNode }) {
 export default function TenantAdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppProvider>
-      <TenantAdminShell>{children}</TenantAdminShell>
+      <PortalGuard portal="tenant-admin">
+        <TenantAdminShell>{children}</TenantAdminShell>
+      </PortalGuard>
     </AppProvider>
   );
 }

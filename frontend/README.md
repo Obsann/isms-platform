@@ -61,7 +61,7 @@ src/
   (see decisions D1).
 - Client route guards (Task 4) are UX only — the backend still enforces access.
 
-## Portals (placeholders today)
+## Portals
 
 | Route group | URL prefix | Owner (UI) |
 |---|---|---|
@@ -70,14 +70,22 @@ src/
 | `(teller)` | `/teller/...` | Jerry + Abenezer |
 | `(member)` | `/member/...` | Liya |
 
-Login + role routing is Obsan Task 4 (needs Liya Task 7 design system).
+Sign in at `/login`. Seeded accounts (password `DevPassword!123`):
+
+| tenantCode | email | lands on |
+|---|---|---|
+| `platform` | `superadmin@platform.dev` | Super Admin |
+| `tenant-a` | `admin@tenant-a.dev` | Tenant Admin |
+| `tenant-a` | `loan-officer@tenant-a.dev` | Tenant Admin |
+| `tenant-a` | `teller@tenant-a.dev` | Teller |
+
+A logged-in role cannot open another portal; `/` redirects to login or that role's home.
 
 ## Not wired yet, on purpose
 
 | Piece | Arrives in |
 |---|---|
 | Design system / Shadcn kit | Liya Task 7 |
-| Login + client route guard | Obsan Task 4 |
 | Member register/search UI | Melkamu Task 10 |
 | Teller Desk | Jerry Task 14 |
 | Loan screens | Abenezer Task 18 |

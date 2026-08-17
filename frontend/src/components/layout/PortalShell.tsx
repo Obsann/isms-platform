@@ -41,6 +41,7 @@ export interface PortalShellProps {
   onMarkNotificationRead?: (id: string) => void;
   onOpenSearch?: () => void;
   onOpenHelp?: () => void;
+  onLogout?: () => void;
 }
 
 const badgeMap: Record<string, string> = {
@@ -64,6 +65,7 @@ export const PortalShell: React.FC<PortalShellProps> = ({
   onMarkNotificationRead,
   onOpenSearch,
   onOpenHelp,
+  onLogout,
 }) => {
   const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -268,7 +270,14 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                       </button>
                     </div>
                     <div className="border-t border-slate-100 pt-1">
-                      <button className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          onLogout?.();
+                        }}
+                      >
                         <LogOut className="w-3.5 h-3.5" /> Sign Out
                       </button>
                     </div>

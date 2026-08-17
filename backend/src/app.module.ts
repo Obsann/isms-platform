@@ -12,6 +12,7 @@ import {
 import { DatabaseModule } from './database/database.module';
 import { DocumentsReportingModule } from './documents-reporting';
 import { HealthModule } from './health/health.module';
+import { LedgerModule } from './ledger';
 import { LoanModule } from './loans';
 import { MemberModule } from './members';
 import { SavingsSharesModule } from './savings-shares';
@@ -34,7 +35,7 @@ import { TenantsModule } from './tenants';
  * has run. `@Public()` (health, login) skips both guards, but still runs through the
  * middleware — it's a no-op for them since nothing ever attaches a query runner.
  *
- * TODO(Task 13 — Obsan): add `LedgerModule`, which Savings and Loans both post through.
+ * TODO(Task 16 — Abenezer): loans post disbursement/repayment through LedgerModule.
  */
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { TenantsModule } from './tenants';
     HealthModule,
     TenantsModule,
     MemberModule,
+    LedgerModule,
     SavingsSharesModule,
     LoanModule,
     DocumentsReportingModule,

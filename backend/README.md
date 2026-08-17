@@ -132,9 +132,12 @@ no row — an unscoped connection sees nothing rather than everything.
 ## Auth & tenant-context (Task 3)
 
 - `POST /api/auth/login` takes `{ tenantCode, email, password }` and returns a JWT
-  with `staff_id` (`sub`), `tenant_id`, and `role` claims. `GET /api/auth/me` is the
-  concrete proof the pipeline works: it re-reads `staff_accounts` through the tenant
-  context resolved from the caller's own token.
+  with `staff_id` (`sub`), `tenant_id`, and `role` claims. Use a real SACCO code
+  (`tenant-a` / `tenant-b` from seed) for tenant staff, or the reserved code
+  `platform` for the seeded super-admin. `GET /api/auth/me` is the concrete proof
+  the tenant pipeline works: it re-reads `staff_accounts` through the tenant
+  context resolved from the caller's own token (platform super-admin rows stay
+  invisible to that path — Task 19).
 - **Every route except `@Public()` ones now requires a valid Bearer token.** Mark a
   route `@Public()` (see `common/decorators/public.decorator.ts`) only for things
   that must work with no tenant context at all — currently just health and login.
@@ -149,7 +152,8 @@ no row — an unscoped connection sees nothing rather than everything.
   tenant context exists. `resolve_tenant_by_code` (migration `TenantBootstrapLookup`)
   is a narrow `SECURITY DEFINER` function that returns only `id`/`status` for a code,
   bypassing RLS for that one lookup only — `isms_app` has `EXECUTE` on it and nothing
-  more.
+  more. Platform super-admin login uses the same pattern:
+  `resolve_platform_staff_by_email` (migration `PlatformStaffBootstrapLookup`).
 - `npm run seed` creates two dev tenants plus seeded staff (see
   `src/database/seeds/dev-seed.ts` and decisions D5): one platform `super-admin`,
   and per tenant `tenant-admin`, `teller`, and `loan-officer` (same known password).

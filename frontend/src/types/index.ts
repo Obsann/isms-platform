@@ -72,6 +72,12 @@ export const ROLE_PORTAL: Readonly<Record<RoleName, PortalName>> = {
   member: "member",
 };
 
+/**
+ * Reserved `LoginRequest.tenantCode` for platform super-admin. Not a real tenant —
+ * login uses `resolve_platform_staff_by_email` instead of tenant RLS.
+ */
+export const PLATFORM_TENANT_CODE = "platform";
+
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
@@ -85,6 +91,7 @@ export interface AuthUser {
   isActive: boolean;
 }
 
+/** Use `PLATFORM_TENANT_CODE` (`"platform"`) for the seeded platform super-admin. */
 export interface LoginRequest {
   tenantCode: string;
   email: string;

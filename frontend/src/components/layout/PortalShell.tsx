@@ -22,6 +22,15 @@ export interface NavSection {
   items: NavItem[];
 }
 
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: 'alert' | 'info' | 'success';
+  read: boolean;
+}
+
 export interface PortalShellProps {
   portalName?: string;
   portalBadgeColor?: 'super-admin' | 'tenant-admin' | 'teller' | 'member';
@@ -29,6 +38,13 @@ export interface PortalShellProps {
   navItems?: NavItem[];
   user?: { name: string; role: string };
   showSidebar?: boolean;
+  darkMode?: boolean;
+  onToggleDarkMode?: () => void;
+  notifications?: NotificationItem[];
+  onMarkNotificationRead?: (id: string) => void;
+  onOpenSearch?: () => void;
+  onOpenHelp?: () => void;
+  onLogout?: () => void;
   children: React.ReactNode;
   className?: string;
 }

@@ -8,6 +8,7 @@ import { MemberRecord } from "@/types/dashboard";
 interface FormFieldGroupProps {
   onAddMember?: (newMember: Partial<MemberRecord>) => void;
   label?: string;
+  htmlFor?: string;
   required?: boolean;
   tooltip?: string;
   helperText?: string;
@@ -18,6 +19,7 @@ interface FormFieldGroupProps {
 export function FormFieldGroup({
   onAddMember,
   label,
+  htmlFor,
   required,
   tooltip,
   helperText,
@@ -29,7 +31,7 @@ export function FormFieldGroup({
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <label htmlFor={htmlFor} className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
             {label} {required && <span className="text-rose-500">*</span>}
           </label>
         )}

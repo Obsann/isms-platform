@@ -1,49 +1,15 @@
 'use client';
 
-import { AppProvider, useApp } from '@/contexts/AppContext';
-import PortalShell, { NavSection } from '@/components/layout/PortalShell';
-import { GlobalToast, SearchModal, HelpModal } from '@/components/ui/GlobalModals';
-import { LayoutDashboard, Users, FileText, Settings } from 'lucide-react';
-
-const navSections: NavSection[] = [
-  {
-    label: 'Teller Operations',
-    items: [
-      { label: 'Dashboard', href: '/teller/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-      { label: 'Members', href: '/teller/members', icon: <Users className="w-4 h-4" /> },
-      { label: 'Audit Logs', href: '/teller/audit', icon: <FileText className="w-4 h-4" /> },
-      { label: 'Settings', href: '/teller/settings', icon: <Settings className="w-4 h-4" /> },
-    ],
-  },
-];
-
-function TellerShell({ children }: { children: React.ReactNode }) {
-  const { darkMode, toggleDarkMode, notifications, markNotificationRead, setSearchModalOpen, setHelpModalOpen, userProfile } = useApp();
-  return (
-    <PortalShell
-      portalName="Teller"
-      portalBadgeColor="teller"
-      navSections={navSections}
-      user={{ name: userProfile.name, role: 'Teller' }}
-      darkMode={darkMode}
-      onToggleDarkMode={toggleDarkMode}
-      notifications={notifications}
-      onMarkNotificationRead={markNotificationRead}
-      onOpenSearch={() => setSearchModalOpen(true)}
-      onOpenHelp={() => setHelpModalOpen(true)}
-    >
-      {children}
-      <GlobalToast />
-      <SearchModal />
-      <HelpModal />
-    </PortalShell>
-  );
-}
+import PortalShell from '@/components/layout/PortalShell';
 
 export default function TellerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppProvider>
-      <TellerShell>{children}</TellerShell>
-    </AppProvider>
+    <PortalShell
+      portalName="Teller Portal"
+      portalBadgeColor="teller"
+      user={{ name: "Abebe Bikila", role: "Head Teller" }}
+    >
+      {children}
+    </PortalShell>
   );
 }

@@ -1,7 +1,20 @@
-import RiskRegistryView from '@/components/views/RiskRegistryView';
+'use client';
 
-export const metadata = { title: 'Risk Registry | ISMS Tenant Admin' };
+import StatusBadge from '@/components/badges/StatusBadge';
 
-export default function RiskPage() {
-  return <RiskRegistryView />;
+export default function TenantRiskPage() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <StatusBadge status="active" label="Shell Ready" />
+          <span className="text-xs text-slate-400 font-mono font-semibold uppercase tracking-wider">Tenant Admin</span>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 font-serif">Tenant Risk Registry</h1>
+        <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+          Clean portal shell workspace for branch risk tracking.
+        </p>
+      </div>
+    </div>
+  );
 }

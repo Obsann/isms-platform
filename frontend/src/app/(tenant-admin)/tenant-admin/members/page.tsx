@@ -1,7 +1,20 @@
-import MembersView from '@/components/views/MembersView';
+'use client';
 
-export const metadata = { title: 'Members | ISMS Tenant Admin' };
+import StatusBadge from '@/components/badges/StatusBadge';
 
-export default function MembersPage() {
-  return <MembersView />;
+export default function TenantMembersPage() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <StatusBadge status="active" label="Shell Ready" />
+          <span className="text-xs text-slate-400 font-mono font-semibold uppercase tracking-wider">Tenant Admin</span>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 font-serif">Branch Members Directory</h1>
+        <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+          Clean portal shell workspace for tenant member management and oversight.
+        </p>
+      </div>
+    </div>
+  );
 }

@@ -57,7 +57,7 @@ export type IdType = 'national_id' | 'passport' | 'other';
 export type AccountType = 'savings' | 'share';
 export type AccountStatus = 'active' | 'dormant' | 'closed';
 
-/** No table yet — the ledger owns this from Task 13. */
+/** Owned by the ledger (Task 13). */
 export type TransactionType =
   | 'deposit'
   | 'withdrawal'
@@ -102,6 +102,12 @@ export const ROLE_PORTAL: Readonly<Record<RoleName, PortalName>> = {
   member: 'member',
 };
 
+/**
+ * Reserved `LoginRequest.tenantCode` for platform super-admin. Not a real tenant —
+ * login uses `resolve_platform_staff_by_email` instead of tenant RLS.
+ */
+export const PLATFORM_TENANT_CODE = 'platform';
+
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
@@ -120,6 +126,8 @@ export interface AuthUser {
  * `tenantCode` is required. `staff_accounts` is fail-closed under RLS, so there is no
  * "find the user, then infer their tenant" path — the tenant has to be resolved before
  * the credential lookup can see any row at all.
+ *
+ * Use `PLATFORM_TENANT_CODE` (`"platform"`) for the seeded platform super-admin.
  */
 export interface LoginRequest {
   tenantCode: string;

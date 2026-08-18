@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LedgerModule } from '../ledger';
 import { MemberModule } from '../members';
 import { AccountEntity } from './account.entity';
 import { FundsHoldEntity } from './funds-hold.entity';
@@ -11,13 +12,14 @@ import { SavingsTransactionEntity } from './savings-transaction.entity';
 /**
  * Savings & Shares vertical module (Task 12 — Jerry).
  *
- * TODO(Task 13 — Obsan): import `LedgerModule` here and post every movement through
- * the ledger service instead of writing `balance`/`held_amount` in this module.
+ * Movements go through `LedgerModule` — this module never writes `balance` or
+ * `held_amount` itself.
  */
 @Module({
   imports: [
     ConfigModule,
     MemberModule,
+    LedgerModule,
     TypeOrmModule.forFeature([AccountEntity, SavingsTransactionEntity, FundsHoldEntity]),
   ],
   controllers: [SavingsSharesController],

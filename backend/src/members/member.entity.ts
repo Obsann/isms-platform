@@ -1,12 +1,16 @@
 import { Column, Entity, Index } from 'typeorm';
 import { TenantScopedEntity } from '../common/entities/tenant-scoped.entity';
+import type { IdType, MemberStatus } from '../types';
 
-export type MemberStatus = 'pending' | 'active' | 'inactive';
+// Canonical definition lives in `src/types` (Task 5). Re-exported for existing importers.
+export type { MemberStatus };
 
 /**
  * Schema v1 (Task 2) — deliberately the minimum a SACCO member needs. Task 8 adds
  * whatever registration turns out to require; Task 5's `Member` contract in
  * `src/types` is the API shape and is not the same thing as this row.
+ *
+ * ID fields are manual capture only (DECISIONS.md D1) — no live verification columns.
  */
 @Entity('members')
 @Index('idx_members_tenant_id', ['tenantId'])
@@ -29,15 +33,12 @@ export class MemberEntity extends TenantScopedEntity {
   @Column({ name: 'last_name', type: 'varchar', length: 80 })
   lastName!: string;
 
-  /** Fayda National ID. Verification itself is Task 9. */
+  /** ID number as typed by staff. Not live-verified. */
   @Column({ name: 'national_id', type: 'varchar', length: 32, nullable: true })
   nationalId!: string | null;
 
-  @Column({ name: 'national_id_verified', type: 'boolean', default: false })
-  nationalIdVerified!: boolean;
-
-  @Column({ name: 'national_id_verified_at', type: 'timestamptz', nullable: true })
-  nationalIdVerifiedAt!: Date | null;
+  @Column({ name: 'id_type', type: 'varchar', length: 32, nullable: true })
+  idType!: IdType | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone!: string | null;

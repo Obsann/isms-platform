@@ -1,0 +1,58 @@
+import { IsEmail, IsEnum, IsOptional, IsString, Length, Matches, ValidateIf } from 'class-validator';
+import { IdType, MemberStatus } from '../../types';
+
+export class UpdateMemberDto {
+  @IsString()
+  @IsOptional()
+  @Length(1, 32)
+  memberNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 80)
+  firstName?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 80)
+  middleName?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 80)
+  lastName?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 32)
+  nationalId?: string;
+
+  @ValidateIf((o: UpdateMemberDto) => o.nationalId != null && o.nationalId !== '')
+  @IsEnum(['national_id', 'passport', 'other'])
+  @IsOptional()
+  idType?: IdType;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 20)
+  phone?: string;
+
+  @IsEmail()
+  @IsOptional()
+  @Length(1, 180)
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dateOfBirth must be in YYYY-MM-DD format' })
+  dateOfBirth?: string;
+
+  @IsEnum(['pending', 'active', 'inactive'])
+  @IsOptional()
+  status?: MemberStatus;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'joinedAt must be in YYYY-MM-DD format' })
+  joinedAt?: string;
+}

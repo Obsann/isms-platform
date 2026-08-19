@@ -1,31 +1,15 @@
+import type { CreateMemberDto } from './dto/create-member.dto';
+import type { UpdateMemberDto } from './dto/update-member.dto';
+import type { MemberSearchQueryDto } from './dto/member-search-query.dto';
 import type { Member } from '../types';
 
-/**
- * Public input/output types for the Member Management vertical.
- *
- * TODO(Task 8 — Melkamu): turn the placeholder inputs into validated DTO classes
- * (`dto/create-member.dto.ts`, `dto/update-member.dto.ts`) using class-validator.
- */
-export type CreateMemberInput = Record<string, unknown>;
-export type UpdateMemberInput = Record<string, unknown>;
-
-export interface MemberSearchQuery {
-  search?: string;
-  limit?: number;
-  offset?: number;
-}
+export type CreateMemberInput = CreateMemberDto;
+export type UpdateMemberInput = UpdateMemberDto;
+export type MemberSearchQuery = MemberSearchQueryDto;
 
 export interface MemberSearchResult {
   items: Member[];
   total: number;
-}
-
-/** Contract for the isolated Fayda verification service (Task 9). */
-export interface VerificationResult {
-  verified: boolean;
-  nationalId: string;
-  /** Shown to the teller when verification fails — never a raw provider error. */
-  reason?: string;
 }
 
 export interface LegacyRowError {

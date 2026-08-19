@@ -1,8 +1,9 @@
 import { Column, Entity, Index } from 'typeorm';
 import { TenantScopedEntity } from '../common/entities/tenant-scoped.entity';
+import type { AccountStatus, AccountType } from '../types';
 
-export type AccountType = 'savings' | 'share';
-export type AccountStatus = 'active' | 'dormant' | 'closed';
+// Canonical definitions live in `src/types` (Task 5). Re-exported for existing importers.
+export type { AccountStatus, AccountType };
 
 @Entity('accounts')
 @Index('idx_accounts_tenant_id', ['tenantId'])

@@ -29,7 +29,14 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "diagnostics": {
+            "ignoreCodes": [151002]
+          }
+        }
+      ]
     },
     "testEnvironment": "node"
   },
@@ -60,12 +67,13 @@
     "@nestjs/testing": "^11.1.28",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
-    "@types/jest": "^30.0.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^26.1.2",
     "@types/passport-jwt": "^4.0.1",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
-    "jest": "^30.4.2",
+    "jest": "^29.7.0",
+    "jest-util": "^29.7.0",
     "prettier": "^3.9.6",
     "source-map-support": "^0.5.21",
     "ts-jest": "^29.4.12",

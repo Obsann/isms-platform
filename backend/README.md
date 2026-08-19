@@ -2,16 +2,16 @@
 
 ISMS platform API — NestJS + TypeScript + TypeORM (Postgres).
 
-Read `.cursor/rules/conventions.mdc` before adding code here — that file is the
-project's conventions, and Cursor applies it automatically to everything under
-`backend/`. The rules that bite most often are module boundaries, the ledger, and
-tenant scoping.
+Read [`.cursor/rules/conventions.mdc`](../.cursor/rules/conventions.mdc) and
+[`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) before adding
+code here — Cursor applies conventions automatically under `backend/`. The rules
+that bite most often are module boundaries, the ledger, and tenant scoping.
 
 ## Local setup
 
 Everyone uses the same Postgres 16 via Docker at the repo root — not an embedded
 engine, not a per-person install. That keeps RLS and migrations identical across
-the team (see `.cursor/rules/git-workflow (1).mdc`).
+the team (see [`.cursor/rules/git-workflow.mdc`](../.cursor/rules/git-workflow.mdc)).
 
 ```bash
 # from repo root
@@ -60,14 +60,14 @@ src/
 ├── common/                  entity base classes, guards, decorators, filters
 ├── database/                TypeORM data source + migrations
 ├── health/                  GET /api/health
-├── types/                   shared contracts (Task 5 fills these in)
+├── types/                   shared contracts (Task 5 — mirror in frontend/src/types)
 ├── tenants/                 the platform-global tenants table — Obsan
 ├── members/                 Member Management — Melkamu
 ├── savings-shares/          Savings & Shares — Jerry
 ├── loans/                   Loans & Credit — Abenezer
 ├── documents-reporting/     Documents & Reporting — Biruk
 ├── security-audit/          Security & Audit — Obsan
-└── channel-integration/     Notifications, mobile money/USSD contracts — Liya
+└── channel-integration/     SMTP notifications + mobile-money webhook contracts (no live gateway / no USSD in MVP) — Liya
 ```
 
 Every vertical module currently exports typed method signatures whose bodies throw
@@ -129,12 +129,24 @@ no row — an unscoped connection sees nothing rather than everything.
 - Errors are thrown as NestJS exceptions and shaped by `AllExceptionsFilter` into
   `{ statusCode, message, error }`.
 
+## Ledger (Task 13)
+
+Every monetary movement is a balanced debit/credit pair in `ledger_entries`
+(same `posting_id`) plus the member-account `balance` update, all in the request
+transaction. Unbalanced postings throw `422` before any write. Collateral holds
+change `held_amount` only — they are not GL postings. MVP GL codes are hard-coded
+(`CASH`, `MEMBER_SAVINGS`, `SHARE_CAPITAL`, `LOANS_RECEIVABLE`); there is no
+chart-of-accounts table.
+
 ## Auth & tenant-context (Task 3)
 
 - `POST /api/auth/login` takes `{ tenantCode, email, password }` and returns a JWT
-  with `staff_id` (`sub`), `tenant_id`, and `role` claims. `GET /api/auth/me` is the
-  concrete proof the pipeline works: it re-reads `staff_accounts` through the tenant
-  context resolved from the caller's own token.
+  with `staff_id` (`sub`), `tenant_id`, and `role` claims. Use a real SACCO code
+  (`tenant-a` / `tenant-b` from seed) for tenant staff, or the reserved code
+  `platform` for the seeded super-admin. `GET /api/auth/me` is the concrete proof
+  the tenant pipeline works: it re-reads `staff_accounts` through the tenant
+  context resolved from the caller's own token (platform super-admin rows stay
+  invisible to that path — Task 19).
 - **Every route except `@Public()` ones now requires a valid Bearer token.** Mark a
   route `@Public()` (see `common/decorators/public.decorator.ts`) only for things
   that must work with no tenant context at all — currently just health and login.
@@ -149,15 +161,16 @@ no row — an unscoped connection sees nothing rather than everything.
   tenant context exists. `resolve_tenant_by_code` (migration `TenantBootstrapLookup`)
   is a narrow `SECURITY DEFINER` function that returns only `id`/`status` for a code,
   bypassing RLS for that one lookup only — `isms_app` has `EXECUTE` on it and nothing
-  more.
-- `npm run seed` creates two dev tenants with one staff account each (see
-  `src/database/seeds/dev-seed.ts`) — useful for exercising the login flow and for
-  reproducing the cross-tenant isolation check by hand.
+  more. Platform super-admin login uses the same pattern:
+  `resolve_platform_staff_by_email` (migration `PlatformStaffBootstrapLookup`).
+- `npm run seed` creates two dev tenants plus seeded staff (see
+  `src/database/seeds/dev-seed.ts` and decisions D5): one platform `super-admin`,
+  and per tenant `tenant-admin`, `teller`, and `loan-officer` (same known password).
+  Useful for login, portal routing (Task 4), and cross-tenant isolation checks.
 
 ## Not wired yet, on purpose
 
 | Piece | Arrives in |
 |---|---|
 | `RolesGuard` enforcing `@Roles(...)` — the decorator is safe to attach now | Task 22 |
-| `LedgerModule` | Task 13 |
 | Refresh tokens | deferred — access token only for now |

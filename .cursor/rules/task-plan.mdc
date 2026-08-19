@@ -1,0 +1,16 @@
+---
+description: Build order and ownership — apply when planning tasks or checking dependencies
+alwaysApply: false
+---
+
+# Task plan (pointer)
+
+Do not invent task numbers, owners, or verify steps.
+
+1. Read `docs/TASKS.md` for the numbered build order and verify criteria.
+2. Read `docs/TEAM_ASSIGNMENTS.md` for the same plan by person / vertical.
+3. Read `docs/TEAM_STATUS.md` for current blockers and branch names.
+4. For MVP scope (Fayda, USSD, CoA, etc.), follow `.cursor/rules/decisions.mdc`
+   over anything in `docs/SACCO_PROPOSAL.md`.
+
+Branch / commit naming still follows `.cursor/rules/git-workflow.mdc`.

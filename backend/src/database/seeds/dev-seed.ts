@@ -2,56 +2,48 @@ import { config as loadDotenv } from 'dotenv';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { buildDataSourceOptions } from '../data-source';
+import type { RoleName } from '../../types';
 
 loadDotenv({ quiet: true });
 
 interface SeedTenant {
   code: string;
   name: string;
+}
+
+interface SeedStaff {
   email: string;
-  password: string;
+  fullName: string;
+  role: RoleName;
+  /** null = platform-level super-admin */
+  tenantCode: string | null;
 }
 
 const DEV_PASSWORD = 'DevPassword!123';
 
 const SEED_TENANTS: SeedTenant[] = [
-  {
-    code: 'tenant-a',
-    name: 'Tenant A SACCO (dev seed)',
-    email: 'admin@tenant-a.dev',
-    password: DEV_PASSWORD,
-  },
-  {
-    code: 'tenant-b',
-    name: 'Tenant B SACCO (dev seed)',
-    email: 'admin@tenant-b.dev',
-    password: DEV_PASSWORD,
-  },
+  { code: 'tenant-a', name: 'Tenant A SACCO (dev seed)' },
+  { code: 'tenant-b', name: 'Tenant B SACCO (dev seed)' },
 ];
 
 /**
- * Dev-only seed for Task 3's isolation check, and reusable later for Task 28's
- * concurrent-tenant load check: two active tenants, one staff account each, both
- * passwords hashed with bcryptjs. Never a real credential — this is a fixed,
- * publicly-known dev password, same shape as the `devpassword` convention used for
- * the local Postgres user.
+ * Dev seed for Task 3 isolation checks, Task 4 portal routing, and Task 28 load
+ * checks (DECISIONS.md D5). Same publicly-known password for every account.
  *
- * Runs as the `postgres` role regardless of whatever `.env`'s `DB_USERNAME` is
- * currently set to, since seeding writes rows across two tenants in one process and
- * RLS would otherwise block exactly that. Idempotent — safe to run more than once.
+ * Runs as the `postgres` role regardless of `.env`'s `DB_USERNAME`, since seeding
+ * writes across tenants and RLS would block that. Idempotent.
  */
 async function seed(): Promise<void> {
-  // Override via env rather than spreading-and-overriding the resolved
-  // `DataSourceOptions` object: that type is a union across every driver TypeORM
-  // supports, and TypeScript can't tell an object literal built that way is still
-  // the Postgres member of it.
-  const dataSource = new DataSource(buildDataSourceOptions({ ...process.env, DB_USERNAME: 'postgres' }));
+  const dataSource = new DataSource(
+    buildDataSourceOptions({ ...process.env, DB_USERNAME: 'postgres' }),
+  );
   await dataSource.initialize();
 
   try {
-    for (const tenant of SEED_TENANTS) {
-      const passwordHash = await bcrypt.hash(tenant.password, 10);
+    const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
+    const tenantIds = new Map<string, string>();
 
+    for (const tenant of SEED_TENANTS) {
       const [{ id: tenantId }] = await dataSource.query<[{ id: string }]>(
         `
           INSERT INTO "tenants" ("name", "code", "status")
@@ -61,22 +53,82 @@ async function seed(): Promise<void> {
         `,
         [tenant.name, tenant.code],
       );
+      tenantIds.set(tenant.code, tenantId);
+      console.log(`Seeded tenant "${tenant.code}" (${tenantId})`);
+    }
 
-      await dataSource.query(
-        `
-          INSERT INTO "staff_accounts"
-            ("tenant_id", "email", "password_hash", "full_name", "role", "is_active")
-          VALUES ($1, $2, $3, 'Dev Seed Admin', 'tenant-admin', true)
-          ON CONFLICT ("tenant_id", "email")
-            DO UPDATE SET "password_hash" = EXCLUDED."password_hash", "is_active" = true
-        `,
-        [tenantId, tenant.email, passwordHash],
-      );
+    const staff: SeedStaff[] = [
+      {
+        email: 'superadmin@platform.dev',
+        fullName: 'Dev Super Admin',
+        role: 'super-admin',
+        tenantCode: null,
+      },
+    ];
 
-      console.log(
-        `Seeded tenant "${tenant.code}" (${tenantId}) — ` +
-          `login with tenantCode="${tenant.code}", email="${tenant.email}", password="${tenant.password}"`,
+    for (const tenant of SEED_TENANTS) {
+      staff.push(
+        {
+          email: `admin@${tenant.code}.dev`,
+          fullName: `Dev Tenant Admin (${tenant.code})`,
+          role: 'tenant-admin',
+          tenantCode: tenant.code,
+        },
+        {
+          email: `teller@${tenant.code}.dev`,
+          fullName: `Dev Teller (${tenant.code})`,
+          role: 'teller',
+          tenantCode: tenant.code,
+        },
+        {
+          email: `loan-officer@${tenant.code}.dev`,
+          fullName: `Dev Loan Officer (${tenant.code})`,
+          role: 'loan-officer',
+          tenantCode: tenant.code,
+        },
       );
+    }
+
+    for (const account of staff) {
+      const tenantId = account.tenantCode ? tenantIds.get(account.tenantCode)! : null;
+
+      if (tenantId === null) {
+        // Unique (tenant_id, email) treats NULLs as distinct in Postgres — delete by
+        // email+role so re-seeds stay idempotent for the platform super-admin.
+        await dataSource.query(
+          `DELETE FROM "staff_accounts" WHERE "tenant_id" IS NULL AND "email" = $1`,
+          [account.email],
+        );
+        await dataSource.query(
+          `
+            INSERT INTO "staff_accounts"
+              ("tenant_id", "email", "password_hash", "full_name", "role", "is_active")
+            VALUES (NULL, $1, $2, $3, $4, true)
+          `,
+          [account.email, passwordHash, account.fullName, account.role],
+        );
+      } else {
+        await dataSource.query(
+          `
+            INSERT INTO "staff_accounts"
+              ("tenant_id", "email", "password_hash", "full_name", "role", "is_active")
+            VALUES ($1, $2, $3, $4, $5, true)
+            ON CONFLICT ("tenant_id", "email")
+              DO UPDATE SET
+                "password_hash" = EXCLUDED."password_hash",
+                "full_name" = EXCLUDED."full_name",
+                "role" = EXCLUDED."role",
+                "is_active" = true
+          `,
+          [tenantId, account.email, passwordHash, account.fullName, account.role],
+        );
+      }
+
+      const loginHint =
+        account.tenantCode === null
+          ? `tenantCode="platform", email="${account.email}"`
+          : `tenantCode="${account.tenantCode}", email="${account.email}"`;
+      console.log(`  staff ${account.role}: ${loginHint}, password="${DEV_PASSWORD}"`);
     }
   } finally {
     await dataSource.destroy();

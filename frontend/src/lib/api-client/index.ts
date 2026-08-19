@@ -4,22 +4,37 @@
  * The SINGLE entry point for all backend HTTP calls.
  * Every portal imports from here — never call fetch() directly in components.
  *
- * Base URL is read from NEXT_PUBLIC_API_URL (set in .env.local).
- * The client automatically attaches the Bearer token from localStorage
- * and refreshes it on 401 responses.
+ * Base URL is read from NEXT_PUBLIC_API_URL (set in .env.local) and defaults to the
+ * local API. The client attaches the Bearer token from localStorage.
+ *
+ * There is no refresh flow: Task 3 deliberately deferred refresh tokens, so a 401
+ * means re-authenticate. Callers should route the user back to login rather than
+ * retrying.
  */
 
-import type { ApiError, ApiResponse, AuthTokens } from "@/types";
+import { ROLE_PORTAL, type ApiErrorBody, type AuthUser, type LoginRequest, type LoginResponse, type PortalName, type RoleName } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+/** The API listens on 4000 with a global `api` prefix — not 3001, and not versioned. */
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 const TOKEN_KEY = "isms_access_token";
-const REFRESH_KEY = "isms_refresh_token";
+const USER_KEY = "isms_auth_user";
+const EXPIRES_AT_KEY = "isms_token_expires_at";
+
+export const PORTAL_HOME: Readonly<Record<PortalName, string>> = {
+  "super-admin": "/super-admin/dashboard",
+  "tenant-admin": "/tenant-admin/dashboard",
+  teller: "/teller/dashboard",
+  member: "/member/dashboard",
+};
+
+export function portalHome(role: RoleName): string {
+  return PORTAL_HOME[ROLE_PORTAL[role]];
+}
 
 // ---------------------------------------------------------------------------
 // Token helpers (browser-only)
@@ -27,17 +42,57 @@ const REFRESH_KEY = "isms_refresh_token";
 
 function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
+  if (isSessionExpired()) {
+    clearSession();
+    return null;
+  }
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function saveTokens(tokens: AuthTokens): void {
-  localStorage.setItem(TOKEN_KEY, tokens.accessToken);
-  localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
+export function getSessionUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  if (isSessionExpired()) {
+    clearSession();
+    return null;
+  }
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    clearSession();
+    return null;
+  }
 }
 
-export function clearTokens(): void {
+function isSessionExpired(): boolean {
+  if (typeof window === "undefined") return true;
+  const raw = localStorage.getItem(EXPIRES_AT_KEY);
+  if (!raw) return false;
+  const expiresAt = Number(raw);
+  return Number.isFinite(expiresAt) && Date.now() >= expiresAt;
+}
+
+export function saveSession(login: LoginResponse): void {
+  localStorage.setItem(TOKEN_KEY, login.accessToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(login.user));
+  localStorage.setItem(EXPIRES_AT_KEY, String(Date.now() + login.expiresIn * 1000));
+}
+
+export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(EXPIRES_AT_KEY);
+}
+
+export async function login(body: LoginRequest): Promise<LoginResponse> {
+  const result = await apiClient.post<LoginResponse>("/auth/login", body, { skipAuth: true });
+  saveSession(result);
+  return result;
+}
+
+export function logout(): void {
+  clearSession();
 }
 
 // ---------------------------------------------------------------------------
@@ -50,10 +105,26 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   skipAuth?: boolean;
 }
 
-async function request<T>(
-  path: string,
-  options: RequestOptions = {}
-): Promise<T> {
+/**
+ * Thrown for any non-2xx response, carrying the API's standard error body so callers
+ * can surface `message` without ever showing a raw object or stack trace.
+ */
+export class ApiRequestError extends Error {
+  readonly statusCode: number;
+  readonly error: string;
+  readonly messages: string[];
+
+  constructor(body: ApiErrorBody) {
+    const messages = Array.isArray(body.message) ? body.message : [body.message];
+    super(messages[0] ?? "Request failed");
+    this.name = "ApiRequestError";
+    this.statusCode = body.statusCode;
+    this.error = body.error;
+    this.messages = messages;
+  }
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, skipAuth = false, headers = {}, ...rest } = options;
 
   const requestHeaders: Record<string, string> = {
@@ -73,40 +144,55 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const errorPayload: ApiError = await response.json().catch(() => ({
-      success: false as const,
-      message: response.statusText,
+    if (response.status === 401 && !skipAuth && typeof window !== "undefined") {
+      clearSession();
+      window.location.assign("/login");
+    }
+
+    const fallback: ApiErrorBody = {
       statusCode: response.status,
-    }));
-    throw errorPayload;
+      message: response.statusText || "Request failed",
+      error: "RequestFailed",
+    };
+    const payload = (await response.json().catch(() => fallback)) as ApiErrorBody;
+    throw new ApiRequestError(payload);
   }
 
-  return response.json() as Promise<T>;
+  // 204 and other empty bodies would otherwise blow up on .json().
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 }
 
 // ---------------------------------------------------------------------------
 // Public API surface
+//
+// Responses are the resource itself — the backend has no `{ success, data }`
+// envelope, so these return `T` directly. List endpoints return
+// `PaginatedResult<T>`; ask for that as the type parameter.
 // ---------------------------------------------------------------------------
 
 export const apiClient = {
   get<T>(path: string, options?: RequestOptions) {
-    return request<ApiResponse<T>>(path, { ...options, method: "GET" });
+    return request<T>(path, { ...options, method: "GET" });
   },
 
   post<T>(path: string, body: unknown, options?: RequestOptions) {
-    return request<ApiResponse<T>>(path, { ...options, method: "POST", body });
+    return request<T>(path, { ...options, method: "POST", body });
   },
 
   patch<T>(path: string, body: unknown, options?: RequestOptions) {
-    return request<ApiResponse<T>>(path, { ...options, method: "PATCH", body });
+    return request<T>(path, { ...options, method: "PATCH", body });
   },
 
   put<T>(path: string, body: unknown, options?: RequestOptions) {
-    return request<ApiResponse<T>>(path, { ...options, method: "PUT", body });
+    return request<T>(path, { ...options, method: "PUT", body });
   },
 
   delete<T>(path: string, options?: RequestOptions) {
-    return request<ApiResponse<T>>(path, { ...options, method: "DELETE" });
+    return request<T>(path, { ...options, method: "DELETE" });
   },
 };
 

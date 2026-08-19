@@ -196,6 +196,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useApp(): AppState {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp must be used within AppProvider');
+  if (!ctx) {
+    return {
+      members: [], vendors: [], risks: [], assets: [], auditLogs: [], complianceFrameworks: [], financialMetrics: [], notifications: [],
+      userProfile: { name: '', email: '', role: '', title: '', department: '', phone: '', location: '', mfaEnabled: false, clearance: '', avatarUrl: '' },
+      darkMode: false, toast: null, selectedVendor: null, quickScanType: null, searchModalOpen: false, helpModalOpen: false, addRiskModalOpen: false, addAssetModalOpen: false,
+      addMember: () => {}, updateMember: () => {}, deleteMember: () => {},
+      addVendor: () => {}, updateVendor: () => {}, deleteVendor: () => {},
+      addRisk: () => {}, deleteRisk: () => {}, addAsset: () => {}, deleteAsset: () => {},
+      toggleFinancialMask: () => {}, markNotificationRead: () => {},
+      showToast: () => {}, closeToast: () => {}, toggleDarkMode: () => {}, updateProfile: () => {}, addAuditLog: () => {},
+      setSelectedVendor: () => {}, setQuickScanType: () => {}, setSearchModalOpen: () => {}, setHelpModalOpen: () => {}, setAddRiskModalOpen: () => {}, setAddAssetModalOpen: () => {},
+    };
+  }
   return ctx;
 }

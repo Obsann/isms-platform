@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+import MemberManagementView from '@/components/members/MemberManagementView';
+
+export const metadata = { title: 'Members | ISMS Tenant Admin' };
 
 export default function TenantAdminMembersPage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Melkamu · Task 10"
-      title="Members"
-      description="Member registration, search, and profile screens will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <MemberManagementView portalType="tenant-admin" />;
 }

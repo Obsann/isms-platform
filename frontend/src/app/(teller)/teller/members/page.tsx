@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+import MemberManagementView from '@/components/members/MemberManagementView';
+
+export const metadata = { title: 'Members | ISMS Teller Desk' };
 
 export default function TellerMembersPage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Melkamu · Task 10"
-      title="Members"
-      description="Teller member search and profile screens will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <MemberManagementView portalType="teller" />;
 }

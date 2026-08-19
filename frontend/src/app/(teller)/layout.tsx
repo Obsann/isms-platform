@@ -5,8 +5,7 @@ import PortalShell, { type NavSection } from '@/components/layout/PortalShell';
 import PortalGuard from '@/components/auth/PortalGuard';
 import { formatRoleLabel, useAuthUser } from '@/components/auth/useAuthUser';
 import { logout } from '@/lib/api-client';
-import { GlobalToast, SearchModal, HelpModal } from '@/components/ui/GlobalModals';
-import { LayoutDashboard, CreditCard, Users, FileText, Settings, User } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Settings, User } from 'lucide-react';
 
 const navSections: NavSection[] = [
   {

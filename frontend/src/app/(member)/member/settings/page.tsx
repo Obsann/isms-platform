@@ -1,11 +1,11 @@
 import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
 
-export default function SuperAdminSettingsPage() {
+export default function MemberSettingsPage() {
   return (
     <PortalPlaceholder
       eyebrow="Account"
       title="Settings"
-      description="Platform settings will land here. This page is an empty shell from Task 7."
+      description="Member settings will land here. This page is an empty shell from Task 7."
     />
   );
 }

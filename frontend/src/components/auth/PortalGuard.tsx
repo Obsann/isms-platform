@@ -35,7 +35,16 @@ export default function PortalGuard({
   }, [portal, router]);
 
   if (!allowed) {
-    return <div className="min-h-screen bg-midnight" aria-hidden="true" />;
+    return (
+      <div className="min-h-screen bg-midnight flex items-center justify-center" role="status" aria-live="polite">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gold text-midnight flex items-center justify-center font-display text-[9px] font-bold tracking-wider animate-pulse">
+            ISMS
+          </div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">Loading portal</p>
+        </div>
+      </div>
+    );
   }
 
   return children;

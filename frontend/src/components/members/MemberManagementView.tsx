@@ -54,11 +54,15 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
     setIsLoading(true);
     setError(null);
     try {
-      const res: PaginatedResult<Member> = await getMembers({ search: searchTerm });
-      setMembers(res.data);
-      setTotal(res.total);
+      const res: any = await getMembers({ search: searchTerm });
+      const list = res.items || res.data || (Array.isArray(res) ? res : []);
+      const count = res.total ?? list.length ?? 0;
+      setMembers(list);
+      setTotal(count);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch members.');
+      setMembers([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }
@@ -188,7 +192,7 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
             <Users className="w-4 h-4 text-amber-400" />
             <span>Members List ({total})</span>
           </h2>
-          <span className="text-xs text-slate-400">Showing {members.length} records</span>
+          <span className="text-xs text-slate-400">Showing {(members || []).length} records</span>
         </div>
 
         {isLoading ? (
@@ -196,7 +200,7 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
             <Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-400" />
             <p className="text-xs">Loading members from database...</p>
           </div>
-        ) : members.length === 0 ? (
+        ) : (members || []).length === 0 ? (
           <div className="p-12 text-center text-slate-500 space-y-3">
             <Users className="w-10 h-10 mx-auto text-slate-600" />
             <p className="text-sm font-medium text-slate-400">No members found</p>

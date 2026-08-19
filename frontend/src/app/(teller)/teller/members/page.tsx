@@ -1,7 +1,11 @@
-import MembersView from '@/components/views/MembersView';
-
-export const metadata = { title: 'Members | Teller Portal' };
+import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
 
 export default function TellerMembersPage() {
-  return <MembersView />;
+  return (
+    <PortalPlaceholder
+      eyebrow="Melkamu · Task 10"
+      title="Members"
+      description="Teller member search and profile screens will land here. This page is an empty shell from Task 7."
+    />
+  );
 }

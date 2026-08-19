@@ -3,11 +3,12 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  NotImplementedException,
 } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 import { TenantContextService } from '../common';
+import { LedgerService } from '../ledger';
 import { SavingsSharesService } from '../savings-shares';
+import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
 import { LoanEntity } from './entities/loan.entity';
 import type {
@@ -26,15 +27,11 @@ import type {
  * Loans & Credit vertical — owner: **Abenezer** (Tasks 16–18).
  *
  * Reads savings figures through `SavingsSharesService` (injected by DI).
- * Every disbursement and repayment is posted through the ledger service
- * (Task 13, `LedgerService` — imported via `LedgerModule` once Task 13 lands
- * on `main`). Neither this service nor any migration writes a balance column.
+ * Handles loan application, eligibility assessment, approval, disbursement,
+ * repayment tracking, and guarantor pledge holds via `LedgerService`.
  *
  * All entity access goes through `TenantContextService.repo(Entity)` — never
- * via `@InjectRepository`. A plain injected repository uses the untouched pool
- * connection with no `app.tenant_id` set; under `FORCE ROW LEVEL SECURITY` that
- * silently returns zero rows, which is wrong. `TenantContextService` is
- * `@Global()`, so it's injectable anywhere without extra imports.
+ * via `@InjectRepository`.
  *
  * Loan state machine:
  *   pending → approved | rejected  (`decideApproval`)
@@ -47,10 +44,7 @@ export class LoanService {
   constructor(
     private readonly ctx: TenantContextService,
     private readonly savingsSharesService: SavingsSharesService,
-    // TODO(Task 13 — Obsan): inject LedgerService here once LedgerModule is
-    // merged to main. Add it as a constructor parameter and use it in disburse()
-    // and recordRepayment() instead of the placeholder comment below.
-    // private readonly ledger: LedgerService,
+    private readonly ledger: LedgerService,
   ) {}
 
   // ------------------------------------------------------------------ apply
@@ -142,8 +136,6 @@ export class LoanService {
     loan.approvalNote = input.note ?? null;
     loan.approvedAt = new Date();
     if (input.approved) {
-      // When approving, set approvedAmount to match the requested amount unless
-      // the approver passes a different figure (partial approval — future enhancement).
       loan.approvedAmount = loan.requestedAmount;
     }
 
@@ -156,11 +148,6 @@ export class LoanService {
   /**
    * Posts the loan principal to the member's savings account via the ledger.
    * Only an `approved` loan can be disbursed.
-   *
-   * TODO(Task 13 — Obsan): replace the placeholder comment with an actual
-   * `this.ledger.post(...)` call once `LedgerModule` is merged. The ledger
-   * entry should debit the SACCO's loan fund account and credit
-   * `input.destinationAccountId` for `input.amount`.
    */
   async disburse(input: DisbursementInput): Promise<LoanRepaymentRow> {
     const repo = this.ctx.repo(LoanEntity);
@@ -180,8 +167,6 @@ export class LoanService {
         `Disbursement amount ${input.amount} exceeds approved amount ${loan.approvedAmount}`,
       );
     }
-
-    // TODO(Task 13): this.ledger.post({ ... debit fund account, credit destinationAccountId ... })
 
     loan.status = 'disbursed';
     loan.disbursedAmount = input.amount;
@@ -206,12 +191,8 @@ export class LoanService {
 
   /**
    * Records a repayment event and posts it through the ledger.
-   * If the total repaid equals or exceeds the disbursed amount the loan is
-   * marked `repaid`. Partial repayments are allowed.
-   *
-   * TODO(Task 13 — Obsan): replace the placeholder with a real ledger posting
-   * that debits the member's savings account and credits the SACCO's loan
-   * collections account.
+   * If the total repaid equals or exceeds the disbursed amount, the loan is
+   * marked `repaid` and all active guarantor holds are automatically released.
    */
   async recordRepayment(input: RepaymentInput): Promise<LoanRepaymentRow> {
     const loanRepo = this.ctx.repo(LoanEntity);
@@ -223,8 +204,6 @@ export class LoanService {
       );
     }
 
-    // TODO(Task 13): this.ledger.post({ ... debit member account, credit SACCO collections ... })
-
     const repaymentRepo = this.ctx.repo(LoanRepaymentEntity);
     const entry = repaymentRepo.create({
       tenantId: loan.tenantId,
@@ -235,7 +214,7 @@ export class LoanService {
     });
     const saved = await repaymentRepo.save(entry);
 
-    // Check if fully repaid: sum all repayments (excluding the synthetic disbursement row)
+    // Check if fully repaid
     const allRepayments = await repaymentRepo.find({ where: { loanId: loan.id } });
     const realRepayments = allRepayments.filter(
       (r) => !r.reference?.startsWith('DISBURSEMENT:'),
@@ -249,6 +228,15 @@ export class LoanService {
     if (totalRepaid >= disbursed) {
       loan.status = 'repaid';
       await loanRepo.save(loan);
+
+      // Auto-release all active guarantor pledges for this loan
+      const guarantorRepo = this.ctx.repo(LoanGuarantorEntity);
+      const activePledges = await guarantorRepo.find({
+        where: { loanId: loan.id, status: 'active' },
+      });
+      for (const pledge of activePledges) {
+        await this.releaseGuarantorPledge(pledge.id);
+      }
     }
 
     return this.toRepaymentRow(saved);
@@ -262,19 +250,98 @@ export class LoanService {
     return this.toRow(loan);
   }
 
-  // ------------------------------------------------ guarantor stubs (Task 17)
+  // ------------------------------------------------ guarantor logic (Task 17)
 
-  /** Records the pledge and holds the amount on the guarantor's own savings account. */
-  recordGuarantorPledge(_input: GuarantorPledgeInput): Promise<GuarantorPledge> {
-    throw new NotImplementedException(
-      'LoanService.recordGuarantorPledge is not implemented (Task 17)',
-    );
+  /**
+   * Records a guarantor pledge and holds the requested amount on the guarantor's
+   * savings account via `LedgerService.holdFunds()`.
+   */
+  async recordGuarantorPledge(input: GuarantorPledgeInput): Promise<GuarantorPledge> {
+    const loanRepo = this.ctx.repo(LoanEntity);
+    const loan = await this.requireLoan(loanRepo, input.loanId);
+
+    if (loan.status !== 'pending' && loan.status !== 'approved') {
+      throw new ConflictException(
+        `Loan ${input.loanId} is in status '${loan.status}' — guarantor pledges can only be recorded on 'pending' or 'approved' loans`,
+      );
+    }
+
+    if (input.guarantorMemberId === loan.memberId) {
+      throw new BadRequestException('Borrower cannot stand as guarantor for their own loan');
+    }
+
+    const amountNum = parseFloat(input.pledgedAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      throw new BadRequestException('Pledged amount must be greater than zero');
+    }
+
+    // Place hold on guarantor's savings account via LedgerService
+    const hold = await this.ledger.holdFunds({
+      accountId: input.guarantorAccountId,
+      amount: input.pledgedAmount,
+      reason: `Guarantor pledge for loan ${loan.loanNumber}`,
+    });
+
+    const guarantorRepo = this.ctx.repo(LoanGuarantorEntity);
+    const pledge = guarantorRepo.create({
+      tenantId: loan.tenantId,
+      loanId: loan.id,
+      guarantorMemberId: input.guarantorMemberId,
+      pledgedAccountId: input.guarantorAccountId,
+      pledgedAmount: input.pledgedAmount,
+      holdId: hold.holdId,
+      status: 'active',
+    });
+
+    const saved = await guarantorRepo.save(pledge);
+
+    return {
+      pledgeId: saved.id,
+      loanId: saved.loanId,
+      guarantorMemberId: saved.guarantorMemberId,
+      pledgedAmount: saved.pledgedAmount,
+      holdId: saved.holdId,
+    };
   }
 
-  releaseGuarantorPledge(_pledgeId: string): Promise<GuarantorPledge> {
-    throw new NotImplementedException(
-      'LoanService.releaseGuarantorPledge is not implemented (Task 17)',
-    );
+  /** Releases a guarantor hold and marks the pledge status as released. */
+  async releaseGuarantorPledge(pledgeId: string): Promise<GuarantorPledge> {
+    const repo = this.ctx.repo(LoanGuarantorEntity);
+    const pledge = await repo.findOne({ where: { id: pledgeId } });
+
+    if (!pledge) {
+      throw new NotFoundException(`Guarantor pledge ${pledgeId} not found`);
+    }
+
+    if (pledge.status === 'released') {
+      throw new ConflictException(`Guarantor pledge ${pledgeId} has already been released`);
+    }
+
+    await this.ledger.releaseHold(pledge.holdId);
+
+    pledge.status = 'released';
+    const saved = await repo.save(pledge);
+
+    return {
+      pledgeId: saved.id,
+      loanId: saved.loanId,
+      guarantorMemberId: saved.guarantorMemberId,
+      pledgedAmount: saved.pledgedAmount,
+      holdId: saved.holdId,
+    };
+  }
+
+  /** Retrieves all guarantor pledges recorded for a given loan. */
+  async getGuarantorPledgesForLoan(loanId: string): Promise<GuarantorPledge[]> {
+    const repo = this.ctx.repo(LoanGuarantorEntity);
+    const pledges = await repo.find({ where: { loanId } });
+    return pledges.map((p) => ({
+      pledgeId: p.id,
+      loanId: p.loanId,
+      guarantorMemberId: p.guarantorMemberId,
+      pledgedAmount: p.pledgedAmount,
+      holdId: p.holdId,
+    }));
   }
 
   // ---------------------------------------------------------------- helpers

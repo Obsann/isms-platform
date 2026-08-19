@@ -7,7 +7,6 @@ import CurrencyDisplay from "@/components/currency/CurrencyDisplay";
 import FormFieldGroup from "@/components/forms/FormFieldGroup";
 import DataTable from "@/components/tables/DataTable";
 
-// ── Icons (inline SVG, no extra dep) ────────────────────────────────────────
 const IconUsers = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -31,7 +30,6 @@ const IconShield = () => (
   </svg>
 );
 
-// ── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({
   label, value, sub, icon, variant = "light",
 }: {
@@ -44,7 +42,6 @@ function KpiCard({
   if (variant === "dark") {
     return (
       <div className="relative rounded-2xl p-6 bg-midnight border border-gold/15 shadow-elevated overflow-hidden flex flex-col gap-4">
-        {/* subtle radial glow */}
         <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-gold/10 blur-2xl pointer-events-none" />
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gold/60">{label}</span>
@@ -68,12 +65,11 @@ function KpiCard({
   );
 }
 
-// ── Section card ─────────────────────────────────────────────────────────────
 function Section({ index, title, description, children, id }: {
   index: number; title: string; description?: string; children: React.ReactNode; id?: string;
 }) {
   return (
-    <div id={id} className="bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden">
+    <div id={id} className="bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden scroll-mt-24">
       <div className="px-7 py-5 border-b border-slate-100 flex items-start gap-4">
         <span className="mt-0.5 w-7 h-7 rounded-lg bg-midnight text-gold text-[11px] font-bold flex items-center justify-center shrink-0 shadow-sm">
           {index}
@@ -88,13 +84,12 @@ function Section({ index, title, description, children, id }: {
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
 export default function Task7VerifyPage() {
   const members = [
-    { id: "M-001", name: "Abebe Bikila",     balance: 45230,    status: "active"   as const },
-    { id: "M-002", name: "Tigist Assefa",    balance: 128500.5, status: "pending"  as const },
-    { id: "M-003", name: "Mulugeta Seretse", balance: 0,        status: "inactive" as const },
-    { id: "M-004", name: "Hirut Bekele",     balance: 892100,   status: "approved" as const },
+    { id: "M-001", name: "Abebe Bikila",     idType: "national_id", balance: "45230.00",  status: "active"   as const },
+    { id: "M-002", name: "Tigist Assefa",    idType: "passport",    balance: "128500.50", status: "pending"  as const },
+    { id: "M-003", name: "Mulugeta Seretse", idType: "other",       balance: "0.00",      status: "inactive" as const },
+    { id: "M-004", name: "Hirut Bekele",     idType: "national_id", balance: "892100.00", status: "approved" as const },
   ];
 
   const columns = [
@@ -110,6 +105,13 @@ export default function Task7VerifyPage() {
       header: "Full Name",
       render: (r: (typeof members)[0]) => (
         <span className="font-medium text-slate-800">{r.name}</span>
+      ),
+    },
+    {
+      key: "idType",
+      header: "ID Type",
+      render: (r: (typeof members)[0]) => (
+        <span className="text-[12px] text-slate-600 capitalize">{r.idType.replace("_", " ")}</span>
       ),
     },
     {
@@ -132,17 +134,15 @@ export default function Task7VerifyPage() {
       portalBadgeColor="tenant-admin"
       user={{ name: "Liya Fitsum", role: "UI / Design Engineer" }}
       navItems={[
-        { label: "Overview",     href: "#overview",     icon: <IconShield /> },
-        { label: "Members",      href: "#members",      icon: <IconUsers /> },
-        { label: "Transactions", href: "#transactions", icon: <IconWallet /> },
-        { label: "Reports",      href: "#reports",      icon: <IconTrend /> },
+        { label: "Overview",     href: "/task7-verify#overview",     icon: <IconShield /> },
+        { label: "Members",      href: "/task7-verify#members",      icon: <IconUsers /> },
+        { label: "Transactions", href: "/task7-verify#transactions", icon: <IconWallet /> },
+        { label: "Reports",      href: "/task7-verify#reports",      icon: <IconTrend /> },
       ]}
     >
       <div className="max-w-5xl space-y-7">
 
-        {/* ── Hero strip ── */}
         <div className="relative rounded-2xl overflow-hidden bg-midnight px-8 py-8 shadow-elevated">
-          {/* decorative circles */}
           <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-gold/8 blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 w-40 h-40 rounded-full bg-midnight-light/40 blur-2xl pointer-events-none" />
 
@@ -155,7 +155,7 @@ export default function Task7VerifyPage() {
                 Design System Verification
               </h1>
               <p className="text-[13px] text-white/40 mt-2 max-w-md leading-relaxed">
-                All five foundation components — badges, currency, forms, table, and shell — verified against the Prosperum luxury theme.
+                All five foundation components — badges, currency, forms, table, and shell — using generic SACCO sample data.
               </p>
             </div>
             <div className="hidden md:flex flex-col items-end gap-2">
@@ -165,15 +165,13 @@ export default function Task7VerifyPage() {
           </div>
         </div>
 
-        {/* ── KPI row ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard label="Total Members"   value="1,284"  sub="↑ 12 this month"     icon={<IconUsers />} />
-          <KpiCard label="Total Savings"   value={<CurrencyDisplay value={4820500} className="text-2xl text-slate-900" />} sub="Across all accounts" icon={<IconWallet />} />
+          <KpiCard label="Total Savings"   value={<CurrencyDisplay value="4820500.00" className="text-2xl text-slate-900" />} sub="Across all accounts" icon={<IconWallet />} />
           <KpiCard label="Active Loans"    value="347"    sub="23 pending approval"  icon={<IconTrend />} />
-          <KpiCard label="Portfolio Value" value={<CurrencyDisplay value={12650000} variant="gold" className="text-2xl" />} sub="As of today" icon={<IconShield />} variant="dark" />
+          <KpiCard label="Portfolio Value" value={<CurrencyDisplay value="12650000.00" variant="gold" className="text-2xl" />} sub="As of today" icon={<IconShield />} variant="dark" />
         </div>
 
-        {/* ── 1. Status Badges ── */}
         <Section index={1} id="overview" title="Status Badges" description="Pill badges used across member, loan, and transaction states.">
           <div className="flex flex-wrap gap-3">
             <StatusBadge status="active" />
@@ -185,35 +183,37 @@ export default function Task7VerifyPage() {
           </div>
         </Section>
 
-        {/* ── 2. Currency Display ── */}
         <Section index={2} title="Currency Display" description="Always full, unabbreviated figures. Never 45.2K — always 45,230.00 ETB.">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-xl p-5 bg-slate-50 border border-slate-100 flex flex-col gap-2">
               <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Standard</span>
-              <CurrencyDisplay value={45230} className="text-xl text-slate-900" />
+              <CurrencyDisplay value="45230.00" className="text-xl text-slate-900" />
             </div>
             <div className="rounded-xl p-5 bg-gold-muted border border-amber-100 flex flex-col gap-2">
               <span className="text-[10px] uppercase tracking-widest text-amber-600/60 font-bold">Gold Variant</span>
-              <CurrencyDisplay value={1250999.75} variant="gold" className="text-xl" />
+              <CurrencyDisplay value="1250999.75" variant="gold" className="text-xl" />
             </div>
             <div className="rounded-xl p-5 bg-midnight border border-gold/15 flex flex-col gap-2">
               <span className="text-[10px] uppercase tracking-widest text-gold/50 font-bold">Navy Variant</span>
-              <CurrencyDisplay value={500000} variant="navy" className="text-xl" />
+              <CurrencyDisplay value="500000.00" variant="navy" className="text-xl" />
             </div>
           </div>
         </Section>
 
-        {/* ── 3. Form Fields ── */}
-        <Section index={3} id="transactions" title="Form Field Group" description="Banking-grade inputs with gold focus ring, required indicators, and inline error states.">
-          <div className="grid grid-cols-2 gap-5">
-            <FormFieldGroup label="Full Name" required helperText="Enter member's full legal name">
+        <Section index={3} id="transactions" title="Form Field Group" description="Shared inputs with required markers, helper text, and inline error states. ID is a stored field pair — no live verification.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FormFieldGroup label="Full Name" required helperText="Enter the member's full legal name">
               <input type="text" placeholder="Abebe Bikila" />
             </FormFieldGroup>
-            <FormFieldGroup label="National ID (Fayda)" required error="Fayda ID is required">
-              <input type="text" placeholder="FIN-XXXX-XXXX" />
+            <FormFieldGroup label="National ID" required error="National ID is required">
+              <input type="text" placeholder="ID number as typed by staff" />
             </FormFieldGroup>
-            <FormFieldGroup label="Phone Number" helperText="Used for SMS notifications">
-              <input type="tel" placeholder="+251 9XX XXX XXXX" />
+            <FormFieldGroup label="ID Type" required helperText="national_id, passport, or other">
+              <select defaultValue="national_id">
+                <option value="national_id">National ID</option>
+                <option value="passport">Passport</option>
+                <option value="other">Other</option>
+              </select>
             </FormFieldGroup>
             <FormFieldGroup label="Account Type">
               <input type="text" placeholder="Savings" readOnly />
@@ -221,17 +221,14 @@ export default function Task7VerifyPage() {
           </div>
         </Section>
 
-        {/* ── 4. Data Table ── */}
-        <Section index={4} id="members" title="Data Table" description="Enterprise member registry table with midnight header, gold column labels, and hover states.">
+        <Section index={4} id="members" title="Data Table" description="Shared member table with midnight header, gold column labels, and hover states.">
           <DataTable columns={columns} data={members} />
         </Section>
 
-        {/* ── 5. Portal Shell ── */}
         <Section index={5} id="reports" title="Portal Shell Layout" description="The full-page shell wrapping every portal — header, sidebar, and content area.">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {(["super-admin", "tenant-admin", "teller", "member"] as const).map((role) => (
               <div key={role} className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
-                {/* mini header preview */}
                 <div className="h-9 bg-midnight flex items-center px-3 gap-2">
                   <span className="text-[9px] font-bold text-white tracking-widest uppercase font-display">ISMS</span>
                   <span className="w-px h-4 bg-gold/20" />

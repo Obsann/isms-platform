@@ -227,4 +227,59 @@ export interface ApiErrorBody {
   error: string;
 }
 
+export interface AccountBalance {
+  accountId: AccountId;
+  balance: Amount;
+  heldAmount: Amount;
+  availableBalance: Amount;
+}
+
+export interface DepositDto {
+  amount: string;
+  reference?: string;
+  narration?: string;
+}
+
+export interface WithdrawDto {
+  amount: string;
+  reference?: string;
+  narration?: string;
+}
+
+export interface RepayLoanDto {
+  amount: string;
+  reference?: string;
+}
+
+export interface LoanRow {
+  id: LoanId;
+  tenantId: TenantId;
+  memberId: MemberId;
+  loanNumber: string;
+  requestedAmount: Amount;
+  approvedAmount: Amount | null;
+  disbursedAmount: Amount | null;
+  termMonths: number;
+  purpose: string | null;
+  status: LoanStatus;
+  appliedBy: StaffId | null;
+  approvedBy: StaffId | null;
+  approvalNote: string | null;
+  disbursedToAccountId: AccountId | null;
+  appliedAt: IsoDateTime;
+  approvedAt: IsoDateTime | null;
+  disbursedAt: IsoDateTime | null;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
+export interface LoanRepaymentRow {
+  id: string;
+  tenantId: TenantId;
+  loanId: LoanId;
+  amount: Amount;
+  reference: string | null;
+  paidAt: IsoDateTime;
+}
+
 export * from './isms';

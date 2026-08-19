@@ -7,13 +7,14 @@ import PortalGuard from '@/components/auth/PortalGuard';
 import { formatRoleLabel, useAuthUser } from '@/components/auth/useAuthUser';
 import { logout } from '@/lib/api-client';
 import { GlobalToast, SearchModal, HelpModal } from '@/components/ui/GlobalModals';
-import { LayoutDashboard, Users, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, FileText, Settings } from 'lucide-react';
 
 const navSections: NavSection[] = [
   {
     label: 'Teller Operations',
     items: [
       { label: 'Dashboard', href: '/teller/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+      { label: 'Teller Desk', href: '/teller/desk', icon: <CreditCard className="w-4 h-4" /> },
       { label: 'Members', href: '/teller/members', icon: <Users className="w-4 h-4" /> },
       { label: 'Audit Logs', href: '/teller/audit', icon: <FileText className="w-4 h-4" /> },
       { label: 'Settings', href: '/teller/settings', icon: <Settings className="w-4 h-4" /> },

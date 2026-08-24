@@ -17,6 +17,7 @@ import { MemberService } from '../members';
 import type { Account, AccountId, Amount, MemberId, Transaction } from '../types';
 import { AccountEntity } from './account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
+import { SavingsTransactionEntity } from './savings-transaction.entity';
 import type {
   AccountBalance,
   DepositInput,
@@ -24,6 +25,7 @@ import type {
   HoldFundsInput,
   LoanEligibilityCeiling,
   SharePurchaseInput,
+  TransactionHistoryFilter,
   WithdrawalInput,
 } from './savings-shares.types';
 
@@ -216,6 +218,105 @@ export class SavingsSharesService {
     };
   }
 
+  /** Get all accounts (savings & share) for a specific member. */
+  async getAccountsByMember(memberId: MemberId): Promise<Account[]> {
+    await this.memberService.findById(memberId);
+    const accountRepo = this.tenantContext.repo(AccountEntity);
+    const accounts = await accountRepo.find({
+      where: { memberId },
+      order: { createdAt: 'ASC' },
+    });
+    return accounts.map((acc) => this.mapAccountToContract(acc));
+  }
+
+  /** Get single account details including computed available balance. */
+  async getAccountById(accountId: AccountId): Promise<Account> {
+    const accountRepo = this.tenantContext.repo(AccountEntity);
+    const account = await accountRepo.findOne({ where: { id: accountId } });
+    if (!account) {
+      throw new NotFoundException(`Account with ID "${accountId}" not found`);
+    }
+    return this.mapAccountToContract(account);
+  }
+
+  /** Get transaction history / statement for a specific account. */
+  async getTransactionsByAccount(
+    accountId: AccountId,
+    filter?: TransactionHistoryFilter,
+  ): Promise<Transaction[]> {
+    const accountRepo = this.tenantContext.repo(AccountEntity);
+    const account = await accountRepo.findOne({ where: { id: accountId } });
+    if (!account) {
+      throw new NotFoundException(`Account with ID "${accountId}" not found`);
+    }
+
+    const txnRepo = this.tenantContext.repo(SavingsTransactionEntity);
+    const qb = txnRepo
+      .createQueryBuilder('txn')
+      .where('txn.accountId = :accountId', { accountId });
+
+    if (filter?.fromDate) {
+      const fromDate = this.parseDateBound(filter.fromDate, false);
+      qb.andWhere('txn.postedAt >= :fromDate', { fromDate });
+    }
+    if (filter?.toDate) {
+      const toDate = this.parseDateBound(filter.toDate, true);
+      qb.andWhere('txn.postedAt <= :toDate', { toDate });
+    }
+
+    qb.orderBy('txn.postedAt', 'DESC').addOrderBy('txn.id', 'DESC');
+
+    if (filter?.limit !== undefined) {
+      const limit = Math.min(Math.max(1, filter.limit), 100);
+      qb.take(limit);
+    }
+    if (filter?.offset !== undefined && filter.offset > 0) {
+      qb.skip(filter.offset);
+    }
+
+    const txns = await qb.getMany();
+    return txns.map((t) => this.mapTransactionToContract(t));
+  }
+
+  /** Get transaction history / statement across all accounts of a member. */
+  async getTransactionsByMember(
+    memberId: MemberId,
+    filter?: TransactionHistoryFilter,
+  ): Promise<Transaction[]> {
+    const accounts = await this.getAccountsByMember(memberId);
+    if (accounts.length === 0) {
+      return [];
+    }
+
+    const accountIds = accounts.map((a) => a.id);
+    const txnRepo = this.tenantContext.repo(SavingsTransactionEntity);
+    const qb = txnRepo
+      .createQueryBuilder('txn')
+      .where('txn.accountId IN (:...accountIds)', { accountIds });
+
+    if (filter?.fromDate) {
+      const fromDate = this.parseDateBound(filter.fromDate, false);
+      qb.andWhere('txn.postedAt >= :fromDate', { fromDate });
+    }
+    if (filter?.toDate) {
+      const toDate = this.parseDateBound(filter.toDate, true);
+      qb.andWhere('txn.postedAt <= :toDate', { toDate });
+    }
+
+    qb.orderBy('txn.postedAt', 'DESC').addOrderBy('txn.id', 'DESC');
+
+    if (filter?.limit !== undefined) {
+      const limit = Math.min(Math.max(1, filter.limit), 100);
+      qb.take(limit);
+    }
+    if (filter?.offset !== undefined && filter.offset > 0) {
+      qb.skip(filter.offset);
+    }
+
+    const txns = await qb.getMany();
+    return txns.map((t) => this.mapTransactionToContract(t));
+  }
+
   private validatePositiveAmount(amount: Amount): void {
     if (toCents(amount) <= 0n) {
       throw new UnprocessableEntityException('Amount must be a positive decimal figure');
@@ -233,6 +334,14 @@ export class SavingsSharesService {
     return `${prefix}-${timestamp}-${random}`;
   }
 
+  private parseDateBound(dateStr: string, isEndOfDay: boolean): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const time = isEndOfDay ? '23:59:59.999Z' : '00:00:00.000Z';
+      return new Date(`${dateStr}T${time}`);
+    }
+    return new Date(dateStr);
+  }
+
   private mapAccountToContract(entity: AccountEntity): Account {
     return {
       id: entity.id,
@@ -246,6 +355,25 @@ export class SavingsSharesService {
       availableBalance: this.calculateAvailableBalance(entity.balance, entity.heldAmount),
       currency: entity.currency,
       openedAt: entity.openedAt,
+    };
+  }
+
+  private mapTransactionToContract(entity: SavingsTransactionEntity): Transaction {
+    return {
+      id: entity.id,
+      tenantId: entity.tenantId,
+      accountId: entity.accountId,
+      type: entity.type,
+      amount: entity.amount,
+      currency: entity.currency,
+      balanceAfter: entity.balanceAfter,
+      reference: entity.reference ?? null,
+      narration: entity.narration ?? null,
+      postedByStaffId: entity.postedByStaffId ?? null,
+      postedAt:
+        entity.postedAt instanceof Date
+          ? entity.postedAt.toISOString()
+          : new Date(entity.postedAt).toISOString(),
     };
   }
 }

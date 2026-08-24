@@ -55,3 +55,11 @@ export interface LoanEligibilityCeiling {
   /** `savingsBalance * multiplier` — the hard ceiling the Loans vertical checks against. */
   maxLoanAmount: Amount;
 }
+
+export interface TransactionHistoryFilter {
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+}
+

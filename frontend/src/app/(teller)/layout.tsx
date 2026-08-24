@@ -5,7 +5,7 @@ import PortalShell, { type NavSection } from '@/components/layout/PortalShell';
 import PortalGuard from '@/components/auth/PortalGuard';
 import { formatRoleLabel, useAuthUser } from '@/components/auth/useAuthUser';
 import { logout } from '@/lib/api-client';
-import { LayoutDashboard, Users, Settings, User } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, User, Building2 } from 'lucide-react';
 
 const navSections: NavSection[] = [
   {
@@ -13,6 +13,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Dashboard', href: '/teller/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
       { label: 'Members', href: '/teller/members', icon: <Users className="w-4 h-4" /> },
+      { label: 'Loans & Credit', href: '/teller/loans', icon: <Building2 className="w-4 h-4" /> },
     ],
   },
   {

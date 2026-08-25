@@ -262,6 +262,22 @@ export class LoanService {
     return this.toRow(loan);
   }
 
+  // ---------------------------------------------------------- findByMemberId
+
+  /**
+   * Fetches all loans associated with a specific member.
+   * Required for Member Self-Service API (Task 23).
+   */
+  async findByMemberId(memberId: string): Promise<LoanRow[]> {
+    const repo = this.ctx.repo(LoanEntity);
+    const loans = await repo.find({
+      where: { memberId },
+      order: { appliedAt: 'DESC' },
+    });
+    return loans.map((loan) => this.toRow(loan));
+  }
+
+
   // ------------------------------------------------ guarantor stubs (Task 17)
 
   /** Records the pledge and holds the amount on the guarantor's own savings account. */

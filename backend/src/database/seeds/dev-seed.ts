@@ -130,7 +130,34 @@ async function seed(): Promise<void> {
           : `tenantCode="${account.tenantCode}", email="${account.email}"`;
       console.log(`  staff ${account.role}: ${loginHint}, password="${DEV_PASSWORD}"`);
     }
+
+    // Seed a test member and loan for Task 23 integration & live verification
+    const tenantAId = tenantIds.get('tenant-a')!;
+    const [{ id: memberId }] = await dataSource.query<[{ id: string }]>(
+      `
+        INSERT INTO "members"
+          ("tenant_id", "member_number", "first_name", "last_name", "status")
+        VALUES ($1, 'MEM-000001', 'Abebe', 'Bikila', 'active')
+        ON CONFLICT ("tenant_id", "member_number")
+          DO UPDATE SET "first_name" = EXCLUDED."first_name"
+        RETURNING "id"
+      `,
+      [tenantAId],
+    );
+
+    await dataSource.query(
+      `
+        INSERT INTO "loans"
+          ("tenant_id", "member_id", "loan_number", "requested_amount", "approved_amount", "term_months", "purpose", "status")
+        VALUES ($1, $2, 'LN-2026-000001', '50000.00', '50000.00', 12, 'Business Expansion', 'approved')
+        ON CONFLICT ("tenant_id", "loan_number")
+          DO UPDATE SET "requested_amount" = EXCLUDED."requested_amount"
+      `,
+      [tenantAId, memberId],
+    );
+    console.log(`Seeded test member (${memberId}) and loan (LN-2026-000001) for tenant-a`);
   } finally {
+
     await dataSource.destroy();
   }
 }

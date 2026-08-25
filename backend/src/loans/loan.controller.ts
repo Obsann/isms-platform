@@ -41,11 +41,18 @@ export class LoanController {
     });
   }
 
+  /** Fetch all loans for a specific member by memberId (Task 23 integration). */
+  @Get('member/:memberId')
+  findByMemberId(@Param('memberId', ParseUUIDPipe) memberId: string): Promise<LoanRow[]> {
+    return this.loanService.findByMemberId(memberId);
+  }
+
   /** Fetch a single loan by its id. 404 if not found or belongs to another tenant (RLS). */
   @Get(':id')
   findById(@Param('id', ParseUUIDPipe) id: string): Promise<LoanRow> {
     return this.loanService.findById(id);
   }
+
 
   /**
    * Check eligibility without creating an application.

@@ -138,4 +138,47 @@ describe('LoanService - Guarantor & Collateral Logic (Task 17)', () => {
       );
     });
   });
+
+  describe('findByMemberId', () => {
+    it('returns all loans for a given memberId', async () => {
+      const mockLoans = [
+        {
+          id: 'loan-1',
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          memberId: 'member-123',
+          loanNumber: 'LN-2026-000001',
+          requestedAmount: '10000.00',
+          approvedAmount: '10000.00',
+          disbursedAmount: '10000.00',
+          termMonths: 12,
+          purpose: 'Business',
+          status: 'disbursed',
+          appliedBy: null,
+          approvedBy: null,
+          approvalNote: null,
+          disbursedToAccountId: null,
+          appliedAt: new Date(),
+          approvedAt: new Date(),
+          disbursedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      const loanRepo = {
+        find: jest.fn().mockResolvedValue(mockLoans),
+      };
+      mockTenantContext.repo.mockReturnValue(loanRepo);
+
+      const result = await service.findByMemberId('member-123');
+
+      expect(loanRepo.find).toHaveBeenCalledWith({
+        where: { memberId: 'member-123' },
+        order: { appliedAt: 'DESC' },
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('loan-1');
+      expect(result[0].memberId).toBe('member-123');
+    });
+  });
 });
+

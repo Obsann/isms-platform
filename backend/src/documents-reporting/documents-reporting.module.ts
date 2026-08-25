@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DocumentsReportingService } from './documents-reporting.service';
+import { DocumentsReportingController } from './documents-reporting.controller';
 
-/**
- * TODO(Task 19–21 — Biruk): add the reporting controller and tenant provisioning.
- * The Super Admin console operates outside per-tenant RLS scoping, so those routes
- * are explicitly platform-level and must be flagged as such in the UI.
- */
 @Module({
+  controllers: [DocumentsReportingController],
   providers: [DocumentsReportingService],
   exports: [DocumentsReportingService],
 })

@@ -118,35 +118,6 @@ export default function TenantAdminDashboardPage() {
 
   return (
     <div style={{ background: t.bg, minHeight: "100vh", transition: "background 0.25s" }}>
-
-      {/* ── Dark mode toggle — sits just below header, right side ── */}
-      <button
-        onClick={() => setDark((d) => !d)}
-        title={dark ? "Switch to light mode" : "Switch to dark mode"}
-        style={{
-          position: "fixed",
-          top: 68,
-          right: 20,
-          zIndex: 900,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "5px 12px",
-          background: dark ? "#1a2540" : "#ffffff",
-          border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "#d1d5db"}`,
-          borderRadius: 20,
-          cursor: "pointer",
-          color: dark ? "#f1f5f9" : "#0f172a",
-          fontSize: 12,
-          fontWeight: 600,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-          transition: "all 0.2s",
-        }}
-      >
-        <span style={{ fontSize: 13 }}>{dark ? "☀️" : "🌙"}</span>
-        {dark ? "Light" : "Dark"}
-      </button>
-
       <main style={{ padding: "24px 32px", maxWidth: 1200, margin: "0 auto" }}>
 
         {/* ── Header ────────────────────────────────────────── */}

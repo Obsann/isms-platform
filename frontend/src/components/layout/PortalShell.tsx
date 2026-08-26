@@ -82,6 +82,24 @@ export const PortalShell: React.FC<PortalShellProps> = ({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Persist dark mode across pages
+  useEffect(() => {
+    const stored = localStorage.getItem('isms-dark-mode');
+    const prefersDark = stored !== null ? stored === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setDarkMode(prefersDark);
+    document.documentElement.classList.toggle('dark', prefersDark);
+  }, []);
+
+  function toggleDarkMode() {
+    setDarkMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('isms-dark-mode', String(next));
+      document.documentElement.classList.toggle('dark', next);
+      return next;
+    });
+  }
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -279,6 +297,17 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                 <Search className="w-4 h-4" />
               </button>
             )}
+
+            {/* Dark mode toggle — sits next to the notification bell */}
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
 
             <div className="relative" ref={notifRef}>
               <button

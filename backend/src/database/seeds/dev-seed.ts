@@ -189,6 +189,9 @@ async function seed(): Promise<void> {
 
     // Seed Members
     console.log('\nSeeding Members...');
+    let firstMemberId: string | null = null;
+    const tenantAId = tenantIds.get('tenant-a')!;
+
     for (const member of SEED_MEMBERS) {
       const tenantId = tenantIds.get(member.tenantCode)!;
       const [{ id: memberId }] = await dataSource.query<[{ id: string }]>(
@@ -217,9 +220,28 @@ async function seed(): Promise<void> {
           member.status,
         ],
       );
+      if (!firstMemberId && member.tenantCode === 'tenant-a') {
+        firstMemberId = memberId;
+      }
       console.log(`  member ${member.memberNumber}: id="${memberId}", name="${member.firstName} ${member.lastName}", tenant="${member.tenantCode}"`);
     }
+
+    if (firstMemberId) {
+      await dataSource.query(
+        `
+          INSERT INTO "loans"
+            ("tenant_id", "member_id", "loan_number", "requested_amount", "approved_amount", "term_months", "purpose", "status")
+          VALUES ($1, $2, 'LN-2026-000001', '50000.00', '50000.00', 12, 'Business Expansion', 'approved')
+          ON CONFLICT ("tenant_id", "loan_number")
+            DO UPDATE SET "requested_amount" = EXCLUDED."requested_amount"
+        `,
+        [tenantAId, firstMemberId],
+      );
+      console.log(`  loan LN-2026-000001: id="${firstMemberId}", amount="50000.00", status="approved"`);
+    }
+
   } finally {
+
     await dataSource.destroy();
   }
 }

@@ -265,8 +265,8 @@ export class LoanService {
     return loans.map((loan) => this.toRow(loan));
   }
 
-
   // ------------------------------------------------ guarantor logic (Task 17)
+
 
   /**
    * Records a guarantor pledge and holds the requested amount on the guarantor's

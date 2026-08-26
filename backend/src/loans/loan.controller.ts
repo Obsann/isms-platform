@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common';
+import type { PaginatedResult } from '../types';
 import { AddGuarantorPledgeDto } from './dto/add-guarantor-pledge.dto';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
 import { ApproveLoanDto } from './dto/approve-loan.dto';
 import { DisburseLoanDto } from './dto/disburse-loan.dto';
+import { LoanSearchQueryDto } from './dto/loan-search-query.dto';
 import { RepayLoanDto } from './dto/repay-loan.dto';
 import { LoanService } from './loan.service';
 import type { EligibilityDecision, GuarantorPledge, LoanRepaymentRow, LoanRow } from './loan.types';
@@ -39,6 +41,12 @@ export class LoanController {
       termMonths: dto.termMonths,
       purpose: dto.purpose,
     });
+  }
+
+  /** Fetch all loans for the current tenant with optional search, status filtering, and pagination. */
+  @Get()
+  findAll(@Query() query: LoanSearchQueryDto): Promise<PaginatedResult<LoanRow>> {
+    return this.loanService.findAll(query);
   }
 
   /** Fetch all loans for a specific member by memberId (Task 23 integration). */

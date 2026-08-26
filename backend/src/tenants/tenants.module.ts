@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantEntity } from './tenant.entity';
 import { TenantsService } from './tenants.service';
+import { TenantsController } from './tenants.controller';
 
 /**
  * Home of the platform-global `tenants` table.
@@ -12,6 +13,7 @@ import { TenantsService } from './tenants.service';
  */
 @Module({
   imports: [TypeOrmModule.forFeature([TenantEntity])],
+  controllers: [TenantsController],
   providers: [TenantsService],
   exports: [TenantsService],
 })

@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   // Hide the Next.js "N" badge in the corner during `next dev`.
@@ -6,4 +6,4 @@ const nextConfig: NextConfig = {
   devIndicators: false,
 };
 
-export default nextConfig;
+export default nextConfig

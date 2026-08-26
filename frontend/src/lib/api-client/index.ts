@@ -274,4 +274,52 @@ export function commitImport(stagingId: string): Promise<LegacyImportCommitResul
   return apiClient.post<LegacyImportCommitResult>(`/members/import/commit/${stagingId}`, {});
 }
 
+// ---------------------------------------------------------------------------
+// Tenants API (Task 19 — Super Admin Console)
+// ---------------------------------------------------------------------------
+
+export interface TenantListItem {
+  id: string;
+  name: string;
+  code: string;
+  status: 'active' | 'suspended' | 'provisioning';
+  createdAt: string;
+  adminEmail?: string;
+  members?: number;
+}
+
+export interface ProvisionTenantPayload {
+  name: string;
+  code: string;
+  adminEmail?: string;
+  status?: 'active' | 'provisioning' | 'suspended';
+}
+
+export interface UpdateTenantPayload {
+  name?: string;
+  status?: 'active' | 'provisioning' | 'suspended';
+}
+
+export function getTenants(status?: string) {
+  const query = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+  return apiClient.get<TenantListItem[]>(`/platform/tenants${query}`);
+}
+
+export function getTenant(id: string) {
+  return apiClient.get<TenantListItem>(`/platform/tenants/${id}`);
+}
+
+export function provisionTenant(payload: ProvisionTenantPayload) {
+  return apiClient.post<TenantListItem>('/platform/tenants', payload);
+}
+
+export function updateTenant(id: string, payload: UpdateTenantPayload) {
+  return apiClient.patch<TenantListItem>(`/platform/tenants/${id}`, payload);
+}
+
+export function deleteTenant(id: string) {
+  return apiClient.delete<void>(`/platform/tenants/${id}`);
+}
+
 export default apiClient;
+

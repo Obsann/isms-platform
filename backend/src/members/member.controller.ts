@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -26,9 +27,16 @@ export class MemberController {
   // NestJS treating "import" as an :id path parameter.
 
   @Post('import/stage')
-  @UseInterceptors(FileInterceptor('file'))
-  stageImport(@UploadedFile() file: any): Promise<LegacyImportPreview> {
-    return this.memberService.stageLegacyImport(file);
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  stageImport(@UploadedFile() file?: { buffer?: Buffer; originalname?: string }): Promise<LegacyImportPreview> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Please upload a non-empty .csv file of members.');
+    }
+    const name = (file.originalname ?? '').toLowerCase();
+    if (name && !name.endsWith('.csv')) {
+      throw new BadRequestException('File must be a .csv (comma-separated members), not a document or spreadsheet.');
+    }
+    return this.memberService.stageLegacyImport(file.buffer);
   }
 
   @Post('import/commit/:stagingId')

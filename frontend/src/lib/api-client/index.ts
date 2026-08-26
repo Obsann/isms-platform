@@ -259,15 +259,26 @@ export function updateMember(id: string, payload: UpdateMemberPayload) {
 }
 
 export async function stageImport(file: File): Promise<LegacyImportPreview> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('isms_access_token') : null;
   const formData = new FormData();
   formData.append('file', file);
   const headers: Record<string, string> = {};
+  const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
   const res = await fetch(`${BASE_URL}/members/import/stage`, { method: 'POST', headers, body: formData });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== 'undefined') {
+      clearSession();
+      window.location.assign('/login');
+    }
+    const fallback: ApiErrorBody = {
+      statusCode: res.status,
+      message: res.statusText || 'Upload failed',
+      error: 'RequestFailed',
+    };
+    const payload = (await res.json().catch(() => fallback)) as ApiErrorBody;
+    throw new ApiRequestError(payload);
+  }
+  return res.json() as Promise<LegacyImportPreview>;
 }
 
 export function commitImport(stagingId: string): Promise<LegacyImportCommitResult> {

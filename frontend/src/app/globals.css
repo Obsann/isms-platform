@@ -2,36 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* globals.css — ISMS Platform · Prosperum Luxury Financial Theme
- *
- * Two token systems live here side-by-side:
- *
- * 1. RAW-RGB TOKENS  (--color-*, --portal-*, --shadow-*)
- *    Used by our Tailwind config via rgb(var(...) / <alpha-value>).
- *    Powers: bg-midnight, text-gold, bg-midnight/20, etc.
- *
- * 2. SHADCN SEMANTIC TOKENS  (--background, --primary, --ring, etc.)
- *    Used automatically by every Shadcn component.
- *    Expressed in oklch() — the color space Shadcn v2 expects.
- *    Mapped to our brand values so Shadcn Button, Input, Dialog, etc.
- *    render in midnight navy + gold instead of default black/gray.
- *
- * Brand reference (hex → oklch):
- *   Midnight Navy  #0B1933  → oklch(0.18  0.048 255)
- *   Slate Navy     #1E2D4A  → oklch(0.26  0.052 255)
- *   Warm Gold      #C59B27  → oklch(0.68  0.130  82)
- *   Bright Gold    #D8B138  → oklch(0.74  0.130  82)
- *   Surface        #F5F7FA  → oklch(0.975 0.004 255)
- *   Card white     #FFFFFF  → oklch(1     0     0  )
- *   Text dark      #0F172A  → oklch(0.13  0.028 255)
- *   Text muted     #64748B  → oklch(0.52  0.028 255)
- *   Border         #E2E8F0  → oklch(0.92  0.008 255)
- */
+/* globals.css — ISMS Platform · Prosperum Financial Theme */
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   1. Raw-RGB brand tokens
-   Tailwind opacity-modifier compatible: bg-midnight/20, text-gold/60, etc.
-───────────────────────────────────────────────────────────────────────────── */
 :root {
   --font-inter:   "Inter", system-ui, sans-serif;
   --font-serif:   "Playfair Display", Georgia, serif;
@@ -39,29 +11,22 @@
 
   /* Brand — Deep Midnight Navy #0B1933 */
   --color-primary:       11 25 51;
-  /* Dark Midnight #071126 */
   --color-primary-dark:  7 17 38;
-  /* Slate Navy #1E2D4A */
   --color-primary-light: 30 45 74;
 
   /* Gold #C59B27 */
   --color-accent-gold:       197 155 39;
-  /* Bright Gold #D8B138 */
   --color-accent-gold-light: 216 177 56;
-  /* Bronze Gold #94741C */
   --color-accent-gold-dark:  148 116 28;
-  /* Soft Gold Glow #F9F5EA */
   --color-accent-gold-muted: 249 245 234;
 
-  /* Surfaces */
-  --color-surface:      245 247 250;
-  --color-surface-card: 255 255 255;
-  --color-surface-dark: 10 18 40;
-
-  /* Typography */
-  --color-text:       15 23 42;
-  --color-text-muted: 100 116 139;
-  --color-border:     226 232 240;
+  /* Light Theme Surfaces & Typography */
+  --color-surface:      248 250 252; /* #F8FAFC */
+  --color-surface-card: 255 255 255; /* #FFFFFF */
+  --color-surface-dark: 11 18 32;
+  --color-text:         15 23 42;    /* #0F172A */
+  --color-text-muted:   100 116 139; /* #64748B */
+  --color-border:       226 232 240; /* #E2E8F0 */
 
   /* Portal accents */
   --portal-super-admin:  11 25 51;
@@ -70,162 +35,100 @@
   --portal-member:       202 138 4;
 
   /* Radius & Shadows */
-  --radius:      0.625rem;
-  --shadow-sm:   0 1px 3px rgba(11,25,51,0.07), 0 1px 2px rgba(11,25,51,0.04);
-  --shadow-md:   0 4px 16px -2px rgba(11,25,51,0.10), 0 2px 6px -1px rgba(11,25,51,0.06);
-  --shadow-lg:   0 20px 40px -8px rgba(11,25,51,0.16), 0 8px 16px -4px rgba(11,25,51,0.08);
-  --shadow-gold: 0 0 0 3px rgba(197,155,39,0.25);
+  --radius:      0.5rem;
+  --shadow-sm:   0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md:   0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg:   0 12px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06);
+  --shadow-gold: 0 0 0 2px rgba(197, 155, 39, 0.3);
+
+  color-scheme: light;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   2. Shadcn semantic tokens — light mode
-   These override the default black/gray Shadcn palette with our brand values.
-───────────────────────────────────────────────────────────────────────────── */
+html.dark, .dark {
+  /* Dark Theme Surfaces & Typography */
+  --color-surface:      11 18 32;    /* #0B1220 deep navy */
+  --color-surface-card: 17 24 39;    /* #111827 slate-900 */
+  --color-surface-dark: 7 11 20;
+  --color-text:         248 250 252; /* #F8FAFC */
+  --color-text-muted:   148 163 184; /* #94A3B8 */
+  --color-border:       30 41 59;    /* #1E293B */
+
+  color-scheme: dark;
+}
+
 @layer base {
-  .theme {
-    --font-heading: var(--font-serif);
-    --font-sans:    var(--font-inter);
-  }
-
   :root {
-    /* Page surfaces */
-    --background:         oklch(0.975 0.004 255); /* --color-surface      */
-    --foreground:         oklch(0.13  0.028 255); /* --color-text         */
-
-    /* Card / Popover */
-    --card:               oklch(1     0     0  ); /* --color-surface-card */
+    --background:         oklch(0.985 0.004 255);
+    --foreground:         oklch(0.13  0.028 255);
+    --card:               oklch(1     0     0  );
     --card-foreground:    oklch(0.13  0.028 255);
     --popover:            oklch(1     0     0  );
     --popover-foreground: oklch(0.13  0.028 255);
-
-    /* Primary action = Midnight Navy */
-    --primary:            oklch(0.18  0.048 255); /* --color-primary      */
-    --primary-foreground: oklch(1     0     0  ); /* white text on navy   */
-
-    /* Secondary = soft surface */
-    --secondary:            oklch(0.95  0.004 255);
-    --secondary-foreground: oklch(0.18  0.048 255); /* navy text          */
-
-    /* Muted = slate */
-    --muted:            oklch(0.95  0.004 255);
-    --muted-foreground: oklch(0.52  0.028 255); /* --color-text-muted    */
-
-    /* Accent = Warm Gold */
-    --accent:            oklch(0.68  0.130  82); /* --color-accent-gold  */
-    --accent-foreground: oklch(0.18  0.048 255); /* navy text on gold    */
-
-    /* Destructive — standard red, unchanged */
-    --destructive: oklch(0.577 0.245 27);
-
-    /* Borders & inputs */
-    --border: oklch(0.92  0.008 255); /* --color-border        */
-    --input:  oklch(0.92  0.008 255);
-
-    /* Focus ring = Gold */
-    --ring: oklch(0.68  0.130  82); /* --color-accent-gold   */
-
-    /* Radius — matches our --radius token */
-    --radius: 0.625rem;
-
-    /* Charts — navy → gold scale */
-    --chart-1: oklch(0.18  0.048 255); /* midnight navy         */
-    --chart-2: oklch(0.68  0.130  82); /* warm gold             */
-    --chart-3: oklch(0.26  0.052 255); /* slate navy            */
-    --chart-4: oklch(0.74  0.130  82); /* bright gold           */
-    --chart-5: oklch(0.52  0.028 255); /* muted slate           */
-
-    /* Sidebar = white panel, navy active state, gold accent */
-    --sidebar:                    oklch(1     0     0  );
-    --sidebar-foreground:         oklch(0.13  0.028 255);
-    --sidebar-primary:            oklch(0.18  0.048 255); /* midnight navy */
-    --sidebar-primary-foreground: oklch(0.68  0.130  82); /* gold text     */
-    --sidebar-accent:             oklch(0.68  0.130  82); /* gold hover    */
-    --sidebar-accent-foreground:  oklch(0.18  0.048 255); /* navy on gold  */
-    --sidebar-border:             oklch(0.92  0.008 255);
-    --sidebar-ring:               oklch(0.68  0.130  82); /* gold ring     */
+    --primary:            oklch(0.18  0.048 255);
+    --primary-foreground: oklch(1     0     0  );
+    --secondary:          oklch(0.96  0.004 255);
+    --secondary-foreground: oklch(0.18  0.048 255);
+    --muted:              oklch(0.96  0.004 255);
+    --muted-foreground:   oklch(0.50  0.028 255);
+    --accent:             oklch(0.68  0.130  82);
+    --accent-foreground:  oklch(0.18  0.048 255);
+    --destructive:        oklch(0.577 0.245 27);
+    --border:             oklch(0.92  0.008 255);
+    --input:              oklch(0.92  0.008 255);
+    --ring:               oklch(0.68  0.130  82);
+    --radius:             0.5rem;
   }
 
-  /*
-   * Dark mode — ISMS portals don't ship dark mode in Weeks 1–3, but we define
-   * sensible values so Shadcn components don't break under a system dark-mode
-   * preference. Deep navy becomes the surface; gold becomes the primary CTA.
-   */
-  .dark {
-    --background:         oklch(0.13  0.048 255); /* deep navy bg         */
-    --foreground:         oklch(0.975 0.004 255); /* near-white text      */
-    --card:               oklch(0.18  0.048 255); /* midnight card        */
-    --card-foreground:    oklch(0.975 0.004 255);
-    --popover:            oklch(0.18  0.048 255);
-    --popover-foreground: oklch(0.975 0.004 255);
-
-    /* In dark mode gold becomes the primary CTA */
-    --primary:            oklch(0.68  0.130  82); /* warm gold            */
-    --primary-foreground: oklch(0.18  0.048 255); /* navy on gold         */
-
-    --secondary:            oklch(0.26  0.052 255);
-    --secondary-foreground: oklch(0.975 0.004 255);
-    --muted:                oklch(0.26  0.052 255);
-    --muted-foreground:     oklch(0.65  0.020 255);
-
-    --accent:            oklch(0.74  0.130  82); /* bright gold           */
-    --accent-foreground: oklch(0.18  0.048 255);
-
-    --destructive: oklch(0.704 0.191 22);
-    --border:      oklch(1 0 0 / 10%);
-    --input:       oklch(1 0 0 / 15%);
-    --ring:        oklch(0.68  0.130  82); /* gold ring             */
-
-    --chart-1: oklch(0.68  0.130  82);
-    --chart-2: oklch(0.74  0.130  82);
-    --chart-3: oklch(0.975 0.004 255);
-    --chart-4: oklch(0.52  0.028 255);
-    --chart-5: oklch(0.26  0.052 255);
-
-    --sidebar:                    oklch(0.18  0.048 255);
-    --sidebar-foreground:         oklch(0.975 0.004 255);
-    --sidebar-primary:            oklch(0.68  0.130  82);
-    --sidebar-primary-foreground: oklch(0.18  0.048 255);
-    --sidebar-accent:             oklch(0.26  0.052 255);
-    --sidebar-accent-foreground:  oklch(0.975 0.004 255);
-    --sidebar-border:             oklch(1 0 0 / 10%);
-    --sidebar-ring:               oklch(0.68  0.130  82);
+  html.dark, .dark {
+    --background:         oklch(0.12  0.040 255);
+    --foreground:         oklch(0.98  0.004 255);
+    --card:               oklch(0.16  0.040 255);
+    --card-foreground:    oklch(0.98  0.004 255);
+    --popover:            oklch(0.16  0.040 255);
+    --popover-foreground: oklch(0.98  0.004 255);
+    --primary:            oklch(0.68  0.130  82);
+    --primary-foreground: oklch(0.18  0.048 255);
+    --secondary:          oklch(0.22  0.040 255);
+    --secondary-foreground: oklch(0.98  0.004 255);
+    --muted:              oklch(0.22  0.040 255);
+    --muted-foreground:   oklch(0.65  0.020 255);
+    --accent:             oklch(0.74  0.130  82);
+    --accent-foreground:  oklch(0.18  0.048 255);
+    --destructive:        oklch(0.704 0.191 22);
+    --border:             oklch(1 0 0 / 12%);
+    --input:              oklch(1 0 0 / 15%);
+    --ring:               oklch(0.68  0.130  82);
   }
 
   * {
-    border-color: oklch(0.92 0.008 255); /* --border equivalent for Tailwind v3 */
+    border-color: rgb(var(--color-border));
   }
 
   body {
     background-color: rgb(var(--color-surface));
     color: rgb(var(--color-text));
-  }
-
-  html {
     font-family: var(--font-inter);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   3. Base element styles
-───────────────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 html, body {
-  height: 100%;
-  font-family: var(--font-inter);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-html {
-  scroll-behavior: smooth;
+  min-height: 100%;
 }
 
 h1, h2, h3, .font-heading {
   font-family: var(--font-serif);
 }
 
-a { color: inherit; text-decoration: none; }
+a {
+  color: inherit;
+  text-decoration: none;
+}
 
 /* ====================================================
    LIGHT & DARK MODE STYLING (Accurate Figma Theme from UI Original Change)
@@ -421,4 +324,3 @@ html.light footer#dashboard-footer a:hover, html.light footer#dashboard-footer p
 /* Toast animation */
 .toast-slide-enter { animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-

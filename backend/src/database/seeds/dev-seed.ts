@@ -19,6 +19,19 @@ interface SeedStaff {
   tenantCode: string | null;
 }
 
+interface SeedMember {
+  tenantCode: string;
+  memberNumber: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  nationalId?: string;
+  idType?: 'national_id' | 'passport' | 'other';
+  phone?: string;
+  email?: string;
+  status: 'active' | 'pending' | 'inactive';
+}
+
 const DEV_PASSWORD = 'DevPassword!123';
 
 const SEED_TENANTS: SeedTenant[] = [
@@ -26,13 +39,57 @@ const SEED_TENANTS: SeedTenant[] = [
   { code: 'tenant-b', name: 'Tenant B SACCO (dev seed)' },
 ];
 
-/**
- * Dev seed for Task 3 isolation checks, Task 4 portal routing, and Task 28 load
- * checks (DECISIONS.md D5). Same publicly-known password for every account.
- *
- * Runs as the `postgres` role regardless of `.env`'s `DB_USERNAME`, since seeding
- * writes across tenants and RLS would block that. Idempotent.
- */
+const SEED_MEMBERS: SeedMember[] = [
+  {
+    tenantCode: 'tenant-a',
+    memberNumber: 'MEM-10001',
+    firstName: 'Abebe',
+    middleName: 'Kebede',
+    lastName: 'Bikila',
+    nationalId: 'FIN-1001-2002-3003',
+    idType: 'national_id',
+    phone: '+251911123456',
+    email: 'abebe.bikila@tenant-a.dev',
+    status: 'active',
+  },
+  {
+    tenantCode: 'tenant-a',
+    memberNumber: 'MEM-10002',
+    firstName: 'Tigist',
+    middleName: 'Worku',
+    lastName: 'Hailu',
+    nationalId: 'EP-8822991',
+    idType: 'passport',
+    phone: '+251922234567',
+    email: 'tigist.worku@tenant-a.dev',
+    status: 'active',
+  },
+  {
+    tenantCode: 'tenant-a',
+    memberNumber: 'MEM-10003',
+    firstName: 'Dawit',
+    middleName: 'Solomon',
+    lastName: 'Tadesse',
+    nationalId: 'FIN-3003-4004-5005',
+    idType: 'national_id',
+    phone: '+251933345678',
+    email: 'dawit.solomon@tenant-a.dev',
+    status: 'pending',
+  },
+  {
+    tenantCode: 'tenant-b',
+    memberNumber: 'MEM-20001',
+    firstName: 'Almaz',
+    middleName: 'Desta',
+    lastName: 'Tesfaye',
+    nationalId: 'FIN-5005-6006-7007',
+    idType: 'national_id',
+    phone: '+251944456789',
+    email: 'almaz.desta@tenant-b.dev',
+    status: 'active',
+  },
+];
+
 async function seed(): Promise<void> {
   const dataSource = new DataSource(
     buildDataSourceOptions({ ...process.env, DB_USERNAME: 'postgres' }),
@@ -57,6 +114,7 @@ async function seed(): Promise<void> {
       console.log(`Seeded tenant "${tenant.code}" (${tenantId})`);
     }
 
+    // Seed Staff Accounts
     const staff: SeedStaff[] = [
       {
         email: 'superadmin@platform.dev',
@@ -93,8 +151,6 @@ async function seed(): Promise<void> {
       const tenantId = account.tenantCode ? tenantIds.get(account.tenantCode)! : null;
 
       if (tenantId === null) {
-        // Unique (tenant_id, email) treats NULLs as distinct in Postgres — delete by
-        // email+role so re-seeds stay idempotent for the platform super-admin.
         await dataSource.query(
           `DELETE FROM "staff_accounts" WHERE "tenant_id" IS NULL AND "email" = $1`,
           [account.email],
@@ -130,7 +186,62 @@ async function seed(): Promise<void> {
           : `tenantCode="${account.tenantCode}", email="${account.email}"`;
       console.log(`  staff ${account.role}: ${loginHint}, password="${DEV_PASSWORD}"`);
     }
+
+    // Seed Members
+    console.log('\nSeeding Members...');
+    let firstMemberId: string | null = null;
+    const tenantAId = tenantIds.get('tenant-a')!;
+
+    for (const member of SEED_MEMBERS) {
+      const tenantId = tenantIds.get(member.tenantCode)!;
+      const [{ id: memberId }] = await dataSource.query<[{ id: string }]>(
+        `
+          INSERT INTO "members"
+            ("tenant_id", "member_number", "first_name", "middle_name", "last_name", "national_id", "id_type", "phone", "email", "status", "joined_at")
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE)
+          ON CONFLICT ("tenant_id", "member_number")
+            DO UPDATE SET
+              "first_name" = EXCLUDED."first_name",
+              "last_name" = EXCLUDED."last_name",
+              "email" = EXCLUDED."email",
+              "phone" = EXCLUDED."phone"
+          RETURNING "id"
+        `,
+        [
+          tenantId,
+          member.memberNumber,
+          member.firstName,
+          member.middleName || null,
+          member.lastName,
+          member.nationalId || null,
+          member.idType || null,
+          member.phone || null,
+          member.email || null,
+          member.status,
+        ],
+      );
+      if (!firstMemberId && member.tenantCode === 'tenant-a') {
+        firstMemberId = memberId;
+      }
+      console.log(`  member ${member.memberNumber}: id="${memberId}", name="${member.firstName} ${member.lastName}", tenant="${member.tenantCode}"`);
+    }
+
+    if (firstMemberId) {
+      await dataSource.query(
+        `
+          INSERT INTO "loans"
+            ("tenant_id", "member_id", "loan_number", "requested_amount", "approved_amount", "term_months", "purpose", "status")
+          VALUES ($1, $2, 'LN-2026-000001', '50000.00', '50000.00', 12, 'Business Expansion', 'approved')
+          ON CONFLICT ("tenant_id", "loan_number")
+            DO UPDATE SET "requested_amount" = EXCLUDED."requested_amount"
+        `,
+        [tenantAId, firstMemberId],
+      );
+      console.log(`  loan LN-2026-000001: id="${firstMemberId}", amount="50000.00", status="approved"`);
+    }
+
   } finally {
+
     await dataSource.destroy();
   }
 }

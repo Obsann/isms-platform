@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import BrandMark from '@/components/layout/BrandMark';
 import PortalFooter from '@/components/layout/PortalFooter';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import { isNavActive, portalDashboardHref, portalRootFromPath } from '@/lib/portal-paths';
 import { Menu, Search, Bell, Moon, Sun, X, HelpCircle, Settings, LogOut, User, ShieldAlert, CheckCircle2, Info } from 'lucide-react';
 
@@ -106,6 +107,9 @@ export const PortalShell: React.FC<PortalShellProps> = ({
   const sections: NavSection[] = navSections ?? (navItems ? [{ items: navItems }] : []);
   const allNavItems = sections.flatMap((s) => s.items);
   const currentPage = [...allNavItems].reverse().find((item) => isNavActive(pathname, item.href, hash));
+
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const isDark = darkMode ?? (resolvedTheme === 'dark');
 
   const initials = user?.name.split(' ').map((n) => n[0]).slice(0, 2).join('') ?? '??';
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -243,7 +247,7 @@ export const PortalShell: React.FC<PortalShellProps> = ({
   );
 
   return (
-    <div className={cn('min-h-screen flex bg-surface text-slate-900', className)}>
+    <div className={cn('min-h-screen flex bg-surface text-slate-900 dark:text-slate-100', className)}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-gold focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-midnight"
@@ -325,14 +329,14 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                 {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-midnight" />}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-elevated z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                    <h3 className="font-bold text-sm text-slate-800">Notifications</h3>
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-elevated z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Notifications</h3>
                     {onMarkNotificationRead && unreadCount > 0 && (
                       <button
                         type="button"
                         onClick={() => notifications.forEach((n) => onMarkNotificationRead(n.id))}
-                        className="text-xs text-slate-500 hover:text-slate-800 font-semibold"
+                        className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold"
                       >
                         Mark all read
                       </button>
@@ -341,18 +345,18 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                   <div className="max-h-72 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-10 text-center">
-                        <Bell className="w-5 h-5 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-slate-600">You’re all caught up</p>
-                        <p className="text-xs text-slate-400 mt-1">New alerts will show up here.</p>
+                        <Bell className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">You’re all caught up</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">New alerts will show up here.</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-100">
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {notifications.map((item) => (
                           <button
                             type="button"
                             key={item.id}
                             onClick={() => onMarkNotificationRead?.(item.id)}
-                            className={cn('w-full text-left p-3 hover:bg-slate-50 flex gap-3 transition-colors', !item.read && 'bg-amber-50/40')}
+                            className={cn('w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 flex gap-3 transition-colors', !item.read && 'bg-amber-50/40 dark:bg-amber-950/20')}
                           >
                             <div className="mt-0.5 shrink-0">
                               {item.type === 'alert' && <ShieldAlert className="w-4 h-4 text-rose-500" />}
@@ -361,10 +365,10 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <p className={cn('text-xs font-semibold truncate', !item.read ? 'text-slate-900' : 'text-slate-700')}>{item.title}</p>
-                                <span className="text-[10px] text-slate-400 shrink-0">{item.timestamp}</span>
+                                <p className={cn('text-xs font-semibold truncate', !item.read ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300')}>{item.title}</p>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{item.timestamp}</span>
                               </div>
-                              <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">{item.message}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{item.message}</p>
                             </div>
                           </button>
                         ))}
@@ -375,16 +379,14 @@ export const PortalShell: React.FC<PortalShellProps> = ({
               )}
             </div>
 
-            {onToggleDarkMode && (
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
-                aria-label={darkMode ? 'Switch to light theme' : 'Switch to dark theme'}
-              >
-                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onToggleDarkMode ?? toggleTheme}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+            </button>
 
             {onOpenHelp && (
               <button
@@ -413,38 +415,38 @@ export const PortalShell: React.FC<PortalShellProps> = ({
                   {initials}
                 </button>
                 {showProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2">
-                    <div className="px-4 py-2 border-b border-slate-100">
-                      <p className="font-bold text-sm text-slate-800 truncate">{user.name}</p>
-                      <p className="text-xs text-amber-700 font-semibold truncate">{user.role}</p>
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{user.name}</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold truncate">{user.role}</p>
                     </div>
                     {(canGoProfile || canGoSettings) && (
                       <div className="py-1">
                         {canGoProfile && (
                           <button
                             type="button"
-                            className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center gap-2"
                             onClick={goProfile}
                           >
-                            <User className="w-3.5 h-3.5 text-slate-400" /> View Profile
+                            <User className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> View Profile
                           </button>
                         )}
                         {canGoSettings && (
                           <button
                             type="button"
-                            className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center gap-2"
                             onClick={goSettings}
                           >
-                            <Settings className="w-3.5 h-3.5 text-slate-400" /> Settings
+                            <Settings className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> Settings
                           </button>
                         )}
                       </div>
                     )}
                     {onLogout && (
-                      <div className="border-t border-slate-100 pt-1">
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
                         <button
                           type="button"
-                          className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2"
                           onClick={() => {
                             setShowProfileMenu(false);
                             onLogout();
@@ -462,7 +464,7 @@ export const PortalShell: React.FC<PortalShellProps> = ({
         </header>
 
         <main id="main-content" className="flex-1 overflow-y-auto bg-surface flex flex-col">
-          <div className="flex-1 p-6 md:p-8 flex flex-col">
+          <div className="flex-1 p-4 sm:p-5 lg:p-6 flex flex-col max-w-7xl w-full mx-auto">
             {children}
           </div>
           <PortalFooter pathname={pathname} />

@@ -7,7 +7,15 @@ export interface SendNotificationInput {
   template: NotificationTemplate;
   /** Recipient email address. */
   to: string;
-  /** Template variables; amounts stay decimal strings so they render unabbreviated. */
+  /**
+   * Template variables; amounts stay decimal strings so they render unabbreviated.
+   *
+   * Expected keys by template:
+   * - `deposit-posted` / `withdrawal-posted`: memberName, amount, currency,
+   *   balanceAfter, accountNumber, reference?
+   * - `loan-approved`: memberName, loanNumber, amount, currency, termMonths?
+   * - `otp`: code, expirySeconds, purpose?
+   */
   data: Record<string, string | number>;
 }
 

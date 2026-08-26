@@ -3,14 +3,22 @@ import { cn } from "@/lib/utils";
 
 export type StatusType =
   | "active"
-  | "pending"
   | "approved"
-  | "rejected"
   | "completed"
+  | "pending"
+  | "Pending"
+  | "rejected"
   | "inactive"
+  | "disbursed"
+  | "repaying"
+  | "repaid"
+  | "closed"
   | "compliant"
+  | "Compliant"
   | "non_compliant"
+  | "Non-Compliant"
   | "high_risk"
+  | "High Risk"
   | "open"
   | "in_review"
   | "mitigated"
@@ -19,12 +27,7 @@ export type StatusType =
   | "decommissioned"
   | "success"
   | "warning"
-  | "failed"
-  | "Compliant"
-  | "Non-Compliant"
-  | "High Risk"
-  | "Pending"
-  | (string & {});
+  | "failed";
 
 export interface StatusBadgeProps {
   status: StatusType;
@@ -34,31 +37,35 @@ export interface StatusBadgeProps {
 }
 
 const statusConfig: Record<string, { styles: string; dot: string }> = {
-  // Task 7 Core Statuses
-  active:            { styles: "bg-emerald-50 text-emerald-800 border-emerald-200 ring-emerald-100",  dot: "bg-emerald-500" },
-  approved:          { styles: "bg-gold-muted text-amber-900 border-amber-300 ring-amber-100",        dot: "bg-gold" },
+  // Core Statuses
+  active:            { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
+  approved:          { styles: "bg-amber-100/80 dark:bg-amber-950/40 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-700 ring-amber-100 dark:ring-amber-900/30",        dot: "bg-amber-500" },
   completed:         { styles: "bg-midnight text-amber-300 border-amber-500/30 ring-midnight/10",     dot: "bg-gold-light" },
-  pending:           { styles: "bg-amber-50 text-amber-800 border-amber-200 ring-amber-50",           dot: "bg-amber-400" },
-  Pending:           { styles: "bg-amber-50 text-amber-800 border-amber-200 ring-amber-50",           dot: "bg-amber-400" },
-  rejected:          { styles: "bg-rose-50 text-rose-800 border-rose-200 ring-rose-50",              dot: "bg-rose-500" },
-  inactive:          { styles: "bg-slate-50 text-slate-600 border-slate-200 ring-slate-50",          dot: "bg-slate-400" },
+  pending:           { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800/80 ring-amber-100 dark:ring-amber-900/30",           dot: "bg-amber-500" },
+  Pending:           { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800/80 ring-amber-100 dark:ring-amber-900/30",           dot: "bg-amber-500" },
+  rejected:          { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30",              dot: "bg-rose-600" },
+  inactive:          { styles: "bg-slate-200/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 ring-slate-100 dark:ring-slate-800",          dot: "bg-slate-500" },
+  disbursed:         { styles: "bg-blue-100/80 dark:bg-blue-950/50 text-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800 ring-blue-100 dark:ring-blue-900/30",              dot: "bg-blue-600" },
+  repaying:          { styles: "bg-indigo-100/80 dark:bg-indigo-950/50 text-indigo-950 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 ring-indigo-100 dark:ring-indigo-900/30",      dot: "bg-indigo-600" },
+  repaid:            { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
+  closed:            { styles: "bg-slate-200/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 ring-slate-100 dark:ring-slate-800",          dot: "bg-slate-500" },
 
   // Compliance & Security Statuses
-  compliant:         { styles: "bg-emerald-50 text-emerald-800 border-emerald-200 ring-emerald-100",  dot: "bg-emerald-500" },
-  Compliant:         { styles: "bg-emerald-50 text-emerald-800 border-emerald-200 ring-emerald-100",  dot: "bg-emerald-500" },
-  non_compliant:     { styles: "bg-rose-50 text-rose-800 border-rose-200 ring-rose-100",              dot: "bg-rose-500" },
-  "Non-Compliant":   { styles: "bg-rose-50 text-rose-800 border-rose-200 ring-rose-100",              dot: "bg-rose-500" },
-  high_risk:         { styles: "bg-amber-50 text-amber-900 border-amber-300 ring-amber-100",          dot: "bg-rose-600" },
-  "High Risk":       { styles: "bg-amber-50 text-amber-900 border-amber-300 ring-amber-100",          dot: "bg-rose-600" },
-  open:              { styles: "bg-blue-50 text-blue-800 border-blue-200 ring-blue-100",              dot: "bg-blue-500" },
-  in_review:         { styles: "bg-indigo-50 text-indigo-800 border-indigo-200 ring-indigo-100",      dot: "bg-indigo-500" },
-  mitigated:         { styles: "bg-teal-50 text-teal-800 border-teal-200 ring-teal-100",              dot: "bg-teal-500" },
-  accepted:          { styles: "bg-slate-100 text-slate-800 border-slate-300 ring-slate-100",          dot: "bg-slate-500" },
-  under_maintenance: { styles: "bg-amber-50 text-amber-800 border-amber-200 ring-amber-100",          dot: "bg-amber-500" },
-  decommissioned:    { styles: "bg-slate-100 text-slate-500 border-slate-200 ring-slate-100",          dot: "bg-slate-400" },
-  success:           { styles: "bg-emerald-50 text-emerald-800 border-emerald-200 ring-emerald-100",  dot: "bg-emerald-500" },
-  warning:           { styles: "bg-amber-50 text-amber-800 border-amber-200 ring-amber-100",          dot: "bg-amber-500" },
-  failed:            { styles: "bg-rose-50 text-rose-800 border-rose-200 ring-rose-100",              dot: "bg-rose-500" },
+  compliant:         { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
+  Compliant:         { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
+  non_compliant:     { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30",              dot: "bg-rose-600" },
+  "Non-Compliant":   { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30",              dot: "bg-rose-600" },
+  high_risk:         { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-700 ring-amber-100 dark:ring-amber-900/30",          dot: "bg-rose-600" },
+  "High Risk":       { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-700 ring-amber-100 dark:ring-amber-900/30",          dot: "bg-rose-600" },
+  open:              { styles: "bg-blue-100/80 dark:bg-blue-950/50 text-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800 ring-blue-100 dark:ring-blue-900/30",              dot: "bg-blue-600" },
+  in_review:         { styles: "bg-indigo-100/80 dark:bg-indigo-950/50 text-indigo-950 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 ring-indigo-100 dark:ring-indigo-900/30",      dot: "bg-indigo-600" },
+  mitigated:         { styles: "bg-teal-100/80 dark:bg-teal-950/50 text-teal-950 dark:text-teal-300 border-teal-300 dark:border-teal-800 ring-teal-100 dark:ring-teal-900/30",              dot: "bg-teal-600" },
+  accepted:          { styles: "bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-slate-200 border-slate-300 dark:border-slate-700 ring-slate-100 dark:ring-slate-800",          dot: "bg-slate-600" },
+  under_maintenance: { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800 ring-amber-100 dark:ring-amber-900/30",          dot: "bg-amber-600" },
+  decommissioned:    { styles: "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-300 dark:border-slate-700 ring-slate-100 dark:ring-slate-800",          dot: "bg-slate-500" },
+  success:           { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
+  warning:           { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800 ring-amber-100 dark:ring-amber-900/30",          dot: "bg-amber-600" },
+  failed:            { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30",              dot: "bg-rose-600" },
 };
 
 const sizeStyles = {
@@ -73,35 +80,26 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   size = "md",
   className,
 }) => {
-  const normalizedKey = String(status);
-  const displayLabel =
-    label ??
-    (normalizedKey.includes("_")
-      ? normalizedKey
-          .split("_")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ")
-      : normalizedKey.charAt(0).toUpperCase() + normalizedKey.slice(1));
-
-  const config = statusConfig[normalizedKey] ?? {
-    styles: "bg-slate-50 text-slate-700 border-slate-200 ring-slate-50",
+  const config = statusConfig[status] || {
+    styles: "bg-slate-100 text-slate-800 border-slate-200",
     dot: "bg-slate-400",
   };
+
+  const displayText = label || status.replace(/_/g, " ");
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-semibold tracking-wide border ring-1 ring-inset transition-colors select-none",
+        "inline-flex items-center gap-1.5 font-bold rounded-full border ring-1 ring-inset tracking-wide transition-colors",
         config.styles,
         sizeStyles[size],
         className
       )}
     >
       <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", config.dot)} />
-      {displayLabel}
+      <span className="capitalize">{displayText}</span>
     </span>
   );
 };
 
 export default StatusBadge;
-

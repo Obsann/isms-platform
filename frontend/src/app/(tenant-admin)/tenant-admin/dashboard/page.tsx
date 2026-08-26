@@ -118,45 +118,48 @@ export default function TenantAdminDashboardPage() {
 
   return (
     <div style={{ background: t.bg, minHeight: "100vh", transition: "background 0.25s" }}>
+
+      {/* ── Dark mode toggle — fixed top-right ── */}
+      <button
+        onClick={() => setDark((d) => !d)}
+        title={dark ? "Switch to light mode" : "Switch to dark mode"}
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 16,
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 12px",
+          background: t.surface,
+          border: `1px solid ${t.border}`,
+          borderRadius: 20,
+          cursor: "pointer",
+          color: t.text,
+          fontSize: 12,
+          fontWeight: 600,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          transition: "all 0.2s",
+        }}
+      >
+        <span style={{ fontSize: 14 }}>{dark ? "☀️" : "🌙"}</span>
+        {dark ? "Light" : "Dark"}
+      </button>
+
       <main style={{ padding: "24px 32px", maxWidth: 1200, margin: "0 auto" }}>
 
         {/* ── Header ────────────────────────────────────────── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: t.gold, textTransform: "uppercase", marginBottom: 6 }}>
-              Biruk · Task 21
-            </div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: t.text, margin: 0, fontFamily: "inherit" }}>
-              Executive Dashboard
-            </h1>
-            <p style={{ color: t.textMuted, fontSize: 14, marginTop: 4 }}>
-              {user?.fullName ? `Welcome back, ${user.fullName}` : "Welcome back"} — here's your SACCO at a glance.
-            </p>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: t.gold, textTransform: "uppercase", marginBottom: 6 }}>
+            Biruk · Task 21
           </div>
-
-          {/* Dark mode toggle */}
-          <button
-            onClick={() => setDark((d) => !d)}
-            title={dark ? "Switch to light mode" : "Switch to dark mode"}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 14px",
-              background: t.surface,
-              border: `1px solid ${t.border}`,
-              borderRadius: 8,
-              cursor: "pointer",
-              color: t.text,
-              fontSize: 13,
-              fontWeight: 500,
-              boxShadow: t.cardShadow,
-              transition: "all 0.2s",
-            }}
-          >
-            <span style={{ fontSize: 16 }}>{dark ? "☀️" : "🌙"}</span>
-            {dark ? "Light Mode" : "Dark Mode"}
-          </button>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: t.text, margin: 0, fontFamily: "inherit" }}>
+            Executive Dashboard
+          </h1>
+          <p style={{ color: t.textMuted, fontSize: 14, marginTop: 4 }}>
+            {user?.fullName ? `Welcome back, ${user.fullName}` : "Welcome back"} — here's your SACCO at a glance.
+          </p>
         </div>
 
         {/* ── KPI Grid ──────────────────────────────────────── */}

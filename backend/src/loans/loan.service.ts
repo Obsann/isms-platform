@@ -11,6 +11,8 @@ import { SavingsSharesService } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
 import { LoanEntity } from './entities/loan.entity';
+import type { PaginatedResult } from '../types';
+import { LoanSearchQueryDto } from './dto/loan-search-query.dto';
 import type {
   ApprovalDecisionInput,
   DisbursementInput,
@@ -240,6 +242,41 @@ export class LoanService {
     }
 
     return this.toRepaymentRow(saved);
+  }
+
+  // ---------------------------------------------------------------- findAll
+
+  /**
+   * List all loans in the current tenant with optional search, status filtering, and pagination.
+   */
+  async findAll(query?: LoanSearchQueryDto): Promise<PaginatedResult<LoanRow>> {
+    const repo = this.ctx.repo(LoanEntity);
+    const qb = repo.createQueryBuilder('loan');
+
+    if (query?.status && query.status !== 'all') {
+      qb.andWhere('loan.status = :status', { status: query.status });
+    }
+
+    if (query?.search) {
+      const searchPattern = `%${query.search}%`;
+      qb.andWhere(
+        '(loan.loanNumber ILIKE :search OR loan.purpose ILIKE :search)',
+        { search: searchPattern },
+      );
+    }
+
+    const limit = query?.limit ?? 50;
+    const offset = query?.offset ?? 0;
+
+    qb.orderBy('loan.appliedAt', 'DESC');
+    qb.take(limit);
+    qb.skip(offset);
+
+    const [entities, total] = await qb.getManyAndCount();
+    return {
+      items: entities.map((entity) => this.toRow(entity)),
+      total,
+    };
   }
 
   // ---------------------------------------------------------------- findById

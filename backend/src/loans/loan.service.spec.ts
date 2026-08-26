@@ -181,4 +181,3 @@ describe('LoanService - Guarantor & Collateral Logic (Task 17)', () => {
     });
   });
 });
-

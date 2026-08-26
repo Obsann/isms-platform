@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { ShieldCheck, UserCheck, AlertCircle, Plus, Trash2, CheckCircle2 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
-import { SaccoMember } from '@/types/isms';
+import type { Member } from '@/types';
 import FormFieldGroup from './FormFieldGroup';
 import CurrencyDisplay from '@/components/currency/CurrencyDisplay';
 
@@ -25,10 +24,10 @@ interface ApplyLoanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ApplyLoanFormData) => void;
+  members: Member[];
 }
 
-export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanModalProps) {
-  const { members } = useApp();
+export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: ApplyLoanModalProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string>(members[0]?.id || '');
   const [requestedAmount, setRequestedAmount] = useState<number>(25000);
   const [termMonths, setTermMonths] = useState<number>(12);
@@ -41,28 +40,18 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanM
 
   if (!isOpen) return null;
 
-  const selectedMember = members.find((m) => m.id === selectedMemberId);
-  const savingsMultiplier = 3;
-  const memberSavings = selectedMember?.savingsBalance || 0;
-  const baseCeiling = memberSavings * savingsMultiplier;
-  const totalPledged = guarantors.reduce((acc, g) => acc + g.pledgedAmount, 0);
-  const totalEligibilityCeiling = baseCeiling + totalPledged;
-
-  const isEligible = requestedAmount > 0 && requestedAmount <= totalEligibilityCeiling;
+  const currentMemberId = selectedMemberId || members[0]?.id || '';
+  const isEligible = requestedAmount > 0;
 
   const handleAddGuarantor = () => {
     if (!selectedGuarantorId) return;
-    if (selectedGuarantorId === selectedMemberId) {
+    if (selectedGuarantorId === currentMemberId) {
       alert('A borrower cannot act as guarantor for their own loan.');
       return;
     }
     const gMember = members.find((m) => m.id === selectedGuarantorId);
     if (!gMember) return;
     if (pledgedAmount <= 0) return;
-    if (pledgedAmount > gMember.savingsBalance) {
-      alert(`Pledged amount exceeds guarantor's total savings balance of ${gMember.savingsBalance} ETB.`);
-      return;
-    }
 
     setGuarantors((prev) => [
       ...prev.filter((g) => g.guarantorMemberId !== selectedGuarantorId),
@@ -82,26 +71,28 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanM
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedMemberId) return;
+    if (!currentMemberId) {
+      alert('Please select a member.');
+      return;
+    }
     if (!isEligible) {
-      alert(`Requested amount exceeds total eligibility ceiling of ${totalEligibilityCeiling} ETB.`);
+      alert('Requested amount must be greater than zero.');
       return;
     }
 
     onSubmit({
-      memberId: selectedMemberId,
+      memberId: currentMemberId,
       requestedAmount,
       termMonths,
       purpose,
       guarantors,
     });
-    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-6 animate-in fade-in zoom-in-95">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
@@ -110,7 +101,7 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanM
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">New Loan Application</h2>
-              <p className="text-xs text-slate-500">Automated eligibility evaluation & guarantor pledges</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Automated eligibility evaluation & guarantor pledges</p>
             </div>
           </div>
           <button
@@ -125,13 +116,13 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanM
           {/* Member Selection */}
           <FormFieldGroup label="Borrower Member">
             <select
-              value={selectedMemberId}
+              value={currentMemberId}
               onChange={(e) => setSelectedMemberId(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
             >
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.fullName} ({m.faydaId}) — Savings: {m.savingsBalance.toLocaleString()} ETB
+                  {m.fullName} ({m.memberNumber})
                 </option>
               ))}
             </select>
@@ -172,42 +163,34 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanM
             />
           </FormFieldGroup>
 
-          {/* Eligibility Card Preview */}
-          <div className={`p-4 rounded-xl border ${isEligible ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50' : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/50'} space-y-2`}>
+          {/* Loan Summary Card */}
+          <div className="p-4 rounded-xl border bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/50 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {isEligible ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                )}
+                <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Automated Savings Multiplier Check (3x)
+                  Loan Policy & Collateral Coverage
                 </span>
               </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isEligible ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'}`}>
-                {isEligible ? 'Eligible' : 'Exceeds Ceiling'}
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200">
+                3x Savings Multiplier
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+            <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
               <div>
-                <span className="text-slate-500 block">Member Savings</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">{memberSavings.toLocaleString()} ETB</span>
+                <span className="text-slate-500 dark:text-slate-400 block">Requested Loan</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{requestedAmount.toLocaleString()} ETB</span>
               </div>
               <div>
-                <span className="text-slate-500 block">3x Base Ceiling</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">{baseCeiling.toLocaleString()} ETB</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">+ Guarantor Pledges</span>
-                <span className="font-semibold text-indigo-600 dark:text-indigo-400">+{totalPledged.toLocaleString()} ETB</span>
+                <span className="text-slate-500 dark:text-slate-400 block">Guarantor Pledges</span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">+{guarantors.reduce((acc, g) => acc + g.pledgedAmount, 0).toLocaleString()} ETB</span>
               </div>
             </div>
 
             <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-600 dark:text-slate-400">Total Eligibility Ceiling:</span>
-              <CurrencyDisplay value={totalEligibilityCeiling} currency="ETB" size="sm" />
+              <span className="text-slate-600 dark:text-slate-400">Requested Principal:</span>
+              <CurrencyDisplay value={requestedAmount} currency="ETB" size="sm" />
             </div>
           </div>
 
@@ -253,10 +236,10 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit }: ApplyLoanM
               >
                 <option value="">Select Guarantor Member...</option>
                 {members
-                  .filter((m) => m.id !== selectedMemberId)
+                  .filter((m) => m.id !== currentMemberId)
                   .map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.fullName} (Avail Savings: {m.savingsBalance.toLocaleString()} ETB)
+                      {m.fullName} ({m.memberNumber})
                     </option>
                   ))}
               </select>

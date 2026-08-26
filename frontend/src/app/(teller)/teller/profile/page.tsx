@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+import TellerProfileView from '@/components/views/TellerProfileView';
+
+export const metadata = { title: 'Profile | ISMS Teller Desk' };
 
 export default function TellerProfilePage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Account"
-      title="Profile"
-      description="Teller profile will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <TellerProfileView />;
 }

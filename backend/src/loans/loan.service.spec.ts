@@ -17,6 +17,15 @@ describe('LoanService - Guarantor & Collateral Logic (Task 17)', () => {
     releaseHold: jest.fn(),
   };
 
+  const mockMemberService = {
+    findById: jest.fn(),
+  };
+
+  const mockNotifications = {
+    enqueue: jest.fn(),
+    send: jest.fn(),
+  };
+
   let service: LoanService;
 
   beforeEach(() => {
@@ -25,6 +34,8 @@ describe('LoanService - Guarantor & Collateral Logic (Task 17)', () => {
       mockTenantContext as never,
       mockSavingsSharesService as never,
       mockLedgerService as never,
+      mockMemberService as never,
+      mockNotifications as never,
     );
   });
 

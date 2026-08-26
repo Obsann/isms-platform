@@ -1,7 +1,7 @@
-import MembersView from '@/components/views/MembersView';
+import MemberManagementView from '@/components/members/MemberManagementView';
 
-export const metadata = { title: 'Members | Teller Portal' };
+export const metadata = { title: 'Members | ISMS Teller Desk' };
 
 export default function TellerMembersPage() {
-  return <MembersView />;
+  return <MemberManagementView portalType="teller" />;
 }

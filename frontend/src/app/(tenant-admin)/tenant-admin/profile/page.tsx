@@ -1,7 +1,11 @@
-import ProfileView from '@/components/views/ProfileView';
+import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
 
-export const metadata = { title: 'Profile | ISMS Tenant Admin' };
-
-export default function ProfilePage() {
-  return <ProfileView />;
+export default function TenantAdminProfilePage() {
+  return (
+    <PortalPlaceholder
+      eyebrow="Account"
+      title="Profile"
+      description="Staff profile will land here. This page is an empty shell from Task 7."
+    />
+  );
 }

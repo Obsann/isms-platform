@@ -1,26 +1,30 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common';
+import { AddGuarantorPledgeDto } from './dto/add-guarantor-pledge.dto';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
 import { ApproveLoanDto } from './dto/approve-loan.dto';
 import { DisburseLoanDto } from './dto/disburse-loan.dto';
 import { RepayLoanDto } from './dto/repay-loan.dto';
 import { LoanService } from './loan.service';
-import type { EligibilityDecision, LoanRepaymentRow, LoanRow } from './loan.types';
+import type { EligibilityDecision, GuarantorPledge, LoanRepaymentRow, LoanRow } from './loan.types';
 
 /**
- * Loans & Credit REST surface — owner: **Abenezer** (Task 16).
+ * Loans & Credit REST surface — owner: **Abenezer** (Tasks 16–17).
  *
  * All routes require a valid JWT (`JwtAuthGuard` is global) and a resolved
  * tenant context (`TenantContextGuard` is global). No `@Public()` here.
  *
  * Route map:
- *   POST   /api/loans                  → apply for a loan
- *   GET    /api/loans/:id              → fetch loan by id
- *   GET    /api/loans/:id/eligibility  → check eligibility without applying
- *   PATCH  /api/loans/:id/approve      → approve or reject (loan officer)
- *   POST   /api/loans/:id/disburse     → disburse to member account
- *   POST   /api/loans/:id/repayments   → record a repayment
+ *   POST   /api/loans                            → apply for a loan
+ *   GET    /api/loans/:id                        → fetch loan by id
+ *   GET    /api/loans/:id/eligibility            → check eligibility without applying
+ *   PATCH  /api/loans/:id/approve                → approve or reject (loan officer)
+ *   POST   /api/loans/:id/disburse               → disburse to member account
+ *   POST   /api/loans/:id/repayments             → record a repayment
+ *   POST   /api/loans/:id/guarantors             → record a guarantor pledge (holds funds)
+ *   GET    /api/loans/:id/guarantors             → list guarantor pledges for loan
+ *   POST   /api/loans/guarantors/:pledgeId/release → release a guarantor pledge hold
  */
 @Controller('loans')
 export class LoanController {
@@ -87,7 +91,7 @@ export class LoanController {
   /**
    * Disburse an approved loan to the member's savings account.
    * Amount must not exceed the `approvedAmount`.
-   * Posts through the ledger (Task 13 TODO).
+   * Posts through the ledger.
    */
   @Post(':id/disburse')
   disburse(
@@ -103,8 +107,8 @@ export class LoanController {
 
   /**
    * Record a repayment against a disbursed loan.
-   * Posts through the ledger (Task 13 TODO).
-   * Automatically marks the loan `repaid` when fully settled.
+   * Posts through the ledger.
+   * Automatically marks the loan `repaid` and releases guarantor holds when fully settled.
    */
   @Post(':id/repayments')
   recordRepayment(
@@ -116,5 +120,42 @@ export class LoanController {
       amount: dto.amount,
       reference: dto.reference,
     });
+  }
+
+  /**
+   * Record a guarantor pledge against a pending or approved loan application.
+   * Places a hold on the guarantor's savings account via `LedgerService.holdFunds()`.
+   */
+  @Post(':id/guarantors')
+  recordGuarantorPledge(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddGuarantorPledgeDto,
+  ): Promise<GuarantorPledge> {
+    return this.loanService.recordGuarantorPledge({
+      loanId: id,
+      guarantorMemberId: dto.guarantorMemberId,
+      guarantorAccountId: dto.guarantorAccountId,
+      pledgedAmount: dto.pledgedAmount,
+    });
+  }
+
+  /**
+   * List all guarantor pledges recorded for a specific loan.
+   */
+  @Get(':id/guarantors')
+  getGuarantorPledgesForLoan(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<GuarantorPledge[]> {
+    return this.loanService.getGuarantorPledgesForLoan(id);
+  }
+
+  /**
+   * Manually release a guarantor hold and mark pledge status as released.
+   */
+  @Post('guarantors/:pledgeId/release')
+  releaseGuarantorPledge(
+    @Param('pledgeId', ParseUUIDPipe) pledgeId: string,
+  ): Promise<GuarantorPledge> {
+    return this.loanService.releaseGuarantorPledge(pledgeId);
   }
 }

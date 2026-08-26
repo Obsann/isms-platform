@@ -45,11 +45,20 @@ export default function LoginForm() {
   }
 
   return (
-    <main className="min-h-screen bg-midnight flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <main className="relative min-h-screen bg-midnight flex items-center justify-center p-6 overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.12]"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgb(216 177 56 / 0.5) 0.8px, transparent 0.9px)",
+          backgroundSize: "16px 16px",
+        }}
+      />
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+
+      <div className="relative w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 rounded-lg bg-gold/15 border border-gold/25 flex items-center justify-center">
-            <span className="font-display text-[10px] font-bold text-gold tracking-wider">ISMS</span>
+          <div className="w-11 h-11 rounded-full bg-gold text-midnight flex items-center justify-center font-display text-[10px] font-bold tracking-wider shadow-[0_0_0_3px_rgba(197,155,39,0.2)]">
+            ISMS
           </div>
           <div className="leading-none">
             <p className="font-display text-sm font-bold text-white tracking-[0.2em] uppercase">
@@ -113,7 +122,7 @@ export default function LoginForm() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 rounded-lg bg-midnight text-gold font-semibold text-sm tracking-wide hover:bg-midnight-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-2.5 rounded-lg bg-gold text-midnight font-semibold text-sm tracking-wide hover:bg-gold-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
               >
                 {submitting ? "Signing in…" : "Sign in"}
               </button>

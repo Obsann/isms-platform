@@ -3,7 +3,10 @@ export { LoanModule } from './loan.module';
 export { LoanService } from './loan.service';
 export { LoanEntity } from './entities/loan.entity';
 export { LoanRepaymentEntity } from './entities/loan-repayment.entity';
+export { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
+export { AddGuarantorPledgeDto } from './dto/add-guarantor-pledge.dto';
 export type { LoanStatus } from './entities/loan.entity';
+export type { GuarantorPledgeStatus } from './entities/loan-guarantor.entity';
 export type {
   ApprovalDecisionInput,
   DisbursementInput,
@@ -15,3 +18,4 @@ export type {
   LoanRow,
   RepaymentInput,
 } from './loan.types';
+

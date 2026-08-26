@@ -1,7 +1,11 @@
-import ProfileView from '@/components/views/ProfileView';
-
-export const metadata = { title: 'My Profile | Member Portal' };
+import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
 
 export default function MemberProfilePage() {
-  return <ProfileView />;
+  return (
+    <PortalPlaceholder
+      eyebrow="Account"
+      title="Profile"
+      description="Member profile will land here. This page is an empty shell from Task 7."
+    />
+  );
 }

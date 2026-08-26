@@ -196,4 +196,130 @@ export const apiClient = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Members API (Task 10 & 11 — Melkamu)
+// ---------------------------------------------------------------------------
+
+import type { Member, PaginatedResult } from '@/types';
+
+export interface CreateMemberPayload {
+  memberNumber: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  nationalId?: string;
+  idType?: 'national_id' | 'passport' | 'other';
+  phone?: string;
+  email?: string;
+  dateOfBirth?: string;
+  status?: 'pending' | 'active' | 'inactive';
+  joinedAt?: string;
+}
+
+export type UpdateMemberPayload = Partial<CreateMemberPayload>;
+
+export interface LegacyRowError {
+  row: number;
+  field: string;
+  message: string;
+}
+
+export interface LegacyImportPreview {
+  stagingId: string;
+  totalRows: number;
+  validRows: number;
+  errors: LegacyRowError[];
+  preview: Record<string, string>[];
+}
+
+export interface LegacyImportCommitResult {
+  committed: number;
+  skipped: number;
+}
+
+export function getMembers(params?: { search?: string; limit?: number; offset?: number }) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  return apiClient.get<PaginatedResult<Member>>(`/members${qs ? `?${qs}` : ''}`);
+}
+
+export function getMember(id: string) {
+  return apiClient.get<Member>(`/members/${id}`);
+}
+
+export function createMember(payload: CreateMemberPayload) {
+  return apiClient.post<Member>('/members', payload);
+}
+
+export function updateMember(id: string, payload: UpdateMemberPayload) {
+  return apiClient.patch<Member>(`/members/${id}`, payload);
+}
+
+export async function stageImport(file: File): Promise<LegacyImportPreview> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('isms_access_token') : null;
+  const formData = new FormData();
+  formData.append('file', file);
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+  const res = await fetch(`${BASE_URL}/members/import/stage`, { method: 'POST', headers, body: formData });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export function commitImport(stagingId: string): Promise<LegacyImportCommitResult> {
+  return apiClient.post<LegacyImportCommitResult>(`/members/import/commit/${stagingId}`, {});
+}
+
+// ---------------------------------------------------------------------------
+// Tenants API (Task 19 — Super Admin Console)
+// ---------------------------------------------------------------------------
+
+export interface TenantListItem {
+  id: string;
+  name: string;
+  code: string;
+  status: 'active' | 'suspended' | 'provisioning';
+  createdAt: string;
+  adminEmail?: string;
+  members?: number;
+}
+
+export interface ProvisionTenantPayload {
+  name: string;
+  code: string;
+  adminEmail?: string;
+  status?: 'active' | 'provisioning' | 'suspended';
+}
+
+export interface UpdateTenantPayload {
+  name?: string;
+  status?: 'active' | 'provisioning' | 'suspended';
+}
+
+export function getTenants(status?: string) {
+  const query = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+  return apiClient.get<TenantListItem[]>(`/platform/tenants${query}`);
+}
+
+export function getTenant(id: string) {
+  return apiClient.get<TenantListItem>(`/platform/tenants/${id}`);
+}
+
+export function provisionTenant(payload: ProvisionTenantPayload) {
+  return apiClient.post<TenantListItem>('/platform/tenants', payload);
+}
+
+export function updateTenant(id: string, payload: UpdateTenantPayload) {
+  return apiClient.patch<TenantListItem>(`/platform/tenants/${id}`, payload);
+}
+
+export function deleteTenant(id: string) {
+  return apiClient.delete<void>(`/platform/tenants/${id}`);
+}
+
 export default apiClient;
+

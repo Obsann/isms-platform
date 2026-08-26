@@ -217,8 +217,208 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 h1, h2, h3, .font-heading {
   font-family: var(--font-serif);
 }
 
 a { color: inherit; text-decoration: none; }
+
+/* ====================================================
+   LIGHT & DARK MODE STYLING (Accurate Figma Theme from UI Original Change)
+   ==================================================== */
+
+html.light {
+  background-color: #f2f4f7;
+  color: #1e293b;
+}
+
+html.light body {
+  background-color: #f2f4f7;
+}
+
+html.light .min-h-screen {
+  background-color: #f2f4f7 !important;
+}
+
+/* Sidebar in light mode */
+html.light aside#dashboard-sidebar {
+  background-color: #f2f4f7 !important;
+  border-color: #e5e8eb !important;
+}
+
+html.light aside#dashboard-sidebar .border-b,
+html.light aside#dashboard-sidebar .border-t {
+  border-color: #e5e8eb !important;
+}
+
+html.light aside#dashboard-sidebar span.text-white,
+html.light aside#dashboard-sidebar p.text-white {
+  color: #0f172a !important;
+}
+
+html.light aside#dashboard-sidebar .bg-\[\#1a1b20\],
+html.light aside#dashboard-sidebar .bg-\[\#1c1d22\] {
+  background-color: transparent !important;
+}
+
+html.light aside#dashboard-sidebar button {
+  color: #475569 !important;
+}
+
+html.light aside#dashboard-sidebar button.bg-\[\#282a32\] {
+  background-color: #e4e7ec !important;
+  color: #0f172a !important;
+  border-color: #d0d5dd !important;
+}
+
+html.light aside#dashboard-sidebar button.bg-\[\#282a32\] svg {
+  color: #0f172a !important;
+}
+
+html.light aside#dashboard-sidebar button:not(.bg-\[\#282a32\]):hover {
+  background-color: #eaecf0 !important;
+  color: #0f172a !important;
+}
+
+/* Header in light mode */
+html.light header {
+  background-color: rgba(242, 244, 247, 0.85) !important;
+  border-color: #e5e8eb !important;
+}
+
+html.light header .text-white {
+  color: #0f172a !important;
+}
+
+html.light header .bg-\[\#23242a\],
+html.light header .bg-\[\#1c1d22\] {
+  background-color: #ffffff !important;
+  border-color: #d0d5dd !important;
+}
+
+html.light header .bg-\[\#1a1b20\] {
+  background-color: #f2f4f7 !important;
+  border-color: #e5e8eb !important;
+}
+
+html.light header button:hover {
+  background-color: #e4e7ec !important;
+  color: #0f172a !important;
+}
+
+/* Stat cards in light mode */
+.stat-card-item {
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+html.light .stat-card-item.bg-\[\#1c77ff\] {
+  background-color: #1c77ff !important;
+}
+
+html.light .stat-card-item.bg-\[\#1c1d22\] {
+  background-color: #1c1d22 !important;
+}
+
+.stat-card-item h2,
+.stat-card-item span,
+.stat-card-item svg,
+html.light .stat-card-item h2,
+html.light .stat-card-item span,
+html.light .stat-card-item svg {
+  color: #ffffff !important;
+}
+
+/* Cards in light mode */
+html.light #analytics-chart-container,
+html.light #form-field-group-card,
+html.light #status-badges-card,
+html.light #data-table-card,
+html.light .dashboard-card {
+  background-color: #ffffff !important;
+  border-color: #eaecf0 !important;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05), 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+
+html.light #form-field-group-card input:not(.has-error),
+html.light #form-field-group-card button#select-id-type {
+  background-color: #f8fafc !important;
+  border-color: #d0d5dd !important;
+  color: #0f172a !important;
+}
+
+html.light #form-field-group-card label {
+  color: #475569 !important;
+}
+
+html.light #analytics-chart-container button {
+  color: #64748b;
+}
+
+html.light #analytics-chart-container .bg-\[\#1c1d22\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Data Table in light mode */
+html.light #data-table-card {
+  background-color: #ffffff !important;
+  border-color: #eaecf0 !important;
+}
+
+html.light #data-table-card th {
+  color: #94a3b8 !important;
+}
+
+html.light #data-table-card tr.table-row-item {
+  border-bottom: 1px solid #f8fafc;
+}
+
+html.light #data-table-card tr.table-row-item:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light #data-table-card td span.font-medium,
+html.light #data-table-card td span.font-semibold {
+  color: #0f172a !important;
+}
+
+html.light #data-table-card td:nth-child(2),
+html.light #data-table-card td:nth-child(3) {
+  color: #334155 !important;
+}
+
+/* Status Badges in Light Mode */
+html.light .light-badge-in-progress { background-color: #f5eeff !important; color: #9333ea !important; border-color: transparent !important; }
+html.light .light-badge-complete { background-color: #ebfbf3 !important; color: #16a34a !important; border-color: transparent !important; }
+html.light .light-badge-pending { background-color: #edf5ff !important; color: #2563eb !important; border-color: transparent !important; }
+html.light .light-badge-approved { background-color: #fff8eb !important; color: #d97706 !important; border-color: transparent !important; }
+html.light .light-badge-rejected { background-color: #f3f4f6 !important; color: #6b7280 !important; border-color: transparent !important; }
+html.light .light-badge-inactive { background-color: #f1f5f9 !important; color: #475569 !important; border-color: #e2e8f0 !important; }
+
+/* Status Badges Preview Card in Light Mode */
+html.light #status-badges-card .bg-\[\#292113\] { background-color: #fffbeb !important; border-color: #fef08a !important; }
+html.light #status-badges-card .text-\[\#eab308\] { color: #b45309 !important; }
+html.light #status-badges-card .bg-\[\#13261a\] { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; }
+html.light #status-badges-card .text-\[\#22c55e\] { color: #15803d !important; }
+html.light #status-badges-card .bg-\[\#241830\] { background-color: #faf5ff !important; border-color: #e9d5ff !important; }
+html.light #status-badges-card .text-\[\#c084fc\] { color: #7e22ce !important; }
+html.light #status-badges-card .bg-\[\#2a1d12\] { background-color: #fff8eb !important; border-color: #fed7aa !important; }
+html.light #status-badges-card .text-\[\#f59e0b\] { color: #c2410c !important; }
+html.light #status-badges-card .bg-\[\#281417\] { background-color: #fef2f2 !important; border-color: #fecaca !important; }
+html.light #status-badges-card .text-\[\#ef4444\] { color: #b91c1c !important; }
+html.light #status-badges-card .bg-\[\#1c2028\] { background-color: #f1f5f9 !important; border-color: #e2e8f0 !important; }
+html.light #status-badges-card .text-\[\#94a3b8\] { color: #475569 !important; }
+
+/* Footer in light mode */
+html.light footer#dashboard-footer { border-color: #e5e8eb !important; color: #64748b !important; background-color: #f2f4f7 !important; }
+html.light footer#dashboard-footer a:hover, html.light footer#dashboard-footer p { color: #475569 !important; }
+
+/* Toast animation */
+.toast-slide-enter { animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+

@@ -1,7 +1,11 @@
-import SettingsView from '@/components/views/SettingsView';
-
-export const metadata = { title: 'Settings | ISMS Super Admin' };
+import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
 
 export default function SuperAdminSettingsPage() {
-  return <SettingsView />;
+  return (
+    <PortalPlaceholder
+      eyebrow="Account"
+      title="Settings"
+      description="Platform settings will land here. This page is an empty shell from Task 7."
+    />
+  );
 }

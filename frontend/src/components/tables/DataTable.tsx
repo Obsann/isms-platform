@@ -1,25 +1,96 @@
-"use client";
+'use client';
 
 import React, { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import {
+  MoreHorizontal,
+  ArrowUpDown,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { cn, formatETB } from "@/lib/utils";
+import { MemberRecord } from "@/types/dashboard";
 
 export interface Column<T> {
   key: string;
-  header: React.ReactNode;
-  render?: (row: T, index: number) => React.ReactNode;
-  accessor?: (row: T, index: number) => React.ReactNode;
+  header: string;
   sortable?: boolean;
-  align?: "left" | "center" | "right";
+  align?: 'left' | 'center' | 'right';
   className?: string;
+  render?: (row: T) => React.ReactNode;
 }
 
-export interface DataTableProps<T> {
-  columns: Column<T>[];
-  data: T[];
-  emptyMessage?: string;
-  className?: string;
-  rowKey?: (row: T, index: number) => string | number;
-  keyExtractor?: (row: T, index: number) => string | number;
+export const initialMembersData: MemberRecord[] = [
+  {
+    id: "rec-1",
+    name: "ByeWind",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+    memberId: "M-001",
+    savingAmount: 1200.0,
+    status: "In Progress",
+    phone: "0911 234 567",
+    idType: "National ID",
+    idNumber: "FAN-9012481",
+    createdAt: "Jun 24, 2026",
+  },
+  {
+    id: "rec-2",
+    name: "Natali Craig",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
+    memberId: "M-002",
+    savingAmount: 881.0,
+    status: "Complete",
+    phone: "0922 456 789",
+    idType: "Kebele Resident ID",
+    idNumber: "FAN-3021944",
+    createdAt: "Mar 10, 2026",
+  },
+  {
+    id: "rec-3",
+    name: "Drew Cano",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+    memberId: "M-003",
+    savingAmount: 409.0,
+    status: "Pending",
+    phone: "0933 678 901",
+    idType: "Passport",
+    idNumber: "ET-8832019",
+    createdAt: "Nov 10, 2026",
+  },
+  {
+    id: "rec-4",
+    name: "Orlando Diggs",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80",
+    memberId: "M-004",
+    savingAmount: 953.0,
+    status: "Approved",
+    phone: "0944 890 123",
+    idType: "National ID",
+    idNumber: "FAN-1193820",
+    createdAt: "Dec 20, 2026",
+  },
+  {
+    id: "rec-5",
+    name: "Andi Lane",
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&auto=format&fit=crop&q=80",
+    memberId: "M-005",
+    savingAmount: 907.0,
+    status: "Rejected",
+    phone: "0955 012 345",
+    idType: "Driver's License",
+    idNumber: "DL-4482012",
+    createdAt: "Jul 25, 2026",
+  },
+];
+
+interface DataTableProps<T = any> {
+  members?: MemberRecord[];
+  onAddNewMember?: () => void;
+  onDeleteMember?: (id: string) => void;
+  statusFilter?: string | null;
+  // Generic data table props compatibility
+  data?: T[];
+  columns?: Column<T>[];
+  keyExtractor?: (item: T) => string;
   title?: string;
   description?: string;
   searchPlaceholder?: string;
@@ -27,256 +98,348 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-export function DataTable<T>({
-  columns,
+export function DataTable<T = any>({
+  members = initialMembersData,
+  onAddNewMember,
+  onDeleteMember,
+  statusFilter,
   data,
-  emptyMessage = "No records found",
-  className,
-  rowKey,
+  columns,
   keyExtractor,
   title,
   description,
-  searchPlaceholder = "Search...",
+  searchPlaceholder,
   defaultPageSize,
   onRowClick,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<keyof MemberRecord>("memberId");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = defaultPageSize ?? 10;
 
-  // Filter data based on search term
-  const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return data;
-    const term = searchTerm.toLowerCase();
-    return data.filter((row) =>
-      Object.values(row as Record<string, unknown>).some((val) =>
-        String(val ?? "").toLowerCase().includes(term)
+  // If generic columns/data props are provided (from Task 7 verification component usage)
+  if (data && columns) {
+    const filteredGenericData = data.filter((row: any) =>
+      Object.values(row).some((val) =>
+        String(val).toLowerCase().includes(searchTerm.toLowerCase())
       )
     );
-  }, [data, searchTerm]);
 
-  // Sort data
-  const sortedData = useMemo(() => {
-    if (!sortColumn) return filteredData;
-    return [...filteredData].sort((a, b) => {
-      const valA = (a as Record<string, unknown>)[sortColumn];
-      const valB = (b as Record<string, unknown>)[sortColumn];
+    return (
+      <div
+        id="data-table-card"
+        className="dashboard-card bg-[#23242a] border border-[#2e303a] rounded-2xl p-4 sm:p-6 shadow-sm transition-colors"
+      >
+        {(title || searchPlaceholder) && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div>
+              {title && <h3 className="text-sm sm:text-base font-bold text-white font-serif">{title}</h3>}
+              {description && <p className="text-xs text-[#717888] mt-0.5">{description}</p>}
+            </div>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#6c7486] absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder={searchPlaceholder || "Search..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-36 sm:w-48 pl-8 pr-2.5 py-1 bg-[#1c1d22] light:bg-[#f8fafc] border border-[#2e3039] light:border-[#d0d5dd] rounded-lg text-xs text-white light:text-[#0f172a] placeholder-[#6c7486] focus:outline-hidden"
+              />
+            </div>
+          </div>
+        )}
 
-      if (valA === valB) return 0;
-      if (valA === null || valA === undefined) return 1;
-      if (valB === null || valB === undefined) return -1;
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="text-[11px] font-medium text-[#9ca3af] dark:text-[#717888] select-none border-b border-[#2e303a]/40 light:border-[#eaecf0]">
+                {columns.map((col) => (
+                  <th key={col.key} className={cn("py-2.5 px-3", col.className)}>
+                    {col.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="text-xs">
+              {filteredGenericData.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="py-8 text-center text-[#717888]">
+                    No matching records found.
+                  </td>
+                </tr>
+              ) : (
+                filteredGenericData.slice(0, defaultPageSize || 10).map((row, idx) => (
+                  <tr
+                    key={keyExtractor ? keyExtractor(row) : idx}
+                    onClick={() => onRowClick?.(row)}
+                    className="table-row-item transition-colors group cursor-pointer border-b border-[#2e303a]/20 light:border-[#f8fafc]"
+                  >
+                    {columns.map((col) => (
+                      <td key={col.key} className={cn("py-3 px-3 whitespace-nowrap", col.className)}>
+                        {col.render ? col.render(row) : (row as any)[col.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
-      const comparison = valA < valB ? -1 : 1;
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
-  }, [filteredData, sortColumn, sortDirection]);
-
-  // Paginate data if defaultPageSize is explicitly provided
-  const shouldPaginate = Boolean(defaultPageSize);
-  const totalPages = shouldPaginate ? Math.ceil(sortedData.length / pageSize) : 1;
-  const paginatedData = useMemo(() => {
-    if (!shouldPaginate) return sortedData;
-    const start = (currentPage - 1) * pageSize;
-    return sortedData.slice(start, start + pageSize);
-  }, [sortedData, shouldPaginate, currentPage, pageSize]);
-
-  const handleSort = (key: string, sortable?: boolean) => {
-    if (!sortable) return;
-    if (sortColumn === key) {
-      if (sortDirection === "asc") {
-        setSortDirection("desc");
-      } else {
-        setSortColumn(null);
-        setSortDirection("asc");
-      }
+  const handleSort = (field: keyof MemberRecord) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortColumn(key);
+      setSortField(field);
       setSortDirection("asc");
     }
   };
 
-  const getItemKey = (row: T, index: number) => {
-    if (keyExtractor) return keyExtractor(row, index);
-    if (rowKey) return rowKey(row, index);
-    const rec = row as Record<string, unknown>;
-    if (typeof rec?.id === "string" || typeof rec?.id === "number") return rec.id;
-    return index;
-  };
+  const filteredMembers = useMemo(() => {
+    return members
+      .filter((m) => {
+        const matchesSearch =
+          m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.memberId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (m.createdAt && m.createdAt.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          m.savingAmount.toString().includes(searchTerm);
 
-  const hasHeaderBlock = title || description || defaultPageSize;
+        const matchesStatus =
+          !statusFilter ||
+          (statusFilter === "Pending" && m.status === "Pending") ||
+          (statusFilter === "Active / Verified" && (m.status === "Complete" || m.status === "Active / Verified")) ||
+          (statusFilter === "In Review" && (m.status === "In Progress" || m.status === "In Review")) ||
+          (statusFilter === "Approved" && m.status === "Approved") ||
+          (statusFilter === "Rejected" && m.status === "Rejected") ||
+          (statusFilter === "Inactive" && m.status === "Inactive");
+
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        let valA = a[sortField] ?? "";
+        let valB = b[sortField] ?? "";
+
+        if (typeof valA === "number" && typeof valB === "number") {
+          return sortDirection === "asc" ? valA - valB : valB - valA;
+        }
+
+        return sortDirection === "asc"
+          ? String(valA).localeCompare(String(valB))
+          : String(valB).localeCompare(String(valA));
+      });
+  }, [members, searchTerm, sortField, sortDirection, statusFilter]);
+
+  const renderStatusBadge = (status: MemberRecord["status"]) => {
+    switch (status) {
+      case "In Progress":
+      case "In Review":
+        return (
+          <span className="inline-flex items-center justify-center px-3.5 py-1 text-xs font-medium rounded-full bg-[#271b33] text-[#c084fc] border border-[#482a63]/50 dark:bg-[#271b33] dark:text-[#c084fc] light-badge-in-progress">
+            In Review
+          </span>
+        );
+      case "Complete":
+      case "Active / Verified":
+        return (
+          <span className="inline-flex items-center justify-center px-3.5 py-1 text-xs font-medium rounded-full bg-[#13261a] text-[#22c55e] border border-[#1d4d33]/50 dark:bg-[#13261a] dark:text-[#22c55e] light-badge-complete">
+            Active / Verified
+          </span>
+        );
+      case "Pending":
+        return (
+          <span className="inline-flex items-center justify-center px-3.5 py-1 text-xs font-medium rounded-full bg-[#292113] text-[#eab308] border border-[#4d3b14]/50 dark:bg-[#292113] dark:text-[#eab308] light-badge-pending">
+            Pending
+          </span>
+        );
+      case "Approved":
+        return (
+          <span className="inline-flex items-center justify-center px-3.5 py-1 text-xs font-medium rounded-full bg-[#2a1d12] text-[#f59e0b] border border-[#563515]/50 dark:bg-[#2a1d12] dark:text-[#f59e0b] light-badge-approved">
+            Approved
+          </span>
+        );
+      case "Rejected":
+        return (
+          <span className="inline-flex items-center justify-center px-3.5 py-1 text-xs font-medium rounded-full bg-[#281417] text-[#ef4444] border border-[#521a22]/50 dark:bg-[#281417] dark:text-[#ef4444] light-badge-rejected">
+            Rejected
+          </span>
+        );
+      case "Inactive":
+      default:
+        return (
+          <span className="inline-flex items-center justify-center px-3.5 py-1 text-xs font-medium rounded-full bg-[#1c2028] text-[#94a3b8] border border-[#2e3745]/50 light-badge-inactive">
+            {status || "Inactive"}
+          </span>
+        );
+    }
+  };
 
   return (
     <div
-      className={cn(
-        "w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-card",
-        className
-      )}
+      id="data-table-card"
+      className="dashboard-card bg-[#23242a] border border-[#2e303a] rounded-2xl p-4 sm:p-6 shadow-sm transition-colors"
     >
-      {/* Header section if title or search is enabled */}
-      {hasHeaderBlock && (
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
-          <div>
-            {title && (
-              <h3 className="text-base font-bold text-slate-800 tracking-tight">{title}</h3>
-            )}
-            {description && (
-              <p className="text-xs text-slate-500 mt-0.5">{description}</p>
-            )}
-          </div>
-          {searchPlaceholder && (
-            <div className="relative min-w-[200px]">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder={searchPlaceholder}
-                className="w-full h-9 pl-3 pr-3 text-xs bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-gold focus:ring-1 focus:ring-amber-100 transition-all"
-              />
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5">
+          {statusFilter ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-sky-400 font-medium bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/20">
+                Filtered: {statusFilter}
+              </span>
+              <button
+                onClick={() => onAddNewMember && onAddNewMember()}
+                className="text-xs text-[#717888] hover:text-white dark:hover:text-white light:hover:text-black transition-colors"
+              >
+                Clear filter
+              </button>
             </div>
+          ) : (
+            <span className="text-xs font-medium text-[#717888] light:text-[#64748b]">
+              {filteredMembers.length} Members Recorded
+            </span>
           )}
         </div>
-      )}
 
-      {/* Table */}
-      <div className="w-full overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse">
-          <thead className="bg-midnight border-b-2 border-gold/60">
-            <tr>
-              {columns.map((col) => {
-                const alignClass =
-                  col.align === "center"
-                    ? "text-center"
-                    : col.align === "right"
-                    ? "text-right"
-                    : "text-left";
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-[#6c7486] absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-36 sm:w-48 pl-8 pr-2.5 py-1 bg-[#1c1d22] light:bg-[#f8fafc] border border-[#2e3039] light:border-[#d0d5dd] rounded-lg text-xs text-white light:text-[#0f172a] placeholder-[#6c7486] focus:outline-hidden focus:border-sky-500"
+            />
+          </div>
 
-                return (
-                  <th
-                    key={col.key}
-                    onClick={() => handleSort(col.key, col.sortable)}
-                    className={cn(
-                      "px-5 py-4 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-light/90 select-none",
-                      col.sortable && "cursor-pointer hover:text-white transition-colors",
-                      alignClass,
-                      col.className
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "inline-flex items-center gap-1.5",
-                        col.align === "right" && "justify-end",
-                        col.align === "center" && "justify-center"
-                      )}
-                    >
-                      <span>{col.header}</span>
-                      {col.sortable && (
-                        <span className="text-[10px] opacity-70">
-                          {sortColumn === col.key
-                            ? sortDirection === "asc"
-                              ? "▲"
-                              : "▼"
-                            : "↕"}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                );
-              })}
+          <button
+            id="btn-table-more-actions"
+            className="p-1 text-[#8e95a5] hover:text-[#0f172a] dark:hover:text-white rounded-lg transition-colors"
+            title="Table Options"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="text-[11px] font-medium text-[#9ca3af] dark:text-[#717888] select-none border-b border-[#2e303a]/40 light:border-[#eaecf0]">
+              <th
+                onClick={() => handleSort("name")}
+                className="py-2.5 px-3 cursor-pointer hover:text-[#0f172a] dark:hover:text-white transition-colors"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Members</span>
+                  <ArrowUpDown className="w-2.5 h-2.5 opacity-60" />
+                </div>
+              </th>
+
+              <th
+                onClick={() => handleSort("memberId")}
+                className="py-2.5 px-3 cursor-pointer hover:text-[#0f172a] dark:hover:text-white transition-colors"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Member ID</span>
+                  <ArrowUpDown className="w-2.5 h-2.5 opacity-60" />
+                </div>
+              </th>
+
+              <th
+                onClick={() => handleSort("savingAmount")}
+                className="py-2.5 px-3 cursor-pointer hover:text-[#0f172a] dark:hover:text-white transition-colors"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Amount</span>
+                  <ArrowUpDown className="w-2.5 h-2.5 opacity-60" />
+                </div>
+              </th>
+
+              <th className="py-2.5 px-3 text-right sm:text-left">
+                <span>Status</span>
+              </th>
+
+              <th className="py-2.5 px-1 text-right">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700 font-sans">
-            {paginatedData.length === 0 ? (
+
+          <tbody className="text-xs">
+            {filteredMembers.length === 0 ? (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="px-5 py-10 text-center text-slate-400 text-sm"
-                >
-                  {emptyMessage}
+                <td colSpan={5} className="py-8 text-center text-[#717888]">
+                  No matching members found.
                 </td>
               </tr>
             ) : (
-              paginatedData.map((row, rowIndex) => {
-                const key = getItemKey(row, rowIndex);
-                const record = row as Record<string, unknown>;
+              filteredMembers.map((member) => (
+                <tr
+                  key={member.id}
+                  id={`table-row-${member.memberId}`}
+                  className="table-row-item transition-colors group cursor-pointer border-b border-[#2e303a]/20 light:border-[#f8fafc]"
+                >
+                  <td className="py-3 px-3 whitespace-nowrap">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-full overflow-hidden bg-[#2a2c35] shrink-0 shadow-xs">
+                        <img
+                          src={member.avatar}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[#8e95a5]">
+                          {member.name.charAt(0)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-[#1e293b] dark:text-white text-xs">
+                          {member.name}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
 
-                return (
-                  <tr
-                    key={key}
-                    onClick={() => onRowClick && onRowClick(row)}
-                    className={cn(
-                      "hover:bg-gold-muted/40 transition-colors duration-150",
-                      onRowClick && "cursor-pointer"
-                    )}
-                  >
-                    {columns.map((col) => {
-                      const alignClass =
-                        col.align === "center"
-                          ? "text-center"
-                          : col.align === "right"
-                          ? "text-right"
-                          : "text-left";
+                  <td className="py-3 px-3 whitespace-nowrap font-mono text-xs text-[#64748b] dark:text-[#9ca3af]">
+                    {member.memberId}
+                  </td>
 
-                      const content = col.render
-                        ? col.render(row, rowIndex)
-                        : col.accessor
-                        ? col.accessor(row, rowIndex)
-                        : (record[col.key] as React.ReactNode) ?? "-";
+                  <td className="py-3 px-3 whitespace-nowrap font-mono font-medium text-[#1e293b] dark:text-white text-xs">
+                    {formatETB(member.savingAmount)}
+                  </td>
 
-                      return (
-                        <td
-                          key={col.key}
-                          className={cn("px-5 py-3.5 align-middle text-sm", alignClass, col.className)}
+                  <td className="py-3 px-3 whitespace-nowrap text-right sm:text-left">
+                    {renderStatusBadge(member.status)}
+                  </td>
+
+                  <td className="py-3 px-1 whitespace-nowrap text-right">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end">
+                      {onDeleteMember && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteMember(member.id);
+                          }}
+                          className="p-1 text-[#9ca3af] hover:text-red-500 transition-colors"
+                          title="Delete Record"
                         >
-                          {content}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
-
-      {/* Pagination Footer */}
-      {shouldPaginate && totalPages > 1 && (
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
-          <span>
-            Showing {(currentPage - 1) * pageSize + 1} to{" "}
-            {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} records
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 rounded border border-slate-200 bg-white text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
-            >
-              Previous
-            </button>
-            <span className="px-2 font-medium text-slate-700">
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="px-3 py-1.5 rounded border border-slate-200 bg-white text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 export default DataTable;
-

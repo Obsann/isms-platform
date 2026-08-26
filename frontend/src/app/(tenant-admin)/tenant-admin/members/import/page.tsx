@@ -228,6 +228,16 @@ export default function LegacyImportPage() {
             memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
           </code>
           <p>All columns except <strong className="text-slate-800 dark:text-slate-200">memberNumber</strong>, <strong className="text-slate-800 dark:text-slate-200">firstName</strong>, and <strong className="text-slate-800 dark:text-slate-200">lastName</strong> are optional.</p>
+          <p>
+            Use a real member list, not a document. Dates must be <code className="font-mono">YYYY-MM-DD</code>.{' '}
+            <a
+              href="/samples/legacy-members-sample.csv"
+              download="legacy-members-sample.csv"
+              className="font-bold text-amber-800 dark:text-gold hover:underline"
+            >
+              Download a sample CSV
+            </a>
+          </p>
         </div>
       )}
     </div>

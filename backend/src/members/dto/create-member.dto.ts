@@ -42,8 +42,8 @@ export class CreateMemberDto {
   @Length(1, 180)
   email?: string;
 
+  @ValidateIf((o: CreateMemberDto) => o.dateOfBirth != null && o.dateOfBirth !== '')
   @IsString()
-  @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dateOfBirth must be in YYYY-MM-DD format' })
   dateOfBirth?: string;
 
@@ -51,8 +51,8 @@ export class CreateMemberDto {
   @IsOptional()
   status?: MemberStatus;
 
+  @ValidateIf((o: CreateMemberDto) => o.joinedAt != null && o.joinedAt !== '')
   @IsString()
-  @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'joinedAt must be in YYYY-MM-DD format' })
   joinedAt?: string;
 }

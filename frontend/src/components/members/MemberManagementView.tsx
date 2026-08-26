@@ -22,6 +22,48 @@ interface MemberManagementViewProps {
   portalType: 'tenant-admin' | 'teller';
 }
 
+const EMPTY_FORM: CreateMemberPayload = {
+  memberNumber: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  nationalId: '',
+  idType: 'national_id',
+  phone: '',
+  email: '',
+  dateOfBirth: '',
+  status: 'active',
+};
+
+function buildCreatePayload(form: CreateMemberPayload): CreateMemberPayload {
+  const payload: CreateMemberPayload = {
+    memberNumber: form.memberNumber.trim(),
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    status: form.status ?? 'active',
+  };
+
+  const middleName = form.middleName?.trim();
+  if (middleName) payload.middleName = middleName;
+
+  const nationalId = form.nationalId?.trim();
+  if (nationalId) {
+    payload.nationalId = nationalId;
+    payload.idType = form.idType ?? 'national_id';
+  }
+
+  const phone = form.phone?.trim();
+  if (phone) payload.phone = phone;
+
+  const email = form.email?.trim();
+  if (email) payload.email = email;
+
+  const dateOfBirth = form.dateOfBirth?.trim();
+  if (dateOfBirth) payload.dateOfBirth = dateOfBirth;
+
+  return payload;
+}
+
 export default function MemberManagementView({ portalType }: MemberManagementViewProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
@@ -37,18 +79,7 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Registration Form State
-  const [formData, setFormData] = useState<CreateMemberPayload>({
-    memberNumber: '',
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    nationalId: '',
-    idType: 'national_id',
-    phone: '',
-    email: '',
-    dateOfBirth: '',
-    status: 'active',
-  });
+  const [formData, setFormData] = useState<CreateMemberPayload>(EMPTY_FORM);
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
@@ -94,22 +125,10 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
 
     setIsSubmitting(true);
     try {
-      const created = await createMember(formData);
+      const created = await createMember(buildCreatePayload(formData));
       setSuccessMsg(`Member ${created.fullName} (${created.memberNumber}) successfully registered!`);
       setIsRegisterOpen(false);
-      // Reset form
-      setFormData({
-        memberNumber: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        nationalId: '',
-        idType: 'national_id',
-        phone: '',
-        email: '',
-        dateOfBirth: '',
-        status: 'active',
-      });
+      setFormData(EMPTY_FORM);
       fetchMembers();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Registration failed. Please check fields.');
@@ -347,6 +366,10 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                 <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-semibold block">Email</span>
                 <p className="text-slate-900 dark:text-slate-200 mt-0.5 font-medium break-all">{selectedMember.email || 'Not provided'}</p>
               </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-semibold block">Date of Birth</span>
+                <p className="text-slate-900 dark:text-slate-200 mt-0.5 font-medium">{selectedMember.dateOfBirth || 'Not provided'}</p>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex justify-end">
@@ -434,6 +457,18 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                       placeholder="e.g. Tadesse"
                       className="w-full h-9 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-gold dark:focus:border-gold focus:ring-1 focus:ring-amber-500/20 transition-all"
                     />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={formData.dateOfBirth ?? ''}
+                      onChange={(e) => setFormData((p) => ({ ...p, dateOfBirth: e.target.value }))}
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-gold dark:focus:border-gold focus:ring-1 focus:ring-amber-500/20 transition-all"
+                    />
+                    <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">Optional. Stored as YYYY-MM-DD.</p>
                   </div>
                 </div>
               </div>

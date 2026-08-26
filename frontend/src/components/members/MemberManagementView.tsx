@@ -22,12 +22,25 @@ interface MemberManagementViewProps {
   portalType: 'tenant-admin' | 'teller';
 }
 
+// ── Dev mock data (shown when backend API is offline) ────────────────────────
+const DEV_MOCK_MEMBERS: Member[] = [
+  { id: 'm-001', memberNumber: 'MEM-00101', fullName: 'Alem Bekele',      firstName: 'Alem',      middleName: null, lastName: 'Bekele',   phone: '+251 911 234 567', email: 'alem.bekele@sacco.org.et',      nationalId: 'FIN-1001-2345-6789', idType: 'national_id', status: 'active',   tenantId: 'tenant-a-id', joinedAt: '2025-01-15', createdAt: '2025-01-15T00:00:00Z', updatedAt: '2025-01-15T00:00:00Z', dateOfBirth: null },
+  { id: 'm-002', memberNumber: 'MEM-00102', fullName: 'Tigist Haile',     firstName: 'Tigist',    middleName: null, lastName: 'Haile',    phone: '+251 922 345 678', email: 'tigist.haile@sacco.org.et',     nationalId: 'FIN-1002-3456-7890', idType: 'national_id', status: 'active',   tenantId: 'tenant-a-id', joinedAt: '2025-02-10', createdAt: '2025-02-10T00:00:00Z', updatedAt: '2025-02-10T00:00:00Z', dateOfBirth: null },
+  { id: 'm-003', memberNumber: 'MEM-00103', fullName: 'Solomon Girma',    firstName: 'Solomon',   middleName: null, lastName: 'Girma',    phone: '+251 933 456 789', email: 'solomon.girma@sacco.org.et',    nationalId: 'PP-ET-9876543',      idType: 'passport',    status: 'active',   tenantId: 'tenant-a-id', joinedAt: '2025-03-05', createdAt: '2025-03-05T00:00:00Z', updatedAt: '2025-03-05T00:00:00Z', dateOfBirth: null },
+  { id: 'm-004', memberNumber: 'MEM-00104', fullName: 'Hiwot Tadesse',    firstName: 'Hiwot',     middleName: null, lastName: 'Tadesse',  phone: '+251 944 567 890', email: 'hiwot.tadesse@sacco.org.et',    nationalId: 'FIN-1004-5678-9012', idType: 'national_id', status: 'pending',  tenantId: 'tenant-a-id', joinedAt: '2025-04-20', createdAt: '2025-04-20T00:00:00Z', updatedAt: '2025-04-20T00:00:00Z', dateOfBirth: null },
+  { id: 'm-005', memberNumber: 'MEM-00105', fullName: 'Dawit Mengistu',   firstName: 'Dawit',     middleName: null, lastName: 'Mengistu', phone: '+251 955 678 901', email: 'dawit.mengistu@sacco.org.et',   nationalId: 'FIN-1005-6789-0123', idType: 'national_id', status: 'active',   tenantId: 'tenant-a-id', joinedAt: '2025-05-12', createdAt: '2025-05-12T00:00:00Z', updatedAt: '2025-05-12T00:00:00Z', dateOfBirth: null },
+  { id: 'm-006', memberNumber: 'MEM-00106', fullName: 'Meron Alemu',      firstName: 'Meron',     middleName: null, lastName: 'Alemu',    phone: '+251 966 789 012', email: 'meron.alemu@sacco.org.et',      nationalId: 'FIN-1006-7890-1234', idType: 'national_id', status: 'active',   tenantId: 'tenant-a-id', joinedAt: '2025-06-01', createdAt: '2025-06-01T00:00:00Z', updatedAt: '2025-06-01T00:00:00Z', dateOfBirth: null },
+  { id: 'm-007', memberNumber: 'MEM-00107', fullName: 'Yonas Tesfaye',    firstName: 'Yonas',     middleName: null, lastName: 'Tesfaye',  phone: '+251 977 890 123', email: 'yonas.tesfaye@sacco.org.et',    nationalId: 'FIN-1007-8901-2345', idType: 'national_id', status: 'inactive', tenantId: 'tenant-a-id', joinedAt: '2025-07-08', createdAt: '2025-07-08T00:00:00Z', updatedAt: '2025-07-08T00:00:00Z', dateOfBirth: null },
+  { id: 'm-008', memberNumber: 'MEM-00108', fullName: 'Selamawit Kebede', firstName: 'Selamawit', middleName: null, lastName: 'Kebede',   phone: '+251 988 901 234', email: 'selamawit.kebede@sacco.org.et', nationalId: 'FIN-1008-9012-3456', idType: 'national_id', status: 'active',   tenantId: 'tenant-a-id', joinedAt: '2025-08-14', createdAt: '2025-08-14T00:00:00Z', updatedAt: '2025-08-14T00:00:00Z', dateOfBirth: null },
+];
+
 export default function MemberManagementView({ portalType }: MemberManagementViewProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   // Modal State
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -59,10 +72,19 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
       const count = res.total ?? list.length ?? 0;
       setMembers(list);
       setTotal(count);
+      setIsDevMode(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch members.');
-      setMembers([]);
-      setTotal(0);
+      // Dev fallback — show mock data when backend is offline
+      const filtered = searchTerm.trim()
+        ? DEV_MOCK_MEMBERS.filter((m) =>
+            `${m.fullName} ${m.memberNumber} ${m.email ?? ''} ${m.phone ?? ''}`.toLowerCase()
+              .includes(searchTerm.toLowerCase())
+          )
+        : DEV_MOCK_MEMBERS;
+      setMembers(filtered);
+      setTotal(filtered.length);
+      setIsDevMode(true);
+      setError(null); // suppress error since we're showing mock data
     } finally {
       setIsLoading(false);
     }
@@ -182,6 +204,14 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
         <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-sm flex items-center gap-2">
           <AlertCircle className="w-5 h-5" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Dev mode notice */}
+      {isDevMode && (
+        <div className="px-4 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl text-amber-400 text-xs flex items-center gap-2">
+          <span className="text-sm">⚡</span>
+          <span><strong>Demo mode:</strong> Backend API is offline — showing sample member records. Start the backend server to load real data.</span>
         </div>
       )}
 

@@ -63,6 +63,29 @@ async function membersVisible(tenantId: string): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
+  const catalog = await psql(
+    ADMIN_USER,
+    `SELECT t.code || ' ' || m.member_number
+       FROM members m
+       JOIN tenants t ON t.id = m.tenant_id
+      WHERE t.code IN ('tenant-a', 'tenant-b')
+      ORDER BY t.code, m.member_number;`,
+  );
+  const byTenant: Record<string, string[]> = { 'tenant-a': [], 'tenant-b': [] };
+  for (const line of catalog.split(/\r?\n/).map((row) => row.trim()).filter(Boolean)) {
+    const space = line.indexOf(' ');
+    const code = line.slice(0, space);
+    const number = line.slice(space + 1);
+    if (byTenant[code]) byTenant[code].push(number);
+  }
+  const expectedA = byTenant['tenant-a'];
+  const expectedB = byTenant['tenant-b'];
+  if (!expectedA.includes('MEM-10001') || !expectedB.includes('MEM-20001')) {
+    throw new Error(
+      `Need seed tenants tenant-a and tenant-b in ${DATABASE}. Run \`npm run seed\` first.`,
+    );
+  }
+
   const tenantLines = await psql(
     ADMIN_USER,
     `SELECT id || ' ' || code FROM tenants WHERE code IN ('tenant-a', 'tenant-b') ORDER BY code;`,
@@ -95,19 +118,27 @@ async function main(): Promise<void> {
     membersVisible(tenantB.id),
   ]);
 
-  const leaksToA = seenA.filter((number) => number.startsWith('MEM-2'));
-  const leaksToB = seenB.filter((number) => number.startsWith('MEM-1'));
+  const leaksToA = seenA.filter((number) => expectedB.includes(number));
+  const leaksToB = seenB.filter((number) => expectedA.includes(number));
   if (leaksToA.length > 0) {
     throw new Error(`tenant-a session saw tenant-b members: ${leaksToA.join(', ')}`);
   }
   if (leaksToB.length > 0) {
     throw new Error(`tenant-b session saw tenant-a members: ${leaksToB.join(', ')}`);
   }
-  if (!seenA.includes('MEM-10001')) {
-    throw new Error('tenant-a session did not see seeded member MEM-10001');
+  const missingA = expectedA.filter((number) => !seenA.includes(number));
+  const extraA = seenA.filter((number) => !expectedA.includes(number));
+  const missingB = expectedB.filter((number) => !seenB.includes(number));
+  const extraB = seenB.filter((number) => !expectedB.includes(number));
+  if (missingA.length > 0 || extraA.length > 0) {
+    throw new Error(
+      `tenant-a visibility mismatch. missing=${missingA.join(',') || 'none'} extra=${extraA.join(',') || 'none'}`,
+    );
   }
-  if (!seenB.includes('MEM-20001')) {
-    throw new Error('tenant-b session did not see seeded member MEM-20001');
+  if (missingB.length > 0 || extraB.length > 0) {
+    throw new Error(
+      `tenant-b visibility mismatch. missing=${missingB.join(',') || 'none'} extra=${extraB.join(',') || 'none'}`,
+    );
   }
   if (seenA.join(',') !== seenAAgain.join(',') || seenB.join(',') !== seenBAgain.join(',')) {
     throw new Error('Concurrent RLS reads disagreed — isolation is not stable under load');

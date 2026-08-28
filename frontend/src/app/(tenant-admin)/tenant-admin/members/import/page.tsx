@@ -65,10 +65,7 @@ export default function LegacyImportPage() {
     <div className="max-w-3xl mx-auto space-y-6 py-6 px-4">
       {/* Header */}
       <div className="pb-4 border-b border-slate-200/80 dark:border-slate-800">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-gold">
-          Task 11 — Legacy Import
-        </span>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight font-serif mt-0.5">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight font-serif">
           Import Legacy Member List
         </h1>
         <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5">
@@ -231,8 +228,8 @@ export default function LegacyImportPage() {
           <p>
             Use a real member list, not a document. Dates must be <code className="font-mono">YYYY-MM-DD</code>.{' '}
             <a
-              href="/samples/legacy-members-sample.csv"
-              download="legacy-members-sample.csv"
+              href="/samples/legacy-members-sample.csv?v=3"
+              download="sacco-new-members.csv"
               className="font-bold text-amber-800 dark:text-gold hover:underline"
             >
               Download a sample CSV

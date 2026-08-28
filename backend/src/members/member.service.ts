@@ -1,6 +1,13 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { Not, QueryFailedError } from 'typeorm';
 import { TenantContextService } from '../common/tenant-context/tenant-context.service';
+import {
+  normalizeEmail,
+  normalizeMemberNumber,
+  normalizeNationalId,
+  normalizePhone,
+} from './member-field.rules';
 import { MemberEntity } from './member.entity';
 import type { IdType, Member, MemberId, MemberStatus } from '../types';
 import { CreateMemberDto } from './dto/create-member.dto';
@@ -71,28 +78,35 @@ export class MemberService {
       throw new UnauthorizedException('No tenant context found');
     }
 
-    const existing = await repo.findOne({ where: { memberNumber: input.memberNumber } });
-    if (existing) {
-      throw new ConflictException(`Member number "${input.memberNumber}" already exists in this tenant`);
-    }
+    const memberNumber = normalizeMemberNumber(input.memberNumber);
+    const nationalId = normalizeNationalId(input.idType, input.nationalId);
+    const phone = normalizePhone(input.phone);
+    const email = normalizeEmail(input.email);
+
+    await this.assertUniqueFields(repo, { memberNumber, nationalId, phone, email });
 
     const member = repo.create({
-      memberNumber: input.memberNumber,
+      memberNumber,
       firstName: input.firstName,
-      middleName: input.middleName ?? null,
+      middleName: input.middleName,
       lastName: input.lastName,
-      nationalId: input.nationalId ?? null,
-      idType: input.nationalId ? (input.idType ?? null) : null,
-      phone: input.phone ?? null,
-      email: input.email ?? null,
-      dateOfBirth: input.dateOfBirth ?? null,
-      status: input.status ?? 'pending',
+      nationalId,
+      idType: input.idType,
+      phone,
+      email,
+      dateOfBirth: input.dateOfBirth,
+      status: input.status ?? 'active',
       joinedAt: input.joinedAt ?? null,
       tenantId,
     });
 
-    const saved = await repo.save(member);
-    return this.mapToContract(saved);
+    try {
+      const saved = await repo.save(member);
+      return this.mapToContract(saved);
+    } catch (err) {
+      this.rethrowUniqueViolation(err);
+      throw err;
+    }
   }
 
   /** `GET /api/members/{id}` */
@@ -140,25 +154,74 @@ export class MemberService {
       throw new NotFoundException(`Member with ID "${memberId}" not found`);
     }
 
-    if (changes.memberNumber && changes.memberNumber !== member.memberNumber) {
-      const existing = await repo.findOne({ where: { memberNumber: changes.memberNumber } });
-      if (existing) {
-        throw new ConflictException(`Member number "${changes.memberNumber}" already exists in this tenant`);
-      }
-    }
+    const nextMemberNumber = changes.memberNumber
+      ? normalizeMemberNumber(changes.memberNumber)
+      : member.memberNumber;
+    const nextNationalId =
+      changes.nationalId === undefined
+        ? member.nationalId
+        : changes.nationalId
+          ? normalizeNationalId(changes.idType ?? member.idType ?? undefined, changes.nationalId)
+          : null;
+    const nextPhone =
+      changes.phone === undefined ? member.phone : changes.phone ? normalizePhone(changes.phone) : null;
+    const nextEmail =
+      changes.email === undefined ? member.email : changes.email ? normalizeEmail(changes.email) : null;
+
+    await this.assertUniqueFields(
+      repo,
+      {
+        memberNumber: nextMemberNumber,
+        nationalId: nextNationalId,
+        phone: nextPhone,
+        email: nextEmail,
+      },
+      memberId,
+    );
 
     Object.assign(member, changes);
+    member.memberNumber = nextMemberNumber;
+    member.phone = nextPhone;
+    member.email = nextEmail;
     if (changes.nationalId === undefined) {
       // leave as-is
     } else if (!changes.nationalId) {
       member.nationalId = null;
       member.idType = null;
-    } else if (changes.idType !== undefined) {
-      member.idType = changes.idType;
+    } else {
+      member.nationalId = nextNationalId;
+      if (changes.idType !== undefined) {
+        member.idType = changes.idType;
+      }
     }
 
-    const saved = await repo.save(member);
-    return this.mapToContract(saved);
+    try {
+      const saved = await repo.save(member);
+      return this.mapToContract(saved);
+    } catch (err) {
+      this.rethrowUniqueViolation(err);
+      throw err;
+    }
+  }
+
+  /** `DELETE /api/members/{id}` — hard delete when no related rows; otherwise 409. */
+  async remove(memberId: MemberId): Promise<void> {
+    const repo = this.tenantContext.repo(MemberEntity);
+    const member = await repo.findOne({ where: { id: memberId } });
+    if (!member) {
+      throw new NotFoundException(`Member with ID "${memberId}" not found`);
+    }
+
+    try {
+      await repo.remove(member);
+    } catch (err) {
+      if (this.isFkViolation(err)) {
+        throw new ConflictException(
+          'This member has savings accounts, loans, or other records. Set status to Inactive instead of deleting.',
+        );
+      }
+      throw err;
+    }
   }
 
   /** Validates a legacy CSV and stages it for review without writing member rows. */
@@ -214,6 +277,9 @@ export class MemberService {
     const validEntities: Partial<MemberEntity>[] = [];
     const preview: Record<string, string>[] = [];
     const seenMemberNumbers = new Set<string>();
+    const seenNationalIds = new Set<string>();
+    const seenPhones = new Set<string>();
+    const seenEmails = new Set<string>();
     const repo = this.tenantContext.repo(MemberEntity);
 
     for (let i = 1; i < lines.length; i++) {
@@ -268,9 +334,73 @@ export class MemberService {
         errors.push({
           row: rowNum,
           field: 'memberNumber',
-          message: `Member number "${memberNumber}" already exists in the system`,
+          message: `Member number "${memberNumber}" is already registered in this SACCO`,
         });
         continue;
+      }
+
+      if (nationalId) {
+        if (seenNationalIds.has(nationalId)) {
+          errors.push({
+            row: rowNum,
+            field: 'nationalId',
+            message: `ID number "${nationalId}" is duplicated in this CSV`,
+          });
+          continue;
+        }
+        seenNationalIds.add(nationalId);
+        const idExisting = await repo.findOne({ where: { nationalId } });
+        if (idExisting) {
+          errors.push({
+            row: rowNum,
+            field: 'nationalId',
+            message: `ID number "${nationalId}" is already registered in this SACCO`,
+          });
+          continue;
+        }
+      }
+
+      if (phone) {
+        if (seenPhones.has(phone)) {
+          errors.push({
+            row: rowNum,
+            field: 'phone',
+            message: `Phone "${phone}" is duplicated in this CSV`,
+          });
+          continue;
+        }
+        seenPhones.add(phone);
+        const phoneExisting = await repo.findOne({ where: { phone } });
+        if (phoneExisting) {
+          errors.push({
+            row: rowNum,
+            field: 'phone',
+            message: `Phone "${phone}" is already registered in this SACCO`,
+          });
+          continue;
+        }
+      }
+
+      if (email) {
+        const emailKey = email.toLowerCase();
+        if (seenEmails.has(emailKey)) {
+          errors.push({
+            row: rowNum,
+            field: 'email',
+            message: `Email "${email}" is duplicated in this CSV`,
+          });
+          continue;
+        }
+        seenEmails.add(emailKey);
+        const emailExisting = await repo.findOne({ where: { email: emailKey } });
+        if (emailExisting) {
+          errors.push({
+            row: rowNum,
+            field: 'email',
+            message: `Email "${email}" is already registered in this SACCO`,
+          });
+          continue;
+        }
       }
 
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -384,6 +514,93 @@ export class MemberService {
       committed: saved.length,
       skipped: 0,
     };
+  }
+
+  private async assertUniqueFields(
+    repo: { findOne: (opts: { where: object }) => Promise<MemberEntity | null> },
+    fields: {
+      memberNumber?: string;
+      nationalId?: string | null;
+      phone?: string | null;
+      email?: string | null;
+    },
+    excludeId?: string,
+  ): Promise<void> {
+    if (fields.memberNumber) {
+      const found = await repo.findOne({
+        where: excludeId
+          ? { memberNumber: fields.memberNumber, id: Not(excludeId) }
+          : { memberNumber: fields.memberNumber },
+      });
+      if (found) {
+        throw new ConflictException(
+          `Member number "${fields.memberNumber}" is already registered in this SACCO`,
+        );
+      }
+    }
+
+    if (fields.nationalId) {
+      const found = await repo.findOne({
+        where: excludeId
+          ? { nationalId: fields.nationalId, id: Not(excludeId) }
+          : { nationalId: fields.nationalId },
+      });
+      if (found) {
+        throw new ConflictException(
+          'This ID number is already registered in this SACCO. Names may match; ID, phone, and email must be unique.',
+        );
+      }
+    }
+
+    if (fields.phone) {
+      const found = await repo.findOne({
+        where: excludeId ? { phone: fields.phone, id: Not(excludeId) } : { phone: fields.phone },
+      });
+      if (found) {
+        throw new ConflictException('This phone number is already registered in this SACCO');
+      }
+    }
+
+    if (fields.email) {
+      const found = await repo.findOne({
+        where: excludeId ? { email: fields.email, id: Not(excludeId) } : { email: fields.email },
+      });
+      if (found) {
+        throw new ConflictException('This email is already registered in this SACCO');
+      }
+    }
+  }
+
+  private rethrowUniqueViolation(err: unknown): never | void {
+    if (!(err instanceof QueryFailedError)) {
+      return;
+    }
+    const driver = err as QueryFailedError & { driverError?: { code?: string; constraint?: string } };
+    if (driver.driverError?.code !== '23505') {
+      return;
+    }
+    const constraint = driver.driverError.constraint ?? '';
+    if (constraint.includes('member_number')) {
+      throw new ConflictException('Member number is already registered in this SACCO');
+    }
+    if (constraint.includes('national_id')) {
+      throw new ConflictException('This ID number is already registered in this SACCO');
+    }
+    if (constraint.includes('phone')) {
+      throw new ConflictException('This phone number is already registered in this SACCO');
+    }
+    if (constraint.includes('email')) {
+      throw new ConflictException('This email is already registered in this SACCO');
+    }
+    throw new ConflictException('A member with these details is already registered in this SACCO');
+  }
+
+  private isFkViolation(err: unknown): boolean {
+    if (!(err instanceof QueryFailedError)) {
+      return false;
+    }
+    const driver = err as QueryFailedError & { driverError?: { code?: string } };
+    return driver.driverError?.code === '23503';
   }
 
   /** Maps a database MemberEntity to the public API Member contract. */

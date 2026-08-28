@@ -258,6 +258,10 @@ export function updateMember(id: string, payload: UpdateMemberPayload) {
   return apiClient.patch<Member>(`/members/${id}`, payload);
 }
 
+export function deleteMember(id: string) {
+  return apiClient.delete<void>(`/members/${id}`);
+}
+
 export async function stageImport(file: File): Promise<LegacyImportPreview> {
   const formData = new FormData();
   formData.append('file', file);

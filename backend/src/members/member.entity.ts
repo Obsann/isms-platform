@@ -15,7 +15,18 @@ export type { MemberStatus };
 @Entity('members')
 @Index('idx_members_tenant_id', ['tenantId'])
 @Index('uq_members_tenant_member_number', ['tenantId', 'memberNumber'], { unique: true })
-@Index('idx_members_tenant_national_id', ['tenantId', 'nationalId'])
+@Index('uq_members_tenant_national_id', ['tenantId', 'nationalId'], {
+  unique: true,
+  where: '"national_id" IS NOT NULL',
+})
+@Index('uq_members_tenant_phone', ['tenantId', 'phone'], {
+  unique: true,
+  where: '"phone" IS NOT NULL',
+})
+@Index('uq_members_tenant_email', ['tenantId', 'email'], {
+  unique: true,
+  where: '"email" IS NOT NULL',
+})
 // Target of the composite FK from `accounts`, which is what keeps an account from
 // referencing a member in another tenant.
 @Index('uq_members_tenant_id_id', ['tenantId', 'id'], { unique: true })

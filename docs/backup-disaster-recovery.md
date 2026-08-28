@@ -74,3 +74,5 @@ npm run rls:check
 
 Needs seed tenants `tenant-a` / `tenant-b` (`npm run seed`). Password must match
 Compose (`POSTGRES_PASSWORD` / `DB_PASSWORD`).
+
+Recorded pass: [`backup-rehearsal-log.md`](./backup-rehearsal-log.md).

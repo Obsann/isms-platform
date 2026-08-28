@@ -25,6 +25,7 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | [`SACCO_PROPOSAL.md`](./SACCO_PROPOSAL.md) | Background SDS — **not** MVP truth; prefer `decisions.mdc` |
 | [`test-case-matrix.md`](./test-case-matrix.md) | Task 30 — FR → test case, UAT script, sign-off, defects (Melkamu + Biruk) |
 | [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Task 33 — backup schedule, restore rehearsal, RLS re-check (Melkamu) |
+| [`backup-rehearsal-log.md`](./backup-rehearsal-log.md) | Task 33 — recorded dump/restore/RLS pass |
 | [`README.md`](./README.md) | This index |
 
 ## Expected later (docs only until written)

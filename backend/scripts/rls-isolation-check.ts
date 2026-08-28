@@ -1,25 +1,20 @@
 /**
  * Task 28 RLS isolation check — also the Task 33 restore verify step.
  *
- * Connects as `isms_app` (not the postgres superuser, who bypasses RLS).
+ * Runs inside Docker as `isms_app` (not the postgres superuser, who bypasses RLS).
  * With tenant-a in session, overlapping tenant-b members must be invisible,
- * and the reverse. Two connections run at the same time so isolation holds
- * under concurrent load, not only on a quiet sequential pass.
+ * and the reverse. Four sessions run at once so isolation holds under concurrent load.
  *
  * Usage (from backend/):
  *   npm run rls:check
  *   npm run rls:check -- --database=isms_restore_check
  */
-import { config as loadDotenv } from 'dotenv';
-import { Client } from 'pg';
+import { execFile } from 'node:child_process';
 
-loadDotenv({ quiet: true });
-
-const HOST = process.env.DB_HOST ?? 'localhost';
-const PORT = Number.parseInt(process.env.DB_PORT ?? '5432', 10);
+const CONTAINER = process.env.POSTGRES_CONTAINER ?? 'isms-postgres';
 const ADMIN_USER = process.env.DB_USERNAME ?? 'postgres';
 const APP_USER = process.env.DB_APP_USERNAME ?? 'isms_app';
-const PASSWORD = process.env.DB_PASSWORD ?? 'abebebesobela';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function argValue(flag: string): string | undefined {
   const match = process.argv.find((arg) => arg.startsWith(`${flag}=`));
@@ -28,79 +23,70 @@ function argValue(flag: string): string | undefined {
 
 const DATABASE = argValue('--database') ?? process.env.DB_NAME ?? 'isms_dev';
 
-interface TenantRow {
-  id: string;
-  code: string;
+function psql(user: string, sql: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      'docker',
+      ['exec', '-i', CONTAINER, 'psql', '-U', user, '-d', DATABASE, '-v', 'ON_ERROR_STOP=1', '-t', '-A', '-q'],
+      { encoding: 'utf8' },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr.trim() || error.message));
+          return;
+        }
+        resolve(stdout.trim());
+      },
+    );
+    child.stdin?.end(sql);
+  });
 }
 
-async function withClient(user: string, work: (client: Client) => Promise<void>): Promise<void> {
-  const client = new Client({
-    host: HOST,
-    port: PORT,
-    user,
-    password: PASSWORD,
-    database: DATABASE,
-  });
-  await client.connect();
-  try {
-    await work(client);
-  } finally {
-    await client.end();
-  }
+function memberNumbers(raw: string): string[] {
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('MEM-'));
 }
 
 async function membersVisible(tenantId: string): Promise<string[]> {
-  const client = new Client({
-    host: HOST,
-    port: PORT,
-    user: APP_USER,
-    password: PASSWORD,
-    database: DATABASE,
-  });
-  await client.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
-    const result = await client.query<{ member_number: string }>(
-      `SELECT member_number FROM members ORDER BY member_number`,
-    );
-    await client.query('COMMIT');
-    return result.rows.map((row) => row.member_number);
-  } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch {
-      /* ignore */
-    }
-    throw error;
-  } finally {
-    await client.end();
+  if (!UUID.test(tenantId)) {
+    throw new Error(`Invalid tenant id: ${tenantId}`);
   }
+  const raw = await psql(
+    APP_USER,
+    `BEGIN;
+     SELECT set_config('app.tenant_id', '${tenantId}', true);
+     SELECT member_number FROM members ORDER BY member_number;
+     COMMIT;`,
+  );
+  return memberNumbers(raw);
 }
 
 async function main(): Promise<void> {
-  let tenants: TenantRow[] = [];
-  await withClient(ADMIN_USER, async (admin) => {
-    const result = await admin.query<TenantRow>(
-      `SELECT id, code FROM tenants WHERE code IN ('tenant-a', 'tenant-b') ORDER BY code`,
-    );
-    tenants = result.rows;
-  });
-
+  const tenantLines = await psql(
+    ADMIN_USER,
+    `SELECT id || ' ' || code FROM tenants WHERE code IN ('tenant-a', 'tenant-b') ORDER BY code;`,
+  );
+  const tenants = tenantLines
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const space = line.indexOf(' ');
+      return { id: line.slice(0, space), code: line.slice(space + 1) };
+    });
   const tenantA = tenants.find((row) => row.code === 'tenant-a');
   const tenantB = tenants.find((row) => row.code === 'tenant-b');
-  if (!tenantA || !tenantB) {
+  if (!tenantA?.id || !tenantB?.id) {
     throw new Error(
       `Need seed tenants tenant-a and tenant-b in ${DATABASE}. Run \`npm run seed\` first.`,
     );
   }
 
-  await withClient(APP_USER, async (app) => {
-    const empty = await app.query(`SELECT member_number FROM members`);
-    if (empty.rows.length !== 0) {
-      throw new Error('Fail-closed RLS failed: isms_app saw members with no app.tenant_id set');
-    }
-  });
+  const unscoped = memberNumbers(await psql(APP_USER, `SELECT member_number FROM members;`));
+  if (unscoped.length > 0) {
+    throw new Error('Fail-closed RLS failed: isms_app saw members with no app.tenant_id set');
+  }
 
   const [seenA, seenB, seenAAgain, seenBAgain] = await Promise.all([
     membersVisible(tenantA.id),
@@ -127,7 +113,7 @@ async function main(): Promise<void> {
     throw new Error('Concurrent RLS reads disagreed — isolation is not stable under load');
   }
 
-  console.log(`RLS check passed on ${DATABASE} (concurrent tenant-a / tenant-b).`);
+  console.log(`RLS check passed on ${DATABASE}.`);
   console.log(`  tenant-a members: ${seenA.join(', ')}`);
   console.log(`  tenant-b members: ${seenB.join(', ')}`);
 }

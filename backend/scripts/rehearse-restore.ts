@@ -6,19 +6,20 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const backendRoot = join(__dirname, '..');
+const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function run(script: string, extraArgs: string[] = []): void {
-  const result = spawnSync(
-    process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    ['ts-node', '-O', '{"module":"commonjs"}', script, ...extraArgs],
-    { cwd: backendRoot, stdio: 'inherit', shell: process.platform === 'win32' },
-  );
+  const result = spawnSync(npmCmd, ['run', script, '--', ...extraArgs], {
+    cwd: backendRoot,
+    stdio: 'inherit',
+    shell: true,
+  });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
 }
 
-run('scripts/backup-database.ts');
-run('scripts/restore-database.ts');
-run('scripts/rls-isolation-check.ts', ['--database=isms_restore_check']);
+run('backup:now');
+run('backup:restore');
+run('rls:check', ['--database=isms_restore_check']);
 console.log('Task 33 rehearsal passed: restored copy satisfies the Task 28 RLS check.');

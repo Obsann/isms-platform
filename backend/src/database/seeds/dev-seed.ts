@@ -20,17 +20,18 @@ interface SeedStaff {
 }
 
 interface SeedMember {
+  tenantCode: string;
   memberNumber: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
-  email: string;
-  phone: string;
-  nationalId: string;
-  idType: string;
-  status: string;
-  tenantCode: string;
-  initialSavingsBalance: string;
-  accountNumber: string;
+  nationalId?: string;
+  idType?: 'national_id' | 'passport' | 'other';
+  phone?: string;
+  email?: string;
+  status: 'active' | 'pending' | 'inactive';
+  initialSavingsBalance?: string;
+  accountNumber?: string;
 }
 
 const DEV_PASSWORD = 'DevPassword!123';
@@ -42,54 +43,58 @@ const SEED_TENANTS: SeedTenant[] = [
 
 const SEED_MEMBERS: SeedMember[] = [
   {
+    tenantCode: 'tenant-a',
     memberNumber: 'MEM-10001',
     firstName: 'Abebe',
+    middleName: 'Kebede',
     lastName: 'Bikila',
-    email: 'abebe.bikila@tenant-a.dev',
-    phone: '+251911100001',
-    nationalId: 'ETH-10001',
+    nationalId: 'FIN-1001-2002-3003',
     idType: 'national_id',
+    phone: '+251911123456',
+    email: 'abebe.bikila@tenant-a.dev',
     status: 'active',
-    tenantCode: 'tenant-a',
     initialSavingsBalance: '45230.00',
     accountNumber: 'SAV-10001',
   },
   {
+    tenantCode: 'tenant-a',
     memberNumber: 'MEM-10002',
     firstName: 'Tigist',
+    middleName: 'Worku',
     lastName: 'Hailu',
-    email: 'tigist.hailu@tenant-a.dev',
-    phone: '+251911100002',
-    nationalId: 'ETH-10002',
-    idType: 'national_id',
+    nationalId: 'EP-8822991',
+    idType: 'passport',
+    phone: '+251922234567',
+    email: 'tigist.worku@tenant-a.dev',
     status: 'active',
-    tenantCode: 'tenant-a',
     initialSavingsBalance: '128500.00',
     accountNumber: 'SAV-10002',
   },
   {
+    tenantCode: 'tenant-a',
     memberNumber: 'MEM-10003',
     firstName: 'Dawit',
+    middleName: 'Solomon',
     lastName: 'Tadesse',
-    email: 'dawit.tadesse@tenant-a.dev',
-    phone: '+251911100003',
-    nationalId: 'ETH-10003',
+    nationalId: 'FIN-3003-4004-5005',
     idType: 'national_id',
+    phone: '+251933345678',
+    email: 'dawit.solomon@tenant-a.dev',
     status: 'pending',
-    tenantCode: 'tenant-a',
     initialSavingsBalance: '35000.00',
     accountNumber: 'SAV-10003',
   },
   {
+    tenantCode: 'tenant-b',
     memberNumber: 'MEM-20001',
     firstName: 'Almaz',
+    middleName: 'Desta',
     lastName: 'Tesfaye',
-    email: 'almaz.tesfaye@tenant-b.dev',
-    phone: '+251911200001',
-    nationalId: 'ETH-20001',
+    nationalId: 'FIN-5005-6006-7007',
     idType: 'national_id',
+    phone: '+251944456789',
+    email: 'almaz.desta@tenant-b.dev',
     status: 'active',
-    tenantCode: 'tenant-b',
     initialSavingsBalance: '892100.00',
     accountNumber: 'SAV-20001',
   },
@@ -97,7 +102,7 @@ const SEED_MEMBERS: SeedMember[] = [
 
 /**
  * Dev seed for Task 3 isolation checks, Task 4 portal routing, Task 8 Member directory,
- * and Task 23 Self-Service API. Same publicly-known password for every staff account.
+ * Task 18 Loans, and Task 23 Self-Service API. Same password for every staff account.
  *
  * Runs as the `postgres` role regardless of `.env`'s `DB_USERNAME`, since seeding
  * writes across tenants and RLS would block that. Idempotent.
@@ -201,21 +206,26 @@ async function seed(): Promise<void> {
     }
 
     // 3. Seed Members & Savings Accounts
+    console.log('\nSeeding Members & Savings Accounts...');
+    let firstMemberId: string | null = null;
+    const tenantAId = tenantIds.get('tenant-a')!;
+
     for (const member of SEED_MEMBERS) {
       const tenantId = tenantIds.get(member.tenantCode)!;
-
       const [{ id: memberId }] = await dataSource.query<[{ id: string }]>(
         `
           INSERT INTO "members"
-            ("tenant_id", "member_number", "first_name", "last_name", "email", "phone", "national_id", "id_type", "status", "created_at", "updated_at")
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            ("tenant_id", "member_number", "first_name", "middle_name", "last_name", "national_id", "id_type", "phone", "email", "status", "joined_at", "updated_at")
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE, NOW())
           ON CONFLICT ("tenant_id", "member_number")
             DO UPDATE SET
               "first_name" = EXCLUDED."first_name",
+              "middle_name" = EXCLUDED."middle_name",
               "last_name" = EXCLUDED."last_name",
-              "email" = EXCLUDED."email",
-              "phone" = EXCLUDED."phone",
               "national_id" = EXCLUDED."national_id",
+              "id_type" = EXCLUDED."id_type",
+              "phone" = EXCLUDED."phone",
+              "email" = EXCLUDED."email",
               "status" = EXCLUDED."status",
               "updated_at" = NOW()
           RETURNING "id"
@@ -224,29 +234,51 @@ async function seed(): Promise<void> {
           tenantId,
           member.memberNumber,
           member.firstName,
+          member.middleName || null,
           member.lastName,
-          member.email,
-          member.phone,
-          member.nationalId,
-          member.idType,
+          member.nationalId || null,
+          member.idType || null,
+          member.phone || null,
+          member.email || null,
           member.status,
         ],
       );
 
+      if (!firstMemberId && member.tenantCode === 'tenant-a') {
+        firstMemberId = memberId;
+      }
+
+      if (member.accountNumber && member.initialSavingsBalance) {
+        await dataSource.query(
+          `
+            INSERT INTO "accounts"
+              ("tenant_id", "member_id", "account_number", "type", "status", "balance", "held_amount", "currency", "created_at", "updated_at")
+            VALUES ($1, $2, $3, 'savings', 'active', $4, 0, 'ETB', NOW(), NOW())
+            ON CONFLICT ("tenant_id", "account_number")
+              DO UPDATE SET
+                "balance" = EXCLUDED."balance",
+                "updated_at" = NOW()
+          `,
+          [tenantId, memberId, member.accountNumber, member.initialSavingsBalance],
+        );
+      }
+
+      console.log(`  member ${member.memberNumber}: id="${memberId}", name="${member.firstName} ${member.lastName}", tenant="${member.tenantCode}"`);
+    }
+
+    // 4. Seed Sample Loan
+    if (firstMemberId) {
       await dataSource.query(
         `
-          INSERT INTO "accounts"
-            ("tenant_id", "member_id", "account_number", "type", "status", "balance", "held_amount", "currency", "created_at", "updated_at")
-          VALUES ($1, $2, $3, 'savings', 'active', $4, 0, 'ETB', NOW(), NOW())
-          ON CONFLICT ("tenant_id", "account_number")
-            DO UPDATE SET
-              "balance" = EXCLUDED."balance",
-              "updated_at" = NOW()
+          INSERT INTO "loans"
+            ("tenant_id", "member_id", "loan_number", "requested_amount", "approved_amount", "term_months", "purpose", "status")
+          VALUES ($1, $2, 'LN-2026-000001', '50000.00', '50000.00', 12, 'Business Expansion', 'approved')
+          ON CONFLICT ("tenant_id", "loan_number")
+            DO UPDATE SET "requested_amount" = EXCLUDED."requested_amount"
         `,
-        [tenantId, memberId, member.accountNumber, member.initialSavingsBalance],
+        [tenantAId, firstMemberId],
       );
-
-      console.log(`  member ${member.memberNumber}: ${member.firstName} ${member.lastName} (${member.tenantCode}, balance: ${member.initialSavingsBalance} ETB)`);
+      console.log(`  loan LN-2026-000001: id="${firstMemberId}", amount="50000.00", status="approved"`);
     }
   } finally {
     await dataSource.destroy();

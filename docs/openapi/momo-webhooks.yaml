@@ -1,0 +1,359 @@
+openapi: 3.0.3
+info:
+  title: ISMS Mobile Money Webhooks API
+  description: |
+    Comprehensive OpenAPI specification for Mobile Money C2B (Member Deposit) and B2C (Loan Disbursement / Withdrawal) webhook callbacks for the ISMS SACCO Management SaaS Platform (Task 26 — Owner: Liya).
+    
+    ### Key Guidelines
+    - **No USSD**: Self-service is web-only for MVP (DECISIONS.md D1).
+    - **Providers**: Supports Telebirr, M-PESA Ethiopia, and CBE Birr.
+    - **Idempotency**: All webhook requests MUST carry an `X-Idempotency-Key` header.
+    - **Security**: All webhook requests MUST be signed using HMAC-SHA256 signature passed in the `X-Signature` header.
+    - **Mock UI Target**: Task 24's member portal uses this exact payload shape for simulating C2B/B2C transactions in "pending confirmation" state.
+  version: 1.0.0
+  contact:
+    name: ISMS Engineering Team
+    email: dev@isms-sacco.dev
+
+servers:
+  - url: https://api.isms-sacco.dev/v1
+    description: Development Gateway Environment
+  - url: http://localhost:3000/api
+    description: Local Development Environment
+
+paths:
+  /webhooks/momo/c2b:
+    post:
+      summary: Mobile Money C2B Webhook (Member Deposit Callback)
+      operationId: processC2BWebhook
+      description: |
+        Callback endpoint triggered by mobile money providers (Telebirr, M-PESA, CBE Birr) when a SACCO member initiates a deposit from their mobile wallet to their savings account.
+      parameters:
+        - in: header
+          name: X-Signature
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature calculated over timestamp + "." + raw JSON request body using the shared webhook secret.
+          example: sha256=a8f5f167f44f4964e6c998dee827110c
+        - in: header
+          name: X-Timestamp
+          required: true
+          schema:
+            type: string
+          description: UNIX timestamp (in milliseconds) or ISO-8601 timestamp when the webhook was sent.
+          example: "1771929600000"
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: Unique provider event/transaction ID used to prevent duplicate processing.
+          example: "IDEM-C2B-20260826-001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileMoneyC2BPayload'
+            example:
+              providerReference: "TLB-C2B-987654321"
+              provider: "telebirr"
+              memberId: "00000000-0000-0000-0000-000000000001"
+              accountNumber: "SAV-123456-7890"
+              msisdn: "+251911234567"
+              amount: "1500.00"
+              currency: "ETB"
+              status: "COMPLETED"
+              failureReason: null
+              occurredAt: "2026-08-26T10:30:00.000Z"
+      responses:
+        '200':
+          description: Webhook received and queued for processing successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAcknowledgment'
+              example:
+                status: "RECEIVED"
+                eventId: "evt_c2b_987654321"
+                processedAt: "2026-08-26T10:30:01.120Z"
+        '400':
+          description: Invalid payload structure or missing required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 400
+                errorCode: "INVALID_PAYLOAD"
+                message: "Amount must be a positive decimal string"
+                timestamp: "2026-08-26T10:30:01.000Z"
+        '401':
+          description: HMAC signature verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 401
+                errorCode: "INVALID_SIGNATURE"
+                message: "X-Signature header verification failed"
+                timestamp: "2026-08-26T10:30:01.000Z"
+        '409':
+          description: Duplicate webhook payload (idempotency key already processed).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 409
+                errorCode: "DUPLICATE_WEBHOOK"
+                message: "Webhook with provider reference TLB-C2B-987654321 already processed"
+                timestamp: "2026-08-26T10:30:01.000Z"
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhooks/momo/b2c:
+    post:
+      summary: Mobile Money B2C Webhook (Disbursement / Withdrawal Callback)
+      operationId: processB2CWebhook
+      description: |
+        Callback endpoint triggered by mobile money providers when a SACCO loan disbursement or member withdrawal to a mobile wallet has been processed.
+      parameters:
+        - in: header
+          name: X-Signature
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature calculated over timestamp + "." + raw JSON request body.
+          example: sha256=b9g6g278g55g5075f7d009efe938221d
+        - in: header
+          name: X-Timestamp
+          required: true
+          schema:
+            type: string
+          description: UNIX timestamp (in milliseconds) or ISO-8601 timestamp when the webhook was sent.
+          example: "1771929600000"
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: Unique provider event/transaction ID used to prevent duplicate processing.
+          example: "IDEM-B2C-20260826-002"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileMoneyB2CPayload'
+            example:
+              providerReference: "TLB-B2C-123456789"
+              provider: "telebirr"
+              memberId: "00000000-0000-0000-0000-000000000001"
+              loanId: "LN-2026-991823"
+              msisdn: "+251911234567"
+              amount: "5000.00"
+              currency: "ETB"
+              status: "ACCEPTED"
+              failureReason: null
+              occurredAt: "2026-08-26T10:35:00.000Z"
+      responses:
+        '200':
+          description: Webhook received and processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAcknowledgment'
+              example:
+                status: "RECEIVED"
+                eventId: "evt_b2c_123456789"
+                processedAt: "2026-08-26T10:35:01.050Z"
+        '400':
+          description: Invalid payload structure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: HMAC signature verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate webhook payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    MobileMoneyC2BPayload:
+      type: object
+      required:
+        - providerReference
+        - provider
+        - memberId
+        - accountNumber
+        - msisdn
+        - amount
+        - currency
+        - status
+        - occurredAt
+      properties:
+        providerReference:
+          type: string
+          description: Transaction reference generated by the Mobile Money Provider (e.g. Telebirr / M-PESA ref).
+          example: "TLB-C2B-987654321"
+        provider:
+          type: string
+          enum: [telebirr, mpesa, cbe_birr]
+          description: Mobile money gateway provider name.
+          example: "telebirr"
+        memberId:
+          type: string
+          format: uuid
+          description: SACCO Member UUID.
+          example: "00000000-0000-0000-0000-000000000001"
+        accountNumber:
+          type: string
+          description: Target SACCO savings account number.
+          example: "SAV-123456-7890"
+        msisdn:
+          type: string
+          description: Member mobile phone number in E.164 format.
+          example: "+251911234567"
+        amount:
+          type: string
+          description: Transaction amount formatted as a 2-decimal string (never float/number).
+          example: "1500.00"
+        currency:
+          type: string
+          enum: [ETB]
+          default: "ETB"
+          description: ISO-4217 currency code.
+        status:
+          type: string
+          enum: [COMPLETED, FAILED, PENDING]
+          description: Final status of the mobile deposit on provider network.
+          example: "COMPLETED"
+        failureReason:
+          type: string
+          nullable: true
+          description: Error description if status is FAILED.
+          example: null
+        occurredAt:
+          type: string
+          format: date-time
+          description: Timestamp when transaction completed on provider network (ISO-8601).
+          example: "2026-08-26T10:30:00.000Z"
+
+    MobileMoneyB2CPayload:
+      type: object
+      required:
+        - providerReference
+        - provider
+        - memberId
+        - msisdn
+        - amount
+        - currency
+        - status
+        - occurredAt
+      properties:
+        providerReference:
+          type: string
+          description: Transaction reference generated by Mobile Money Provider.
+          example: "TLB-B2C-123456789"
+        provider:
+          type: string
+          enum: [telebirr, mpesa, cbe_birr]
+          description: Mobile money gateway provider name.
+          example: "telebirr"
+        memberId:
+          type: string
+          format: uuid
+          description: SACCO Member UUID receiving the disbursement/withdrawal.
+          example: "00000000-0000-0000-0000-000000000001"
+        loanId:
+          type: string
+          nullable: true
+          description: Associated Loan ID if this B2C flow is a loan disbursement.
+          example: "LN-2026-991823"
+        msisdn:
+          type: string
+          description: Target mobile wallet phone number in E.164 format.
+          example: "+251911234567"
+        amount:
+          type: string
+          description: Amount disbursed as a 2-decimal string.
+          example: "5000.00"
+        currency:
+          type: string
+          enum: [ETB]
+          default: "ETB"
+          description: ISO-4217 currency code.
+        status:
+          type: string
+          enum: [ACCEPTED, REJECTED, PENDING]
+          description: Result of the wallet disbursement.
+          example: "ACCEPTED"
+        failureReason:
+          type: string
+          nullable: true
+          description: Reason for rejection if status is REJECTED.
+          example: null
+        occurredAt:
+          type: string
+          format: date-time
+          description: Timestamp when wallet credit succeeded/failed (ISO-8601).
+          example: "2026-08-26T10:35:00.000Z"
+
+    WebhookAcknowledgment:
+      type: object
+      required:
+        - status
+        - eventId
+        - processedAt
+      properties:
+        status:
+          type: string
+          enum: [RECEIVED]
+          example: "RECEIVED"
+        eventId:
+          type: string
+          description: Internal processing ID assigned to this webhook event.
+          example: "evt_c2b_987654321"
+        processedAt:
+          type: string
+          format: date-time
+          description: Server timestamp of receipt.
+          example: "2026-08-26T10:30:01.120Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - statusCode
+        - errorCode
+        - message
+        - timestamp
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        errorCode:
+          type: string
+          example: "INVALID_PAYLOAD"
+        message:
+          type: string
+          example: "Amount must be a positive decimal string"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-08-26T10:30:01.000Z"

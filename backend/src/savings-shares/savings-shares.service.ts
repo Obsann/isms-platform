@@ -1,10 +1,12 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
 import {
   LedgerService,
@@ -37,11 +39,14 @@ import type {
  */
 @Injectable()
 export class SavingsSharesService {
+  private readonly logger = new Logger(SavingsSharesService.name);
+
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly configService: ConfigService,
     private readonly memberService: MemberService,
     private readonly ledger: LedgerService,
+    private readonly notifications: NotificationService,
   ) {}
 
   /** Create a new savings or share account for a member. */
@@ -86,7 +91,7 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    return this.ledger.postDeposit({
+    const txn = await this.ledger.postDeposit({
       accountId: account.id,
       amount: input.amount,
       currency: account.currency,
@@ -94,6 +99,8 @@ export class SavingsSharesService {
       narration: input.narration ?? null,
       postedByStaffId: input.postedByStaffId ?? null,
     });
+    await this.queueAccountNotification(account.memberId, 'deposit-posted', txn, account.accountNumber);
+    return txn;
   }
 
   /** Withdraw available funds from an active savings account. */
@@ -109,7 +116,7 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
-    return this.ledger.postWithdrawal({
+    const txn = await this.ledger.postWithdrawal({
       accountId: account.id,
       amount: input.amount,
       currency: account.currency,
@@ -117,6 +124,8 @@ export class SavingsSharesService {
       narration: input.narration ?? null,
       postedByStaffId: input.postedByStaffId ?? null,
     });
+    await this.queueAccountNotification(account.memberId, 'withdrawal-posted', txn, account.accountNumber);
+    return txn;
   }
 
   /** Purchase shares for a member. */
@@ -315,6 +324,45 @@ export class SavingsSharesService {
 
     const txns = await qb.getMany();
     return txns.map((t) => this.mapTransactionToContract(t));
+  }
+
+  /**
+   * Resolve the member email while the request tenant-context is still open, then
+   * hand SMTP off to `enqueue`. Looking the member up in a detached promise races
+   * `TenantContextInterceptor` releasing the query runner — the verify step
+   * (deposit → real email) would randomly never send.
+   *
+   * SMTP itself stays fire-and-forget so a slow mailbox cannot fail the posting
+   * or hold the tenant transaction open.
+   */
+  private async queueAccountNotification(
+    memberId: MemberId,
+    template: 'deposit-posted' | 'withdrawal-posted',
+    txn: Transaction,
+    accountNumber: string,
+  ): Promise<void> {
+    try {
+      const member = await this.memberService.findById(memberId);
+      if (!member.email) {
+        this.logger.warn(`Skipping ${template}: member ${memberId} has no email`);
+        return;
+      }
+      this.notifications.enqueue({
+        template,
+        to: member.email,
+        data: {
+          memberName: member.fullName,
+          amount: txn.amount,
+          currency: txn.currency,
+          balanceAfter: txn.balanceAfter,
+          accountNumber,
+          ...(txn.reference ? { reference: txn.reference } : {}),
+        },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Could not queue ${template}: ${message}`);
+    }
   }
 
   private validatePositiveAmount(amount: Amount): void {

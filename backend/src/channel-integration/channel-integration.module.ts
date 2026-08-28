@@ -1,14 +1,24 @@
 import { Module } from '@nestjs/common';
-import { NotificationService } from './notification.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './notification.service';
 
 /**
- * TODO(Task 25 — Liya): add the Nodemailer transport and read SMTP settings through
- * `ConfigService`.
- * TODO(Task 26 — Liya): document mobile money C2B/B2C webhook contracts in
- * `docs/openapi/`. No live gateway and no USSD this phase (DECISIONS.md D1).
+ * Channel Integration — SMTP notifications (Task 25) + mobile-money webhook
+ * contracts (Task 26, documented only).
+ *
+ * SMTP settings are read through ConfigService / `process.env` here only.
+ * TODO(Task 26): document mobile money C2B/B2C webhook contracts in `docs/openapi/`.
  */
 @Module({
-  providers: [NotificationService],
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: SMTP_TRANSPORT,
+      inject: [ConfigService],
+      useFactory: createSmtpTransport,
+    },
+    NotificationService,
+  ],
   exports: [NotificationService],
 })
 export class ChannelIntegrationModule {}

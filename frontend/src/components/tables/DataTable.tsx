@@ -4,10 +4,12 @@ import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 export interface Column<T> {
-  key: string;
+  key?: string;
+  accessorKey?: string;
   header: React.ReactNode;
-  render?: (row: T, index: number) => React.ReactNode;
-  accessor?: (row: T, index: number) => React.ReactNode;
+  render?: (row: T, index?: number) => React.ReactNode;
+  cell?: (row: T, index?: number) => React.ReactNode;
+  accessor?: (row: T, index?: number) => React.ReactNode;
   sortable?: boolean;
   align?: "left" | "center" | "right";
   className?: string;
@@ -147,7 +149,8 @@ export function DataTable<T>({
         <table className="w-full text-left text-sm border-collapse">
           <thead className="bg-midnight border-b-2 border-gold/60">
             <tr>
-              {columns.map((col) => {
+              {columns.map((col, index) => {
+                const colKey = col.key || col.accessorKey || `col-${index}`;
                 const alignClass =
                   col.align === "center"
                     ? "text-center"
@@ -157,8 +160,8 @@ export function DataTable<T>({
 
                 return (
                   <th
-                    key={col.key}
-                    onClick={() => handleSort(col.key, col.sortable)}
+                    key={colKey}
+                    onClick={() => handleSort(colKey, col.sortable)}
                     className={cn(
                       "px-5 py-4 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-light/90 select-none",
                       col.sortable && "cursor-pointer hover:text-white transition-colors",
@@ -213,7 +216,7 @@ export function DataTable<T>({
                       onRowClick && "cursor-pointer"
                     )}
                   >
-                    {columns.map((col) => {
+                    {columns.map((col, colIdx) => {
                       const alignClass =
                         col.align === "center"
                           ? "text-center"
@@ -221,15 +224,15 @@ export function DataTable<T>({
                           ? "text-right"
                           : "text-left";
 
-                      const content = col.render
-                        ? col.render(row, rowIndex)
-                        : col.accessor
-                        ? col.accessor(row, rowIndex)
-                        : (record[col.key] as React.ReactNode) ?? "-";
+                      const fieldKey = col.key || col.accessorKey || String(colIdx);
+                      const renderFn = col.render || col.cell || col.accessor;
+                      const content = renderFn
+                        ? renderFn(row, rowIndex)
+                        : (record[fieldKey] as React.ReactNode) ?? "-";
 
                       return (
                         <td
-                          key={col.key}
+                          key={fieldKey}
                           className={cn("px-5 py-3.5 align-middle text-sm", alignClass, col.className)}
                         >
                           {content}

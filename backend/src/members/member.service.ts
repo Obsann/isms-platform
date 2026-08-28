@@ -71,6 +71,11 @@ export class MemberService {
     const repo = this.tenantContext.repo(MemberEntity);
     const qb = repo.createQueryBuilder('member');
 
+    const tenantId = this.tenantContext.getTenantId();
+    if (tenantId) {
+      qb.andWhere('member.tenantId = :tenantId', { tenantId });
+    }
+
     if (query.search) {
       const searchPattern = `%${query.search}%`;
       qb.andWhere(

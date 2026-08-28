@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -64,5 +66,11 @@ export class MemberController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateMemberDto): Promise<Member> {
     return this.memberService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id') id: string): Promise<void> {
+    return this.memberService.remove(id);
   }
 }

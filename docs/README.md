@@ -23,6 +23,7 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | [`TEAM_ASSIGNMENTS.md`](./TEAM_ASSIGNMENTS.md) | Same plan organized by person / vertical |
 | [`TEAM_STATUS.md`](./TEAM_STATUS.md) | Who is on what right now, blockers |
 | [`SACCO_PROPOSAL.md`](./SACCO_PROPOSAL.md) | Background SDS — **not** MVP truth; prefer `decisions.mdc` |
+| [`test-case-matrix.md`](./test-case-matrix.md) | Task 30 — FR → test case, UAT script, sign-off, defects (Melkamu + Biruk) |
 | [`README.md`](./README.md) | This index |
 
 ## Expected later (docs only until written)
@@ -31,7 +32,7 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 |---|---|---|
 | `openapi/` — API spec, including mobile money C2B/B2C webhook contracts (no USSD) | Liya | 26 |
 | `rbac-matrix.md` — role-to-endpoint permission matrix | Obsan | 22 |
-| `test-case-matrix.md` — FR → test case (use decisions for MVP deltas) | Melkamu + Biruk | 30 |
+| ~~`test-case-matrix.md`~~ — written: [`test-case-matrix.md`](./test-case-matrix.md) | Melkamu + Biruk | 30 |
 | `deployment-runbook.md` | Obsan | 32 |
 | `manuals/` — admin + portal manuals | whole team, compiled by Liya | 34 |
 

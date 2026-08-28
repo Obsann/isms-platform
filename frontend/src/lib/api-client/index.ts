@@ -77,12 +77,19 @@ export function saveSession(login: LoginResponse): void {
   localStorage.setItem(TOKEN_KEY, login.accessToken);
   localStorage.setItem(USER_KEY, JSON.stringify(login.user));
   localStorage.setItem(EXPIRES_AT_KEY, String(Date.now() + login.expiresIn * 1000));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("isms-auth-changed"));
+  }
 }
 
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(EXPIRES_AT_KEY);
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("isms_linked_member");
+    window.dispatchEvent(new Event("isms-auth-changed"));
+  }
 }
 
 export async function login(body: LoginRequest): Promise<LoginResponse> {

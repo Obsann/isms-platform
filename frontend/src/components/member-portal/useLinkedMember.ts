@@ -15,7 +15,9 @@ export type LinkedMemberState =
 
 export function useLinkedMember(): LinkedMemberState {
   const user = useAuthUser();
-  const [state, setState] = useState<LinkedMemberState>({ status: 'loading' });
+  const [state, setState] = useState<LinkedMemberState>(() =>
+    user ? { status: 'loading' } : { status: 'unauthenticated' },
+  );
 
   useEffect(() => {
     if (!user) {

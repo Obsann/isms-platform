@@ -73,11 +73,34 @@ export function getMemberLoans(memberId: string) {
  * Staff JWT `id` is not the members table id. Match the signed-in email to a
  * member record in this tenant so the portal can call Task 23 routes.
  */
+const LINKED_MEMBER_KEY = 'isms_linked_member';
+
+function readCachedMember(email: string): Member | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(LINKED_MEMBER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { email: string; member: Member };
+    if (parsed.email !== email) return null;
+    return parsed.member;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedMember(email: string, member: Member): void {
+  sessionStorage.setItem(LINKED_MEMBER_KEY, JSON.stringify({ email, member }));
+}
+
 export async function findMemberForSession(): Promise<Member | null> {
   const user = getSessionUser();
   if (!user?.email) return null;
-  const query = new URLSearchParams({ search: user.email, limit: '50' });
+  const cached = readCachedMember(user.email);
+  if (cached) return cached;
+  const query = new URLSearchParams({ search: user.email, limit: '5' });
   const result = await apiClient.get<PaginatedResult<Member>>(`/members?${query.toString()}`);
   const email = user.email.trim().toLowerCase();
-  return result.items.find((member) => (member.email ?? '').trim().toLowerCase() === email) ?? null;
+  const member = result.items.find((row) => (row.email ?? '').trim().toLowerCase() === email) ?? null;
+  if (member) writeCachedMember(user.email, member);
+  return member;
 }

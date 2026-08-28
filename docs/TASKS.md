@@ -382,11 +382,13 @@ of week.
 deployment without a clarifying question.
 
 ### Task 33 — Backup & disaster-recovery rehearsal
-**Owner: Obsan**
+**Owner: Melkamu**
 
 > Confirm the backup schedule runs, and rehearse a restore before go-live.
 
 **Verify:** a restored backup passes Task 28's RLS check again.
+
+Runbook: [`docs/backup-disaster-recovery.md`](./backup-disaster-recovery.md).
 
 ### Task 34 — Documentation
 **Owner: whole team — each person writes the section for their own vertical; Liya compiles**

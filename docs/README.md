@@ -24,6 +24,7 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | [`TEAM_STATUS.md`](./TEAM_STATUS.md) | Who is on what right now, blockers |
 | [`SACCO_PROPOSAL.md`](./SACCO_PROPOSAL.md) | Background SDS — **not** MVP truth; prefer `decisions.mdc` |
 | [`test-case-matrix.md`](./test-case-matrix.md) | Task 30 — FR → test case, UAT script, sign-off, defects (Melkamu + Biruk) |
+| [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Task 33 — backup schedule, restore rehearsal, RLS re-check (Melkamu) |
 | [`README.md`](./README.md) | This index |
 
 ## Expected later (docs only until written)
@@ -34,6 +35,7 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | `rbac-matrix.md` — role-to-endpoint permission matrix | Obsan | 22 |
 | ~~`test-case-matrix.md`~~ — written: [`test-case-matrix.md`](./test-case-matrix.md) | Melkamu + Biruk | 30 |
 | `deployment-runbook.md` | Obsan | 32 |
+| ~~`backup-disaster-recovery.md`~~ — written: [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Melkamu | 33 |
 | `manuals/` — admin + portal manuals | whole team, compiled by Liya | 34 |
 
 Nothing in here is generated. If a decision was made in a meeting and code depends

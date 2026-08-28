@@ -136,10 +136,13 @@ data loss.
 **Verify:** someone else can follow the runbook without a clarifying question.
 
 ### Task 33 — Backup & disaster-recovery rehearsal (Week 6)
+**Owner: Melkamu.**
 
 > Confirm the backup schedule runs; rehearse a restore before go-live.
 
 **Verify:** a restored backup passes Task 28's RLS check again.
+
+Runbook: [`backup-disaster-recovery.md`](./backup-disaster-recovery.md).
 
 ### Task 35 — Final UAT sign-off (Week 6)
 

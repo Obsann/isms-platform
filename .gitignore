@@ -39,6 +39,10 @@ coverage/
 .eslintcache
 *.tsbuildinfo
 
+# Database dumps from Task 33 backup rehearsal — never commit live data
+/backups/*
+!/backups/.gitkeep
+
 # Editor / OS
 .vscode/
 .idea/

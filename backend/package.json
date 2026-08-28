@@ -21,7 +21,8 @@
     "seed": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" src/database/seeds/dev-seed.ts",
     "rls:check": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/rls-isolation-check.ts",
     "backup:now": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/backup-database.ts",
-    "backup:restore": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/restore-database.ts"
+    "backup:restore": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/restore-database.ts",
+    "backup:rehearse": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/rehearse-restore.ts"
   },
   "jest": {
     "moduleFileExtensions": [

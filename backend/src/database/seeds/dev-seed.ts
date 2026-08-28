@@ -165,6 +165,22 @@ async function seed(): Promise<void> {
       );
     }
 
+    const seedMemberLogins: SeedStaff[] = [
+      {
+        email: 'abebe.bikila@tenant-a.dev',
+        fullName: 'Abebe Kebede Bikila',
+        role: 'member',
+        tenantCode: 'tenant-a',
+      },
+      {
+        email: 'almaz.desta@tenant-b.dev',
+        fullName: 'Almaz Desta Tesfaye',
+        role: 'member',
+        tenantCode: 'tenant-b',
+      },
+    ];
+    staff.push(...seedMemberLogins);
+
     for (const account of staff) {
       const tenantId = account.tenantCode ? tenantIds.get(account.tenantCode)! : null;
 

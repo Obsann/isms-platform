@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import { AppProvider } from "@/contexts/AppContext";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
@@ -38,7 +39,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-surface text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AppProvider>{children}</AppProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

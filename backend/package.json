@@ -19,7 +19,8 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "seed": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" src/database/seeds/dev-seed.ts",
-    "rls:check": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/rls-isolation-check.ts"
+    "rls:check": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/rls-isolation-check.ts",
+    "backup:now": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/backup-database.ts"
   },
   "jest": {
     "moduleFileExtensions": [

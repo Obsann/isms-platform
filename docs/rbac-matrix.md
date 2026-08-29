@@ -90,6 +90,22 @@ add after this merges (git-workflow merge-order note). Undecorated authenticated
 routes are **denied** (fail closed) so a forgotten decorator cannot ship as
 "any authenticated role".
 
+## Re-running the check
+
+The guard and the audit log are runtime behaviour, so unit tests alone do not
+prove them. With Postgres up, migrations run, `npm run seed` applied and the API
+listening on 4000:
+
+```
+powershell -ExecutionPolicy Bypass -File backend/scripts/verify-rbac.ps1
+powershell -ExecutionPolicy Bypass -File backend/scripts/verify-audit-log.ps1
+```
+
+The first logs in as each seeded role and asserts the allow/deny status codes
+above. The second posts a deposit and confirms one audit row appears, that reads
+and rejected writes add none. This is the evidence for Task 30's TC-5.1 and
+TC-5.2 (defects D-30-05 and D-30-06).
+
 ## Audit log
 
 Every successful `POST` / `PUT` / `PATCH` / `DELETE` (except `@Public()`) is

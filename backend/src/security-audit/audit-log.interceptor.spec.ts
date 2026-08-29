@@ -72,6 +72,36 @@ describe('AuditLogInterceptor', () => {
     );
   });
 
+  it('names the resource, not the global API prefix, as the entity', async () => {
+    const context = httpContext(ProbeController.prototype.createMember, {
+      method: 'POST',
+      path: '/api/accounts/account-1/deposits',
+      route: { path: '/api/accounts/:id/deposits' },
+      params: { id: 'account-1' },
+      user: teller,
+    });
+
+    await lastValueFrom(interceptor.intercept(context, { handle: () => of({ id: 'txn-1' }) }));
+
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ entity: 'accounts', entityId: 'account-1' }),
+    );
+  });
+
+  it('skips the platform namespace when naming the entity', async () => {
+    const context = httpContext(ProbeController.prototype.createMember, {
+      method: 'POST',
+      path: '/api/platform/tenants',
+      route: { path: '/api/platform/tenants' },
+      params: {},
+      user: teller,
+    });
+
+    await lastValueFrom(interceptor.intercept(context, { handle: () => of({ id: 'tenant-9' }) }));
+
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ entity: 'tenants' }));
+  });
+
   it('does not record a GET', async () => {
     const context = httpContext(ProbeController.prototype.createMember, {
       method: 'GET',

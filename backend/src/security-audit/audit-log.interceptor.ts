@@ -14,6 +14,13 @@ import type { AuditLogEntryInput } from './security-audit.types';
 const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
+ * Route path segments that name a namespace rather than a resource. `main.ts`
+ * sets a global `API_PREFIX` (default `api`), and Task 19's tenant routes sit
+ * under `platform/`, so both appear ahead of the real entity in `route.path`.
+ */
+const NON_ENTITY_SEGMENTS = new Set(['api', 'platform']);
+
+/**
  * Appends an audit row for every successful state-changing request, inside the
  * same transaction `TenantContextGuard` opened. Registered *after*
  * `TenantContextInterceptor` in `AppModule` so this runs as the inner interceptor
@@ -59,7 +66,11 @@ function toEntry(
     'n/a';
 
   const path = (request.route?.path as string | undefined) ?? request.path;
-  const entity = path.split('/').filter((segment) => segment && !segment.startsWith(':'))[0] ?? 'unknown';
+  const entity =
+    path
+      .split('/')
+      .filter((segment) => segment && !segment.startsWith(':'))
+      .find((segment) => !NON_ENTITY_SEGMENTS.has(segment)) ?? 'unknown';
 
   return {
     actorStaffId: request.user!.staffId,

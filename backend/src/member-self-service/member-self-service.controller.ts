@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Roles } from '../common';
 import { MemberStatementQueryDto } from './dto/member-statement-query.dto';
 import { MemberSelfServiceService } from './member-self-service.service';
 import type {
@@ -31,6 +32,7 @@ export class MemberSelfServiceController {
    * Throws 404 if the member does not exist (propagated from MemberService).
    */
   @Get('balance')
+  @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
   getBalance(@Param('id') id: string): Promise<MemberBalanceView> {
     return this.memberSelfService.getBalance(id);
   }
@@ -43,6 +45,7 @@ export class MemberSelfServiceController {
    * Throws 404 if the member does not exist (propagated from MemberService).
    */
   @Get('statement')
+  @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
   getStatement(
     @Param('id') id: string,
     @Query() query: MemberStatementQueryDto,
@@ -64,6 +67,7 @@ export class MemberSelfServiceController {
    * Throws 404 if the member does not exist (propagated from MemberService).
    */
   @Get('loans')
+  @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
   getLoans(@Param('id') id: string): Promise<MemberLoansView> {
     return this.memberSelfService.getLoans(id);
   }

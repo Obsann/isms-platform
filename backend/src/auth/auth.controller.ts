@@ -1,5 +1,5 @@
 import { Body, Controller, Get, NotFoundException, Post } from '@nestjs/common';
-import { Public, type AuthenticatedUser } from '../common';
+import { Public, Roles, type AuthenticatedUser } from '../common';
 import { StaffAccountService } from '../security-audit';
 import type { AuthUser, LoginResponse } from '../types';
 import { AuthService } from './auth.service';
@@ -26,6 +26,7 @@ export class AuthController {
    * that caller's own tenant's row.
    */
   @Get('me')
+  @Roles('super-admin', 'tenant-admin', 'teller', 'loan-officer')
   async me(@CurrentUser() user: AuthenticatedUser): Promise<AuthUser> {
     const summary = await this.staffAccountService.findSummaryById(user.staffId);
     if (!summary) {

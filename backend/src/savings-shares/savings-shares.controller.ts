@@ -21,7 +21,7 @@ export class SavingsSharesController {
   }
 
   @Get(':id')
-  @Roles('teller', 'tenant-admin', 'member')
+  @Roles('teller', 'tenant-admin', 'loan-officer', 'member')
   getBalance(@Param('id') id: string): Promise<AccountBalance> {
     return this.savingsSharesService.getBalance(id);
   }

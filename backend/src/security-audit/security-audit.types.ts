@@ -27,8 +27,14 @@ export interface AuditLogEntryInput {
   after?: Record<string, unknown>;
 }
 
-export interface AuditLogEntry extends AuditLogEntryInput {
+export interface AuditLogEntry {
   id: string;
+  actorStaffId: StaffId | null;
+  action: string;
+  entity: string;
+  entityId: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
   occurredAt: string;
 }
 

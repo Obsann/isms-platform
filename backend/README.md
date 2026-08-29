@@ -168,9 +168,20 @@ chart-of-accounts table.
   and per tenant `tenant-admin`, `teller`, and `loan-officer` (same known password).
   Useful for login, portal routing (Task 4), and cross-tenant isolation checks.
 
+## RBAC & audit log (Task 22)
+
+`RolesGuard` is global, after JWT and before tenant context. `@Roles(...)` on a
+route is the allow-list; any other JWT role gets **403** before the handler runs.
+Authenticated routes without `@Roles` are also denied (fail closed). Matrix:
+[`docs/rbac-matrix.md`](../docs/rbac-matrix.md). New endpoints in other verticals
+must add `@Roles` — a forgotten decorator will 403 rather than silently allow.
+
+Successful `POST`/`PUT`/`PATCH`/`DELETE` calls (except `@Public()`) append a row
+to `audit_logs` in the same request transaction. `GET /api/audit-logs` is
+tenant-admin and super-admin. Entries are never updated or deleted.
+
 ## Not wired yet, on purpose
 
 | Piece | Arrives in |
 |---|---|
-| `RolesGuard` enforcing `@Roles(...)` — the decorator is safe to attach now | Task 22 |
 | Refresh tokens | deferred — access token only for now |

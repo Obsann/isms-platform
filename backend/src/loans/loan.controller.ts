@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../common';
+import { Roles, type AuthenticatedUser } from '../common';
 import { AddGuarantorPledgeDto } from './dto/add-guarantor-pledge.dto';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
 import { ApproveLoanDto } from './dto/approve-loan.dto';
@@ -12,8 +12,9 @@ import type { EligibilityDecision, GuarantorPledge, LoanRepaymentRow, LoanRow } 
 /**
  * Loans & Credit REST surface — owner: **Abenezer** (Tasks 16–17).
  *
- * All routes require a valid JWT (`JwtAuthGuard` is global) and a resolved
- * tenant context (`TenantContextGuard` is global). No `@Public()` here.
+ * All routes require a valid JWT (`JwtAuthGuard` is global), an allowed role
+ * (`RolesGuard` / `@Roles`, Task 22), and a resolved tenant context
+ * (`TenantContextGuard` is global). No `@Public()` here.
  *
  * Route map:
  *   POST   /api/loans                            → apply for a loan
@@ -32,6 +33,7 @@ export class LoanController {
 
   /** Submit a new loan application. Returns the created loan in `pending` status. */
   @Post()
+  @Roles('teller', 'loan-officer', 'tenant-admin')
   apply(@Body() dto: ApplyLoanDto): Promise<LoanRow> {
     return this.loanService.apply({
       memberId: dto.memberId,
@@ -43,12 +45,14 @@ export class LoanController {
 
   /** Fetch all loans for a specific member by memberId (Task 23 integration). */
   @Get('member/:memberId')
+  @Roles('teller', 'loan-officer', 'tenant-admin')
   findByMemberId(@Param('memberId', ParseUUIDPipe) memberId: string): Promise<LoanRow[]> {
     return this.loanService.findByMemberId(memberId);
   }
 
   /** Fetch a single loan by its id. 404 if not found or belongs to another tenant (RLS). */
   @Get(':id')
+  @Roles('teller', 'loan-officer', 'tenant-admin')
   findById(@Param('id', ParseUUIDPipe) id: string): Promise<LoanRow> {
     return this.loanService.findById(id);
   }
@@ -59,6 +63,7 @@ export class LoanController {
    * Useful for a loan-calculator screen before the member formally applies.
    */
   @Get(':id/eligibility')
+  @Roles('teller', 'loan-officer', 'tenant-admin')
   async checkEligibility(@Param('id', ParseUUIDPipe) id: string): Promise<EligibilityDecision> {
     const loan = await this.loanService.findById(id);
     return this.loanService.checkEligibility({
@@ -75,6 +80,7 @@ export class LoanController {
    * The caller's staff id is taken from the JWT (no need to pass it in the body).
    */
   @Patch(':id/approve')
+  @Roles('loan-officer', 'tenant-admin')
   decideApproval(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApproveLoanDto,
@@ -94,6 +100,7 @@ export class LoanController {
    * Posts through the ledger.
    */
   @Post(':id/disburse')
+  @Roles('loan-officer', 'tenant-admin')
   disburse(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DisburseLoanDto,
@@ -111,6 +118,7 @@ export class LoanController {
    * Automatically marks the loan `repaid` and releases guarantor holds when fully settled.
    */
   @Post(':id/repayments')
+  @Roles('teller', 'loan-officer', 'tenant-admin')
   recordRepayment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RepayLoanDto,
@@ -127,6 +135,7 @@ export class LoanController {
    * Places a hold on the guarantor's savings account via `LedgerService.holdFunds()`.
    */
   @Post(':id/guarantors')
+  @Roles('loan-officer', 'tenant-admin')
   recordGuarantorPledge(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddGuarantorPledgeDto,
@@ -143,6 +152,7 @@ export class LoanController {
    * List all guarantor pledges recorded for a specific loan.
    */
   @Get(':id/guarantors')
+  @Roles('teller', 'loan-officer', 'tenant-admin')
   getGuarantorPledgesForLoan(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<GuarantorPledge[]> {
@@ -153,6 +163,7 @@ export class LoanController {
    * Manually release a guarantor hold and mark pledge status as released.
    */
   @Post('guarantors/:pledgeId/release')
+  @Roles('loan-officer', 'tenant-admin')
   releaseGuarantorPledge(
     @Param('pledgeId', ParseUUIDPipe) pledgeId: string,
   ): Promise<GuarantorPledge> {

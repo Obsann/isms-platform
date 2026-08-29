@@ -2,6 +2,7 @@ export { BaseEntity } from './entities/base.entity';
 export { TenantScopedEntity } from './entities/tenant-scoped.entity';
 export { AllExceptionsFilter, type ApiErrorBody } from './filters/all-exceptions.filter';
 export { TenantContextGuard } from './guards/tenant-context.guard';
+export { RolesGuard } from './guards/roles.guard';
 export { Roles, ROLES_METADATA_KEY, type RoleName } from './decorators/roles.decorator';
 export { Public, IS_PUBLIC_KEY } from './decorators/public.decorator';
 export { TenantContextModule } from './tenant-context/tenant-context.module';

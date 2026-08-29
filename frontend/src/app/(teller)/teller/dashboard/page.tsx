@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+import TellerDashboardView from '@/components/views/TellerDashboardView';
+
+export const metadata = { title: 'Dashboard | ISMS Teller Desk' };
 
 export default function TellerDashboardPage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Jerry · Task 14"
-      title="Teller dashboard"
-      description="Deposit, withdrawal, and loan repayment flows will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <TellerDashboardView />;
 }

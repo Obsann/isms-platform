@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -28,9 +31,16 @@ export class MemberController {
 
   @Post('import/stage')
   @Roles('teller', 'tenant-admin')
-  @UseInterceptors(FileInterceptor('file'))
-  stageImport(@UploadedFile() file: any): Promise<LegacyImportPreview> {
-    return this.memberService.stageLegacyImport(file);
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  stageImport(@UploadedFile() file?: { buffer?: Buffer; originalname?: string }): Promise<LegacyImportPreview> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Please upload a non-empty .csv file of members.');
+    }
+    const name = (file.originalname ?? '').toLowerCase();
+    if (name && !name.endsWith('.csv')) {
+      throw new BadRequestException('File must be a .csv (comma-separated members), not a document or spreadsheet.');
+    }
+    return this.memberService.stageLegacyImport(file.buffer);
   }
 
   @Post('import/commit/:stagingId')
@@ -63,5 +73,12 @@ export class MemberController {
   @Roles('teller', 'tenant-admin')
   update(@Param('id') id: string, @Body() dto: UpdateMemberDto): Promise<Member> {
     return this.memberService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles('tenant-admin')
+  @HttpCode(204)
+  remove(@Param('id') id: string): Promise<void> {
+    return this.memberService.remove(id);
   }
 }

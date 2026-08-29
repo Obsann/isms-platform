@@ -1,0 +1,5 @@
+memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
+MEM-93001,Kidist,Hailu,Worku,FIN-9301-2002-3003,national_id,+251911930001,kidist.worku@example.com,1991-04-18,active,2024-02-10
+MEM-93002,Bereket,,Negash,EP930002,passport,+251922930002,bereket.negash@example.com,1987-09-25,pending,2024-04-02
+MEM-93003,Meron,Alemayehu,Kebede,,,+251933930003,,1984-12-08,active,2023-11-20
+MEM-93004,Daniel,Solomon,Tadesse,FIN-9304-1111-2222,national_id,+251944930004,daniel.tadesse@example.com,1992-05-12,active,2024-07-01

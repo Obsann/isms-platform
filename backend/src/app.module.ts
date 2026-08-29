@@ -15,6 +15,7 @@ import { DocumentsReportingModule } from './documents-reporting';
 import { HealthModule } from './health/health.module';
 import { LedgerModule } from './ledger';
 import { LoanModule } from './loans';
+import { MemberSelfServiceModule } from './member-self-service';
 import { MemberModule } from './members';
 import { SavingsSharesModule } from './savings-shares';
 import { AuditLogInterceptor, SecurityAuditModule } from './security-audit';
@@ -51,6 +52,7 @@ import { TenantsModule } from './tenants';
     LedgerModule,
     SavingsSharesModule,
     LoanModule,
+    MemberSelfServiceModule,
     DocumentsReportingModule,
     SecurityAuditModule,
     ChannelIntegrationModule,

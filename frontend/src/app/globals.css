@@ -2,36 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* globals.css — ISMS Platform · Prosperum Luxury Financial Theme
- *
- * Two token systems live here side-by-side:
- *
- * 1. RAW-RGB TOKENS  (--color-*, --portal-*, --shadow-*)
- *    Used by our Tailwind config via rgb(var(...) / <alpha-value>).
- *    Powers: bg-midnight, text-gold, bg-midnight/20, etc.
- *
- * 2. SHADCN SEMANTIC TOKENS  (--background, --primary, --ring, etc.)
- *    Used automatically by every Shadcn component.
- *    Expressed in oklch() — the color space Shadcn v2 expects.
- *    Mapped to our brand values so Shadcn Button, Input, Dialog, etc.
- *    render in midnight navy + gold instead of default black/gray.
- *
- * Brand reference (hex → oklch):
- *   Midnight Navy  #0B1933  → oklch(0.18  0.048 255)
- *   Slate Navy     #1E2D4A  → oklch(0.26  0.052 255)
- *   Warm Gold      #C59B27  → oklch(0.68  0.130  82)
- *   Bright Gold    #D8B138  → oklch(0.74  0.130  82)
- *   Surface        #F5F7FA  → oklch(0.975 0.004 255)
- *   Card white     #FFFFFF  → oklch(1     0     0  )
- *   Text dark      #0F172A  → oklch(0.13  0.028 255)
- *   Text muted     #64748B  → oklch(0.52  0.028 255)
- *   Border         #E2E8F0  → oklch(0.92  0.008 255)
- */
+/* globals.css — ISMS Platform · Prosperum Financial Theme */
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   1. Raw-RGB brand tokens
-   Tailwind opacity-modifier compatible: bg-midnight/20, text-gold/60, etc.
-───────────────────────────────────────────────────────────────────────────── */
 :root {
   --font-inter:   "Inter", system-ui, sans-serif;
   --font-serif:   "Playfair Display", Georgia, serif;
@@ -39,29 +11,22 @@
 
   /* Brand — Deep Midnight Navy #0B1933 */
   --color-primary:       11 25 51;
-  /* Dark Midnight #071126 */
   --color-primary-dark:  7 17 38;
-  /* Slate Navy #1E2D4A */
   --color-primary-light: 30 45 74;
 
   /* Gold #C59B27 */
   --color-accent-gold:       197 155 39;
-  /* Bright Gold #D8B138 */
   --color-accent-gold-light: 216 177 56;
-  /* Bronze Gold #94741C */
   --color-accent-gold-dark:  148 116 28;
-  /* Soft Gold Glow #F9F5EA */
   --color-accent-gold-muted: 249 245 234;
 
-  /* Surfaces */
-  --color-surface:      245 247 250;
-  --color-surface-card: 255 255 255;
-  --color-surface-dark: 10 18 40;
-
-  /* Typography */
-  --color-text:       15 23 42;
-  --color-text-muted: 100 116 139;
-  --color-border:     226 232 240;
+  /* Light Theme Surfaces & Typography */
+  --color-surface:      248 250 252; /* #F8FAFC */
+  --color-surface-card: 255 255 255; /* #FFFFFF */
+  --color-surface-dark: 11 18 32;
+  --color-text:         15 23 42;    /* #0F172A */
+  --color-text-muted:   100 116 139; /* #64748B */
+  --color-border:       226 232 240; /* #E2E8F0 */
 
   /* Portal accents */
   --portal-super-admin:  11 25 51;
@@ -70,159 +35,292 @@
   --portal-member:       202 138 4;
 
   /* Radius & Shadows */
-  --radius:      0.625rem;
-  --shadow-sm:   0 1px 3px rgba(11,25,51,0.07), 0 1px 2px rgba(11,25,51,0.04);
-  --shadow-md:   0 4px 16px -2px rgba(11,25,51,0.10), 0 2px 6px -1px rgba(11,25,51,0.06);
-  --shadow-lg:   0 20px 40px -8px rgba(11,25,51,0.16), 0 8px 16px -4px rgba(11,25,51,0.08);
-  --shadow-gold: 0 0 0 3px rgba(197,155,39,0.25);
+  --radius:      0.5rem;
+  --shadow-sm:   0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md:   0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg:   0 12px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06);
+  --shadow-gold: 0 0 0 2px rgba(197, 155, 39, 0.3);
+
+  color-scheme: light;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   2. Shadcn semantic tokens — light mode
-   These override the default black/gray Shadcn palette with our brand values.
-───────────────────────────────────────────────────────────────────────────── */
+html.dark, .dark {
+  /* Dark Theme Surfaces & Typography */
+  --color-surface:      11 18 32;    /* #0B1220 deep navy */
+  --color-surface-card: 17 24 39;    /* #111827 slate-900 */
+  --color-surface-dark: 7 11 20;
+  --color-text:         248 250 252; /* #F8FAFC */
+  --color-text-muted:   148 163 184; /* #94A3B8 */
+  --color-border:       30 41 59;    /* #1E293B */
+
+  color-scheme: dark;
+}
+
 @layer base {
-  .theme {
-    --font-heading: var(--font-serif);
-    --font-sans:    var(--font-inter);
-  }
-
   :root {
-    /* Page surfaces */
-    --background:         oklch(0.975 0.004 255); /* --color-surface      */
-    --foreground:         oklch(0.13  0.028 255); /* --color-text         */
-
-    /* Card / Popover */
-    --card:               oklch(1     0     0  ); /* --color-surface-card */
+    --background:         oklch(0.985 0.004 255);
+    --foreground:         oklch(0.13  0.028 255);
+    --card:               oklch(1     0     0  );
     --card-foreground:    oklch(0.13  0.028 255);
     --popover:            oklch(1     0     0  );
     --popover-foreground: oklch(0.13  0.028 255);
-
-    /* Primary action = Midnight Navy */
-    --primary:            oklch(0.18  0.048 255); /* --color-primary      */
-    --primary-foreground: oklch(1     0     0  ); /* white text on navy   */
-
-    /* Secondary = soft surface */
-    --secondary:            oklch(0.95  0.004 255);
-    --secondary-foreground: oklch(0.18  0.048 255); /* navy text          */
-
-    /* Muted = slate */
-    --muted:            oklch(0.95  0.004 255);
-    --muted-foreground: oklch(0.52  0.028 255); /* --color-text-muted    */
-
-    /* Accent = Warm Gold */
-    --accent:            oklch(0.68  0.130  82); /* --color-accent-gold  */
-    --accent-foreground: oklch(0.18  0.048 255); /* navy text on gold    */
-
-    /* Destructive — standard red, unchanged */
-    --destructive: oklch(0.577 0.245 27);
-
-    /* Borders & inputs */
-    --border: oklch(0.92  0.008 255); /* --color-border        */
-    --input:  oklch(0.92  0.008 255);
-
-    /* Focus ring = Gold */
-    --ring: oklch(0.68  0.130  82); /* --color-accent-gold   */
-
-    /* Radius — matches our --radius token */
-    --radius: 0.625rem;
-
-    /* Charts — navy → gold scale */
-    --chart-1: oklch(0.18  0.048 255); /* midnight navy         */
-    --chart-2: oklch(0.68  0.130  82); /* warm gold             */
-    --chart-3: oklch(0.26  0.052 255); /* slate navy            */
-    --chart-4: oklch(0.74  0.130  82); /* bright gold           */
-    --chart-5: oklch(0.52  0.028 255); /* muted slate           */
-
-    /* Sidebar = white panel, navy active state, gold accent */
-    --sidebar:                    oklch(1     0     0  );
-    --sidebar-foreground:         oklch(0.13  0.028 255);
-    --sidebar-primary:            oklch(0.18  0.048 255); /* midnight navy */
-    --sidebar-primary-foreground: oklch(0.68  0.130  82); /* gold text     */
-    --sidebar-accent:             oklch(0.68  0.130  82); /* gold hover    */
-    --sidebar-accent-foreground:  oklch(0.18  0.048 255); /* navy on gold  */
-    --sidebar-border:             oklch(0.92  0.008 255);
-    --sidebar-ring:               oklch(0.68  0.130  82); /* gold ring     */
+    --primary:            oklch(0.18  0.048 255);
+    --primary-foreground: oklch(1     0     0  );
+    --secondary:          oklch(0.96  0.004 255);
+    --secondary-foreground: oklch(0.18  0.048 255);
+    --muted:              oklch(0.96  0.004 255);
+    --muted-foreground:   oklch(0.50  0.028 255);
+    --accent:             oklch(0.68  0.130  82);
+    --accent-foreground:  oklch(0.18  0.048 255);
+    --destructive:        oklch(0.577 0.245 27);
+    --border:             oklch(0.92  0.008 255);
+    --input:              oklch(0.92  0.008 255);
+    --ring:               oklch(0.68  0.130  82);
+    --radius:             0.5rem;
   }
 
-  /*
-   * Dark mode — ISMS portals don't ship dark mode in Weeks 1–3, but we define
-   * sensible values so Shadcn components don't break under a system dark-mode
-   * preference. Deep navy becomes the surface; gold becomes the primary CTA.
-   */
-  .dark {
-    --background:         oklch(0.13  0.048 255); /* deep navy bg         */
-    --foreground:         oklch(0.975 0.004 255); /* near-white text      */
-    --card:               oklch(0.18  0.048 255); /* midnight card        */
-    --card-foreground:    oklch(0.975 0.004 255);
-    --popover:            oklch(0.18  0.048 255);
-    --popover-foreground: oklch(0.975 0.004 255);
-
-    /* In dark mode gold becomes the primary CTA */
-    --primary:            oklch(0.68  0.130  82); /* warm gold            */
-    --primary-foreground: oklch(0.18  0.048 255); /* navy on gold         */
-
-    --secondary:            oklch(0.26  0.052 255);
-    --secondary-foreground: oklch(0.975 0.004 255);
-    --muted:                oklch(0.26  0.052 255);
-    --muted-foreground:     oklch(0.65  0.020 255);
-
-    --accent:            oklch(0.74  0.130  82); /* bright gold           */
-    --accent-foreground: oklch(0.18  0.048 255);
-
-    --destructive: oklch(0.704 0.191 22);
-    --border:      oklch(1 0 0 / 10%);
-    --input:       oklch(1 0 0 / 15%);
-    --ring:        oklch(0.68  0.130  82); /* gold ring             */
-
-    --chart-1: oklch(0.68  0.130  82);
-    --chart-2: oklch(0.74  0.130  82);
-    --chart-3: oklch(0.975 0.004 255);
-    --chart-4: oklch(0.52  0.028 255);
-    --chart-5: oklch(0.26  0.052 255);
-
-    --sidebar:                    oklch(0.18  0.048 255);
-    --sidebar-foreground:         oklch(0.975 0.004 255);
-    --sidebar-primary:            oklch(0.68  0.130  82);
-    --sidebar-primary-foreground: oklch(0.18  0.048 255);
-    --sidebar-accent:             oklch(0.26  0.052 255);
-    --sidebar-accent-foreground:  oklch(0.975 0.004 255);
-    --sidebar-border:             oklch(1 0 0 / 10%);
-    --sidebar-ring:               oklch(0.68  0.130  82);
+  html.dark, .dark {
+    --background:         oklch(0.12  0.040 255);
+    --foreground:         oklch(0.98  0.004 255);
+    --card:               oklch(0.16  0.040 255);
+    --card-foreground:    oklch(0.98  0.004 255);
+    --popover:            oklch(0.16  0.040 255);
+    --popover-foreground: oklch(0.98  0.004 255);
+    --primary:            oklch(0.68  0.130  82);
+    --primary-foreground: oklch(0.18  0.048 255);
+    --secondary:          oklch(0.22  0.040 255);
+    --secondary-foreground: oklch(0.98  0.004 255);
+    --muted:              oklch(0.22  0.040 255);
+    --muted-foreground:   oklch(0.65  0.020 255);
+    --accent:             oklch(0.74  0.130  82);
+    --accent-foreground:  oklch(0.18  0.048 255);
+    --destructive:        oklch(0.704 0.191 22);
+    --border:             oklch(1 0 0 / 12%);
+    --input:              oklch(1 0 0 / 15%);
+    --ring:               oklch(0.68  0.130  82);
   }
 
   * {
-    border-color: oklch(0.92 0.008 255); /* --border equivalent for Tailwind v3 */
+    border-color: rgb(var(--color-border));
   }
 
   body {
     background-color: rgb(var(--color-surface));
     color: rgb(var(--color-text));
-  }
-
-  html {
     font-family: var(--font-inter);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   3. Base element styles
-───────────────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 html, body {
-  height: 100%;
-  font-family: var(--font-inter);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-html {
-  scroll-behavior: smooth;
+  min-height: 100%;
 }
 
 h1, h2, h3, .font-heading {
   font-family: var(--font-serif);
 }
 
-a { color: inherit; text-decoration: none; }
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ====================================================
+   LIGHT & DARK MODE STYLING (Accurate Figma Theme from UI Original Change)
+   ==================================================== */
+
+html.light {
+  background-color: #f2f4f7;
+  color: #1e293b;
+}
+
+html.light body {
+  background-color: #f2f4f7;
+}
+
+html.light .min-h-screen {
+  background-color: #f2f4f7 !important;
+}
+
+/* Sidebar in light mode */
+html.light aside#dashboard-sidebar {
+  background-color: #f2f4f7 !important;
+  border-color: #e5e8eb !important;
+}
+
+html.light aside#dashboard-sidebar .border-b,
+html.light aside#dashboard-sidebar .border-t {
+  border-color: #e5e8eb !important;
+}
+
+html.light aside#dashboard-sidebar span.text-white,
+html.light aside#dashboard-sidebar p.text-white {
+  color: #0f172a !important;
+}
+
+html.light aside#dashboard-sidebar .bg-\[\#1a1b20\],
+html.light aside#dashboard-sidebar .bg-\[\#1c1d22\] {
+  background-color: transparent !important;
+}
+
+html.light aside#dashboard-sidebar button {
+  color: #475569 !important;
+}
+
+html.light aside#dashboard-sidebar button.bg-\[\#282a32\] {
+  background-color: #e4e7ec !important;
+  color: #0f172a !important;
+  border-color: #d0d5dd !important;
+}
+
+html.light aside#dashboard-sidebar button.bg-\[\#282a32\] svg {
+  color: #0f172a !important;
+}
+
+html.light aside#dashboard-sidebar button:not(.bg-\[\#282a32\]):hover {
+  background-color: #eaecf0 !important;
+  color: #0f172a !important;
+}
+
+/* Header in light mode */
+html.light header {
+  background-color: rgba(242, 244, 247, 0.85) !important;
+  border-color: #e5e8eb !important;
+}
+
+html.light header .text-white {
+  color: #0f172a !important;
+}
+
+html.light header .bg-\[\#23242a\],
+html.light header .bg-\[\#1c1d22\] {
+  background-color: #ffffff !important;
+  border-color: #d0d5dd !important;
+}
+
+html.light header .bg-\[\#1a1b20\] {
+  background-color: #f2f4f7 !important;
+  border-color: #e5e8eb !important;
+}
+
+html.light header button:hover {
+  background-color: #e4e7ec !important;
+  color: #0f172a !important;
+}
+
+/* Stat cards in light mode */
+.stat-card-item {
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+html.light .stat-card-item.bg-\[\#1c77ff\] {
+  background-color: #1c77ff !important;
+}
+
+html.light .stat-card-item.bg-\[\#1c1d22\] {
+  background-color: #1c1d22 !important;
+}
+
+.stat-card-item h2,
+.stat-card-item span,
+.stat-card-item svg,
+html.light .stat-card-item h2,
+html.light .stat-card-item span,
+html.light .stat-card-item svg {
+  color: #ffffff !important;
+}
+
+/* Cards in light mode */
+html.light #analytics-chart-container,
+html.light #form-field-group-card,
+html.light #status-badges-card,
+html.light #data-table-card,
+html.light .dashboard-card {
+  background-color: #ffffff !important;
+  border-color: #eaecf0 !important;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05), 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+
+html.light #form-field-group-card input:not(.has-error),
+html.light #form-field-group-card button#select-id-type {
+  background-color: #f8fafc !important;
+  border-color: #d0d5dd !important;
+  color: #0f172a !important;
+}
+
+html.light #form-field-group-card label {
+  color: #475569 !important;
+}
+
+html.light #analytics-chart-container button {
+  color: #64748b;
+}
+
+html.light #analytics-chart-container .bg-\[\#1c1d22\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Data Table in light mode */
+html.light #data-table-card {
+  background-color: #ffffff !important;
+  border-color: #eaecf0 !important;
+}
+
+html.light #data-table-card th {
+  color: #94a3b8 !important;
+}
+
+html.light #data-table-card tr.table-row-item {
+  border-bottom: 1px solid #f8fafc;
+}
+
+html.light #data-table-card tr.table-row-item:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light #data-table-card td span.font-medium,
+html.light #data-table-card td span.font-semibold {
+  color: #0f172a !important;
+}
+
+html.light #data-table-card td:nth-child(2),
+html.light #data-table-card td:nth-child(3) {
+  color: #334155 !important;
+}
+
+/* Status Badges in Light Mode */
+html.light .light-badge-in-progress { background-color: #f5eeff !important; color: #9333ea !important; border-color: transparent !important; }
+html.light .light-badge-complete { background-color: #ebfbf3 !important; color: #16a34a !important; border-color: transparent !important; }
+html.light .light-badge-pending { background-color: #edf5ff !important; color: #2563eb !important; border-color: transparent !important; }
+html.light .light-badge-approved { background-color: #fff8eb !important; color: #d97706 !important; border-color: transparent !important; }
+html.light .light-badge-rejected { background-color: #f3f4f6 !important; color: #6b7280 !important; border-color: transparent !important; }
+html.light .light-badge-inactive { background-color: #f1f5f9 !important; color: #475569 !important; border-color: #e2e8f0 !important; }
+
+/* Status Badges Preview Card in Light Mode */
+html.light #status-badges-card .bg-\[\#292113\] { background-color: #fffbeb !important; border-color: #fef08a !important; }
+html.light #status-badges-card .text-\[\#eab308\] { color: #b45309 !important; }
+html.light #status-badges-card .bg-\[\#13261a\] { background-color: #ecfdf5 !important; border-color: #a7f3d0 !important; }
+html.light #status-badges-card .text-\[\#22c55e\] { color: #15803d !important; }
+html.light #status-badges-card .bg-\[\#241830\] { background-color: #faf5ff !important; border-color: #e9d5ff !important; }
+html.light #status-badges-card .text-\[\#c084fc\] { color: #7e22ce !important; }
+html.light #status-badges-card .bg-\[\#2a1d12\] { background-color: #fff8eb !important; border-color: #fed7aa !important; }
+html.light #status-badges-card .text-\[\#f59e0b\] { color: #c2410c !important; }
+html.light #status-badges-card .bg-\[\#281417\] { background-color: #fef2f2 !important; border-color: #fecaca !important; }
+html.light #status-badges-card .text-\[\#ef4444\] { color: #b91c1c !important; }
+html.light #status-badges-card .bg-\[\#1c2028\] { background-color: #f1f5f9 !important; border-color: #e2e8f0 !important; }
+html.light #status-badges-card .text-\[\#94a3b8\] { color: #475569 !important; }
+
+/* Footer in light mode */
+html.light footer#dashboard-footer { border-color: #e5e8eb !important; color: #64748b !important; background-color: #f2f4f7 !important; }
+html.light footer#dashboard-footer a:hover, html.light footer#dashboard-footer p { color: #475569 !important; }
+
+/* Toast animation */
+.toast-slide-enter { animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }

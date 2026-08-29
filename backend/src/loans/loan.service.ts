@@ -2,15 +2,20 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Repository } from 'typeorm';
+import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
 import { LedgerService } from '../ledger';
+import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
 import { LoanEntity } from './entities/loan.entity';
+import type { PaginatedResult } from '../types';
+import { LoanSearchQueryDto } from './dto/loan-search-query.dto';
 import type {
   ApprovalDecisionInput,
   DisbursementInput,
@@ -41,10 +46,14 @@ import type {
  */
 @Injectable()
 export class LoanService {
+  private readonly logger = new Logger(LoanService.name);
+
   constructor(
     private readonly ctx: TenantContextService,
     private readonly savingsSharesService: SavingsSharesService,
     private readonly ledger: LedgerService,
+    private readonly memberService: MemberService,
+    private readonly notifications: NotificationService,
   ) {}
 
   // ------------------------------------------------------------------ apply
@@ -140,7 +149,11 @@ export class LoanService {
     }
 
     const saved = await repo.save(loan);
-    return this.toRow(saved);
+    const row = this.toRow(saved);
+    if (input.approved) {
+      await this.queueLoanApprovedNotification(row);
+    }
+    return row;
   }
 
   // ---------------------------------------------------------------- disburse
@@ -242,6 +255,41 @@ export class LoanService {
     return this.toRepaymentRow(saved);
   }
 
+  // ---------------------------------------------------------------- findAll
+
+  /**
+   * List all loans in the current tenant with optional search, status filtering, and pagination.
+   */
+  async findAll(query?: LoanSearchQueryDto): Promise<PaginatedResult<LoanRow>> {
+    const repo = this.ctx.repo(LoanEntity);
+    const qb = repo.createQueryBuilder('loan');
+
+    if (query?.status && query.status !== 'all') {
+      qb.andWhere('loan.status = :status', { status: query.status });
+    }
+
+    if (query?.search) {
+      const searchPattern = `%${query.search}%`;
+      qb.andWhere(
+        '(loan.loanNumber ILIKE :search OR loan.purpose ILIKE :search)',
+        { search: searchPattern },
+      );
+    }
+
+    const limit = query?.limit ?? 50;
+    const offset = query?.offset ?? 0;
+
+    qb.orderBy('loan.appliedAt', 'DESC');
+    qb.take(limit);
+    qb.skip(offset);
+
+    const [entities, total] = await qb.getManyAndCount();
+    return {
+      items: entities.map((entity) => this.toRow(entity)),
+      total,
+    };
+  }
+
   // ---------------------------------------------------------------- findById
 
   async findById(loanId: string): Promise<LoanRow> {
@@ -265,8 +313,8 @@ export class LoanService {
     return loans.map((loan) => this.toRow(loan));
   }
 
-
   // ------------------------------------------------ guarantor logic (Task 17)
+
 
   /**
    * Records a guarantor pledge and holds the requested amount on the guarantor's
@@ -358,6 +406,34 @@ export class LoanService {
       pledgedAmount: p.pledgedAmount,
       holdId: p.holdId,
     }));
+  }
+
+  /**
+   * Resolve the member email while tenant-context is still open, then fire-and-forget
+   * SMTP. A missing address or send failure must not change the loan status (Task 25).
+   */
+  private async queueLoanApprovedNotification(loan: LoanRow): Promise<void> {
+    try {
+      const member = await this.memberService.findById(loan.memberId);
+      if (!member.email) {
+        this.logger.warn(`Skipping loan-approved: member ${loan.memberId} has no email`);
+        return;
+      }
+      this.notifications.enqueue({
+        template: 'loan-approved',
+        to: member.email,
+        data: {
+          memberName: member.fullName,
+          loanNumber: loan.loanNumber,
+          amount: loan.approvedAmount ?? loan.requestedAmount,
+          currency: 'ETB',
+          termMonths: loan.termMonths,
+        },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Could not queue loan-approved: ${message}`);
+    }
   }
 
   // ---------------------------------------------------------------- helpers

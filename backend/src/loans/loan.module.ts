@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ChannelIntegrationModule } from '../channel-integration';
 import { LedgerModule } from '../ledger';
+import { MemberModule } from '../members';
 import { SavingsSharesModule } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
@@ -22,6 +24,8 @@ import { LoanService } from './loan.service';
     TypeOrmModule.forFeature([LoanEntity, LoanRepaymentEntity, LoanGuarantorEntity]),
     SavingsSharesModule,
     LedgerModule,
+    MemberModule,
+    ChannelIntegrationModule,
   ],
   controllers: [LoanController],
   providers: [LoanService],

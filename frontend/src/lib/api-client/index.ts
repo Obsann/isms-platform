@@ -77,12 +77,19 @@ export function saveSession(login: LoginResponse): void {
   localStorage.setItem(TOKEN_KEY, login.accessToken);
   localStorage.setItem(USER_KEY, JSON.stringify(login.user));
   localStorage.setItem(EXPIRES_AT_KEY, String(Date.now() + login.expiresIn * 1000));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("isms-auth-changed"));
+  }
 }
 
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(EXPIRES_AT_KEY);
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("isms_linked_member");
+    window.dispatchEvent(new Event("isms-auth-changed"));
+  }
 }
 
 export async function login(body: LoginRequest): Promise<LoginResponse> {
@@ -258,20 +265,83 @@ export function updateMember(id: string, payload: UpdateMemberPayload) {
   return apiClient.patch<Member>(`/members/${id}`, payload);
 }
 
+export function deleteMember(id: string) {
+  return apiClient.delete<void>(`/members/${id}`);
+}
+
 export async function stageImport(file: File): Promise<LegacyImportPreview> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('isms_access_token') : null;
   const formData = new FormData();
   formData.append('file', file);
   const headers: Record<string, string> = {};
+  const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
   const res = await fetch(`${BASE_URL}/members/import/stage`, { method: 'POST', headers, body: formData });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== 'undefined') {
+      clearSession();
+      window.location.assign('/login');
+    }
+    const fallback: ApiErrorBody = {
+      statusCode: res.status,
+      message: res.statusText || 'Upload failed',
+      error: 'RequestFailed',
+    };
+    const payload = (await res.json().catch(() => fallback)) as ApiErrorBody;
+    throw new ApiRequestError(payload);
+  }
+  return res.json() as Promise<LegacyImportPreview>;
 }
 
 export function commitImport(stagingId: string): Promise<LegacyImportCommitResult> {
   return apiClient.post<LegacyImportCommitResult>(`/members/import/commit/${stagingId}`, {});
 }
 
+// ---------------------------------------------------------------------------
+// Tenants API (Task 19 — Super Admin Console)
+// ---------------------------------------------------------------------------
+
+export interface TenantListItem {
+  id: string;
+  name: string;
+  code: string;
+  status: 'active' | 'suspended' | 'provisioning';
+  createdAt: string;
+  adminEmail?: string;
+  members?: number;
+}
+
+export interface ProvisionTenantPayload {
+  name: string;
+  code: string;
+  adminEmail?: string;
+  status?: 'active' | 'provisioning' | 'suspended';
+}
+
+export interface UpdateTenantPayload {
+  name?: string;
+  status?: 'active' | 'provisioning' | 'suspended';
+}
+
+export function getTenants(status?: string) {
+  const query = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+  return apiClient.get<TenantListItem[]>(`/platform/tenants${query}`);
+}
+
+export function getTenant(id: string) {
+  return apiClient.get<TenantListItem>(`/platform/tenants/${id}`);
+}
+
+export function provisionTenant(payload: ProvisionTenantPayload) {
+  return apiClient.post<TenantListItem>('/platform/tenants', payload);
+}
+
+export function updateTenant(id: string, payload: UpdateTenantPayload) {
+  return apiClient.patch<TenantListItem>(`/platform/tenants/${id}`, payload);
+}
+
+export function deleteTenant(id: string) {
+  return apiClient.delete<void>(`/platform/tenants/${id}`);
+}
+
 export default apiClient;
+

@@ -35,14 +35,19 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | GET | `/api/members` | | Yes | Yes | Yes | |
 | GET | `/api/members/:id` | | Yes | Yes | Yes | |
 | PATCH | `/api/members/:id` | | Yes | Yes | | |
+| DELETE | `/api/members/:id` | | Yes | | | |
 | POST | `/api/members/import/stage` | | Yes | Yes | | |
 | POST | `/api/members/import/commit/:stagingId` | | Yes | Yes | | |
+| GET | `/api/members/:id/balance` | | Yes | Yes | Yes | Yes |
+| GET | `/api/members/:id/statement` | | Yes | Yes | Yes | Yes |
+| GET | `/api/members/:id/loans` | | Yes | Yes | Yes | Yes |
 | POST | `/api/accounts` | | Yes | Yes | | |
 | GET | `/api/accounts/:id` | | Yes | Yes | Yes | Yes |
 | POST | `/api/accounts/:id/deposits` | | Yes | Yes | | |
 | POST | `/api/accounts/:id/withdrawals` | | Yes | Yes | | |
 | POST | `/api/accounts/:id/share-purchases` | | Yes | Yes | | |
 | POST | `/api/loans` | | Yes | Yes | Yes | |
+| GET | `/api/loans` | | Yes | Yes | Yes | |
 | GET | `/api/loans/member/:memberId` | | Yes | Yes | Yes | |
 | GET | `/api/loans/:id` | | Yes | Yes | Yes | |
 | GET | `/api/loans/:id/eligibility` | | Yes | Yes | Yes | |
@@ -52,6 +57,11 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | POST | `/api/loans/:id/guarantors` | | Yes | | Yes | |
 | GET | `/api/loans/:id/guarantors` | | Yes | Yes | Yes | |
 | POST | `/api/loans/guarantors/:pledgeId/release` | | Yes | | Yes | |
+| GET | `/api/platform/tenants` | Yes | | | | |
+| POST | `/api/platform/tenants` | Yes | | | | |
+| GET | `/api/platform/tenants/:id` | Yes | | | | |
+| PATCH | `/api/platform/tenants/:id` | Yes | | | | |
+| DELETE | `/api/platform/tenants/:id` | Yes | | | | |
 | GET | `/api/audit-logs` | Yes | Yes | | | |
 
 High-value vs standard loan approval is a **business rule** inside Loans (Task 16),
@@ -61,8 +71,17 @@ Tenant-admin may post deposits/withdrawals because Task 12 already declared that
 the savings controller and tenant-admin operates the same cash desk in small SACCOs.
 The SDS Manager row said No; we keep the shipped decorator.
 
-Super-admin is **not** on day-to-day tenant endpoints. Platform provisioning is
-Task 19; RLS already hides other tenants' rows from a `tenant_id` NULL session.
+Super-admin is **not** on day-to-day tenant endpoints, and no tenant role reaches
+`/api/platform/tenants` (Task 19). Those routes run outside per-tenant RLS, so the
+role check is the only thing standing between a tenant-admin and another SACCO's
+provisioning record.
+
+Member self-service (`/api/members/:id/balance|statement|loans`, Task 23) allows
+`member` plus staff, since a teller answering a counter question needs the same
+read. **Open gap for Liya:** the role check does not verify that `:id` is the
+caller's own member record, so one member can currently read another's balance by
+changing the id. That is object-level authorization, not RBAC, and needs a check
+against the linked member on the JWT.
 
 ## Applying `@Roles` on new endpoints
 

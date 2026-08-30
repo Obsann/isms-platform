@@ -18,7 +18,7 @@ export interface CurrencyDisplayProps {
 }
 
 const variantStyles: Record<string, string> = {
-  default: "text-slate-900",
+  default: "text-slate-900 dark:text-slate-100",
   gold:    "text-[#C59B27] font-semibold",
   navy:    "text-white font-semibold",
 };

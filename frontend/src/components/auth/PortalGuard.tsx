@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { getSessionUser, portalHome } from "@/lib/api-client";
+import { portalHome } from "@/lib/api-client";
+import { useAuthUser } from "@/components/auth/useAuthUser";
 import { ROLE_PORTAL, type PortalName } from "@/types";
 
 /**
@@ -18,23 +19,19 @@ export default function PortalGuard({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [allowed, setAllowed] = useState(false);
+  const user = useAuthUser();
 
   useEffect(() => {
-    const user = getSessionUser();
     if (!user) {
       router.replace("/login");
       return;
     }
-    const home = ROLE_PORTAL[user.role];
-    if (home !== portal) {
+    if (ROLE_PORTAL[user.role] !== portal) {
       router.replace(portalHome(user.role));
-      return;
     }
-    setAllowed(true);
-  }, [portal, router]);
+  }, [portal, router, user]);
 
-  if (!allowed) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-midnight flex items-center justify-center" role="status" aria-live="polite">
         <div className="flex flex-col items-center gap-3">
@@ -45,6 +42,10 @@ export default function PortalGuard({
         </div>
       </div>
     );
+  }
+
+  if (ROLE_PORTAL[user.role] !== portal) {
+    return null;
   }
 
   return children;

@@ -30,6 +30,8 @@ interface SeedMember {
   phone?: string;
   email?: string;
   status: 'active' | 'pending' | 'inactive';
+  initialSavingsBalance?: string;
+  accountNumber?: string;
 }
 
 const DEV_PASSWORD = 'DevPassword!123';
@@ -51,6 +53,8 @@ const SEED_MEMBERS: SeedMember[] = [
     phone: '+251911123456',
     email: 'abebe.bikila@tenant-a.dev',
     status: 'active',
+    initialSavingsBalance: '45230.00',
+    accountNumber: 'SAV-10001',
   },
   {
     tenantCode: 'tenant-a',
@@ -63,6 +67,8 @@ const SEED_MEMBERS: SeedMember[] = [
     phone: '+251922234567',
     email: 'tigist.worku@tenant-a.dev',
     status: 'active',
+    initialSavingsBalance: '128500.00',
+    accountNumber: 'SAV-10002',
   },
   {
     tenantCode: 'tenant-a',
@@ -75,6 +81,8 @@ const SEED_MEMBERS: SeedMember[] = [
     phone: '+251933345678',
     email: 'dawit.solomon@tenant-a.dev',
     status: 'pending',
+    initialSavingsBalance: '35000.00',
+    accountNumber: 'SAV-10003',
   },
   {
     tenantCode: 'tenant-b',
@@ -87,9 +95,18 @@ const SEED_MEMBERS: SeedMember[] = [
     phone: '+251944456789',
     email: 'almaz.desta@tenant-b.dev',
     status: 'active',
+    initialSavingsBalance: '892100.00',
+    accountNumber: 'SAV-20001',
   },
 ];
 
+/**
+ * Dev seed for Task 3 isolation checks, Task 4 portal routing, Task 8 Member directory,
+ * Task 18 Loans, and Task 23 Self-Service API. Same password for every staff account.
+ *
+ * Runs as the `postgres` role regardless of `.env`'s `DB_USERNAME`, since seeding
+ * writes across tenants and RLS would block that. Idempotent.
+ */
 async function seed(): Promise<void> {
   const dataSource = new DataSource(
     buildDataSourceOptions({ ...process.env, DB_USERNAME: 'postgres' }),
@@ -100,6 +117,7 @@ async function seed(): Promise<void> {
     const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
     const tenantIds = new Map<string, string>();
 
+    // 1. Seed Tenants
     for (const tenant of SEED_TENANTS) {
       const [{ id: tenantId }] = await dataSource.query<[{ id: string }]>(
         `
@@ -114,7 +132,7 @@ async function seed(): Promise<void> {
       console.log(`Seeded tenant "${tenant.code}" (${tenantId})`);
     }
 
-    // Seed Staff Accounts
+    // 2. Seed Staff Accounts
     const staff: SeedStaff[] = [
       {
         email: 'superadmin@platform.dev',
@@ -146,6 +164,22 @@ async function seed(): Promise<void> {
         },
       );
     }
+
+    const seedMemberLogins: SeedStaff[] = [
+      {
+        email: 'abebe.bikila@tenant-a.dev',
+        fullName: 'Abebe Kebede Bikila',
+        role: 'member',
+        tenantCode: 'tenant-a',
+      },
+      {
+        email: 'almaz.desta@tenant-b.dev',
+        fullName: 'Almaz Desta Tesfaye',
+        role: 'member',
+        tenantCode: 'tenant-b',
+      },
+    ];
+    staff.push(...seedMemberLogins);
 
     for (const account of staff) {
       const tenantId = account.tenantCode ? tenantIds.get(account.tenantCode)! : null;
@@ -187,8 +221,8 @@ async function seed(): Promise<void> {
       console.log(`  staff ${account.role}: ${loginHint}, password="${DEV_PASSWORD}"`);
     }
 
-    // Seed Members
-    console.log('\nSeeding Members...');
+    // 3. Seed Members & Savings Accounts
+    console.log('\nSeeding Members & Savings Accounts...');
     let firstMemberId: string | null = null;
     const tenantAId = tenantIds.get('tenant-a')!;
 
@@ -197,14 +231,19 @@ async function seed(): Promise<void> {
       const [{ id: memberId }] = await dataSource.query<[{ id: string }]>(
         `
           INSERT INTO "members"
-            ("tenant_id", "member_number", "first_name", "middle_name", "last_name", "national_id", "id_type", "phone", "email", "status", "joined_at")
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE)
+            ("tenant_id", "member_number", "first_name", "middle_name", "last_name", "national_id", "id_type", "phone", "email", "status", "joined_at", "updated_at")
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE, NOW())
           ON CONFLICT ("tenant_id", "member_number")
             DO UPDATE SET
               "first_name" = EXCLUDED."first_name",
+              "middle_name" = EXCLUDED."middle_name",
               "last_name" = EXCLUDED."last_name",
+              "national_id" = EXCLUDED."national_id",
+              "id_type" = EXCLUDED."id_type",
+              "phone" = EXCLUDED."phone",
               "email" = EXCLUDED."email",
-              "phone" = EXCLUDED."phone"
+              "status" = EXCLUDED."status",
+              "updated_at" = NOW()
           RETURNING "id"
         `,
         [
@@ -220,12 +259,30 @@ async function seed(): Promise<void> {
           member.status,
         ],
       );
+
       if (!firstMemberId && member.tenantCode === 'tenant-a') {
         firstMemberId = memberId;
       }
+
+      if (member.accountNumber && member.initialSavingsBalance) {
+        await dataSource.query(
+          `
+            INSERT INTO "accounts"
+              ("tenant_id", "member_id", "account_number", "type", "status", "balance", "held_amount", "currency", "created_at", "updated_at")
+            VALUES ($1, $2, $3, 'savings', 'active', $4, 0, 'ETB', NOW(), NOW())
+            ON CONFLICT ("tenant_id", "account_number")
+              DO UPDATE SET
+                "balance" = EXCLUDED."balance",
+                "updated_at" = NOW()
+          `,
+          [tenantId, memberId, member.accountNumber, member.initialSavingsBalance],
+        );
+      }
+
       console.log(`  member ${member.memberNumber}: id="${memberId}", name="${member.firstName} ${member.lastName}", tenant="${member.tenantCode}"`);
     }
 
+    // 4. Seed Sample Loan
     if (firstMemberId) {
       await dataSource.query(
         `
@@ -239,9 +296,7 @@ async function seed(): Promise<void> {
       );
       console.log(`  loan LN-2026-000001: id="${firstMemberId}", amount="50000.00", status="approved"`);
     }
-
   } finally {
-
     await dataSource.destroy();
   }
 }

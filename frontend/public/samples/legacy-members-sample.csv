@@ -1,5 +1,5 @@
 memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
-MEM-90001,Yonas,Alemu,Bekele,FIN-9001-2002-3003,national_id,+251911000001,yonas.bekele@example.com,1990-05-12,active,2024-01-15
-MEM-90002,Hirut,,Mekonnen,EP-4455667,passport,+251922000002,hirut.mekonnen@example.com,1988-11-03,pending,2024-03-20
-MEM-90003,Mulugeta,Tadesse,Assefa,,,+251933000003,,1985-07-21,active,2023-09-01
-MEM-90004,Selam,Girma,Tesfaye,FIN-9004-1111-2222,national_id,+251944000004,selam.tesfaye@example.com,12/05/1992,active,2024-06-01
+MEM-93001,Kidist,Hailu,Worku,FIN-9301-2002-3003,national_id,+251911930001,kidist.worku@example.com,1991-04-18,active,2024-02-10
+MEM-93002,Bereket,,Negash,EP930002,passport,+251922930002,bereket.negash@example.com,1987-09-25,pending,2024-04-02
+MEM-93003,Meron,Alemayehu,Kebede,,,+251933930003,,1984-12-08,active,2023-11-20
+MEM-93004,Daniel,Solomon,Tadesse,FIN-9304-1111-2222,national_id,+251944930004,daniel.tadesse@example.com,1992-05-12,active,2024-07-01

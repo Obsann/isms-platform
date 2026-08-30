@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/Card';
 import ApplyLoanModal, { ApplyLoanFormData } from '@/components/forms/ApplyLoanModal';
 import { loanApi, type LoanRow, type GuarantorPledge } from '@/lib/loanApi';
 import { getMembers } from '@/lib/api-client';
+import { createSavingsAccount, listAccountsByMember } from '@/lib/api-client/teller';
 import type { Member } from '@/types';
 
 export default function LoansView() {
@@ -158,12 +159,39 @@ export default function LoansView() {
   };
 
   // Disbursement Handler
+  const openDisburseModal = async (loan: LoanRow) => {
+    setSelectedLoan(loan);
+    setDestinationAccountId('');
+    setActiveModal('disburse');
+    try {
+      const accounts = await listAccountsByMember(loan.memberId);
+      let savings =
+        accounts.find((a) => a.type === 'savings' && a.status === 'active') ??
+        accounts.find((a) => a.type === 'savings') ??
+        accounts[0];
+      if (!savings) {
+        savings = await createSavingsAccount(loan.memberId);
+      }
+      setDestinationAccountId(savings.id);
+    } catch (err) {
+      showToast(
+        'Account lookup failed',
+        err instanceof Error ? err.message : 'Could not find a savings account for this member.',
+        'error',
+      );
+    }
+  };
+
   const handleDisburse = async () => {
     if (!selectedLoan) return;
+    if (!destinationAccountId) {
+      showToast('Disbursement Failed', 'A savings account is required before disbursement.', 'error');
+      return;
+    }
     try {
       await loanApi.disburse(
         selectedLoan.id,
-        destinationAccountId || selectedLoan.memberId,
+        destinationAccountId,
         selectedLoan.approvedAmount || selectedLoan.requestedAmount,
       );
       showToast(
@@ -295,8 +323,7 @@ export default function LoansView() {
           {l.status === 'approved' && (
             <button
               onClick={() => {
-                setSelectedLoan(l);
-                setActiveModal('disburse');
+                void openDisburseModal(l);
               }}
               className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 rounded-lg text-xs font-semibold flex items-center gap-1"
             >
@@ -508,7 +535,7 @@ export default function LoansView() {
                 type="text"
                 value={destinationAccountId}
                 onChange={(e) => setDestinationAccountId(e.target.value)}
-                placeholder="Enter member savings account UUID"
+                placeholder="Savings account fills in automatically"
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none"
               />
             </FormFieldGroup>

@@ -7,6 +7,8 @@ export type StatusType =
   | "completed"
   | "pending"
   | "Pending"
+  | "provisioning"
+  | "suspended"
   | "rejected"
   | "inactive"
   | "disbursed"

@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+'use client';
+
+import StaffProfileView from '@/components/views/StaffProfileView';
 
 export default function SuperAdminProfilePage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Account"
-      title="Profile"
-      description="Platform administrator profile will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <StaffProfileView portalLabel="Super Admin" />;
 }

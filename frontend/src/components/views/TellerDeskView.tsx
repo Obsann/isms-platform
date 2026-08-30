@@ -40,6 +40,7 @@ import {
   createWithdrawal,
   createLoanRepayment,
   getLoan,
+  resolveSavingsAccount,
 } from '@/lib/api-client/teller';
 import type {
   AccountBalance,
@@ -767,7 +768,7 @@ export function TellerDeskView() {
     setSessionMsg(null);
 
     try {
-      const bal = await getAccountBalance(rawId);
+      const bal = await resolveSavingsAccount(rawId);
       setAccountId(bal.accountId);
       setBalance(bal);
       setTxFeed([]);
@@ -962,7 +963,7 @@ export function TellerDeskView() {
         >
           <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0">
             <Search className="w-4 h-4 text-amber-800 dark:text-gold" />
-            <label htmlFor={lookupInputId}>Account ID:</label>
+            <label htmlFor={lookupInputId}>Member or account:</label>
           </div>
 
           <input
@@ -973,7 +974,7 @@ export function TellerDeskView() {
               setLookupInput(e.target.value);
               setLookupError(null);
             }}
-            placeholder="Enter account UUID (e.g. bb321986-...)"
+            placeholder="MEM-10001, Abebe, or account UUID"
             className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/80 text-xs font-mono text-slate-900 dark:text-slate-100 outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             disabled={isMutating}
           />

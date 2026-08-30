@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+'use client';
+
+import StaffSettingsView from '@/components/views/StaffSettingsView';
 
 export default function SuperAdminSettingsPage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Account"
-      title="Settings"
-      description="Platform settings will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <StaffSettingsView portalLabel="Super Admin" />;
 }

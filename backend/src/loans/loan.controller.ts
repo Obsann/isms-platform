@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import type { AuthenticatedUser } from '../common';
+import { Roles, type AuthenticatedUser } from '../common';
 import type { PaginatedResult } from '../types';
 import { AddGuarantorPledgeDto } from './dto/add-guarantor-pledge.dto';
 import { ApplyLoanDto } from './dto/apply-loan.dto';

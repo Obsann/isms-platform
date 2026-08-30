@@ -57,8 +57,8 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: A
       ...prev.filter((g) => g.guarantorMemberId !== selectedGuarantorId),
       {
         guarantorMemberId: gMember.id,
-        guarantorName: gMember.fullName,
-        pledgedAmount,
+        guarantorName: gMember.fullName || (gMember as any).name || 'Unknown',
+        pledgedAmount: pledgedAmount,
       },
     ]);
     setSelectedGuarantorId('');

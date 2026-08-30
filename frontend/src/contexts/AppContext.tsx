@@ -24,6 +24,15 @@ import {
   initialNotifications,
 } from '@/data/mockData';
 
+export interface AppMember {
+  id: string;
+  name: string;
+  fullName?: string;
+  faydaId?: string;
+  nationalId?: string;
+  savingsBalance: number;
+}
+
 export interface ToastMessage {
   id: string;
   title: string;
@@ -65,7 +74,7 @@ interface AppState {
   deleteAsset: (id: string) => void;
   toggleFinancialMask: (id: string) => void;
   markNotificationRead: (id: string) => void;
-  showToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
+  showToast: (titleOrMsg: string, descriptionOrType?: string, type?: ToastMessage['type']) => void;
   closeToast: () => void;
   toggleDarkMode: () => void;
   updateProfile: (p: SaccoUserProfile) => void;
@@ -133,8 +142,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [newLog, ...prev]);
   }, [userProfile.email]);
 
-  const showToast = useCallback((title: string, description?: string, type: ToastMessage['type'] = 'success') => {
-    setToast({ id: Date.now().toString(), title, description, type });
+  const showToast = useCallback((titleOrMsg: string, descriptionOrType?: string, type: ToastMessage['type'] = 'success') => {
+    const isType = (val?: string): val is ToastMessage['type'] =>
+      val === 'success' || val === 'error' || val === 'info' || val === 'warning';
+
+    const finalDescription = isType(descriptionOrType) ? undefined : descriptionOrType;
+    const finalType = isType(descriptionOrType) ? descriptionOrType : (type || 'success');
+
+    setToast({ id: Date.now().toString(), title: titleOrMsg, description: finalDescription, type: finalType });
   }, []);
 
   const addMember = useCallback((data: Omit<SaccoMember, 'id' | 'joinedDate'>) => {

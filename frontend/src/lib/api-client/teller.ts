@@ -5,8 +5,8 @@
  * Communicates with accounts, loans, and members endpoints through apiClient.
  */
 
-import { apiClient } from './index';
-import type { Amount, Member, Transaction } from '@/types';
+import { apiClient, getMembers } from './index';
+import type { Amount, Account, Member, Transaction } from '@/types';
 
 export interface AccountBalance {
   accountId: string;
@@ -120,4 +120,47 @@ export async function getLoan(loanId: string): Promise<LoanDetails> {
  */
 export async function getMember(memberId: string): Promise<Member> {
   return apiClient.get<Member>(`/members/${encodeURIComponent(memberId)}`);
+}
+
+export async function listAccountsByMember(memberId: string): Promise<Account[]> {
+  return apiClient.get<Account[]>(`/accounts?memberId=${encodeURIComponent(memberId)}`);
+}
+
+export async function createSavingsAccount(memberId: string): Promise<Account> {
+  return apiClient.post<Account>('/accounts', { memberId, type: 'savings' });
+}
+
+const ACCOUNT_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Resolve a savings account from a UUID or a member number / name. */
+export async function resolveSavingsAccount(lookup: string): Promise<AccountBalance> {
+  const raw = lookup.trim();
+  if (ACCOUNT_UUID.test(raw)) {
+    return getAccountBalance(raw);
+  }
+
+  const res = await getMembers({ search: raw, limit: 10 });
+  const items = Array.isArray(res.items) ? res.items : [];
+  const needle = raw.toUpperCase();
+  const member =
+    items.find((m) => m.memberNumber.toUpperCase() === needle) ||
+    items.find((m) => m.fullName.toUpperCase().includes(needle)) ||
+    items[0];
+
+  if (!member) {
+    throw new Error(`No member found for "${raw}". Try MEM-10001 or the member's name.`);
+  }
+
+  const accounts = await listAccountsByMember(member.id);
+  let savings =
+    accounts.find((a) => a.type === 'savings' && a.status === 'active') ??
+    accounts.find((a) => a.type === 'savings') ??
+    accounts[0];
+
+  if (!savings) {
+    savings = await createSavingsAccount(member.id);
+  }
+
+  return getAccountBalance(savings.id);
 }

@@ -90,7 +90,7 @@ export type LoanStatus =
 
 export type PortalName = 'super-admin' | 'tenant-admin' | 'teller' | 'member';
 
-/** TODO(Task 22 — Obsan): extend from the RBAC matrix as it's written. */
+/** Seeded staff roles plus `member` for self-service. Matrix: `docs/rbac-matrix.md`. */
 export type RoleName = 'super-admin' | 'tenant-admin' | 'teller' | 'loan-officer' | 'member';
 
 /** Which portal each role lands in after login (Task 4's redirect table). */

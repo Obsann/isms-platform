@@ -1,17 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { getSessionUser } from "@/lib/api-client";
 import type { AuthUser } from "@/types";
 
+let cachedKey = "";
+let cachedUser: AuthUser | null = null;
+
+function subscribe(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener("isms-auth-changed", onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener("isms-auth-changed", onStoreChange);
+  };
+}
+
+function getSnapshot(): AuthUser | null {
+  const key = `${localStorage.getItem("isms_access_token") ?? ""}:${localStorage.getItem("isms_auth_user") ?? ""}`;
+  if (key === cachedKey) return cachedUser;
+  cachedKey = key;
+  cachedUser = getSessionUser();
+  return cachedUser;
+}
+
+function getServerSnapshot(): AuthUser | null {
+  return null;
+}
+
 export function useAuthUser(): AuthUser | null {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    setUser(getSessionUser());
-  }, []);
-
-  return user;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export function formatRoleLabel(role: string): string {

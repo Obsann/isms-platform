@@ -126,6 +126,10 @@ export default function LoginForm() {
               >
                 {submitting ? "Signing in…" : "Sign in"}
               </button>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Member portal (after seed): tenant-a / abebe.bikila@tenant-a.dev, same password as other
+                dev staff.
+              </p>
             </form>
           </CardContent>
         </Card>

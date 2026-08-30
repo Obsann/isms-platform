@@ -8,6 +8,7 @@ import {
   TenantContextInterceptor,
   TenantContextMiddleware,
   TenantContextModule,
+  RolesGuard,
 } from './common';
 import { DatabaseModule } from './database/database.module';
 import { DocumentsReportingModule } from './documents-reporting';
@@ -56,6 +57,7 @@ import { TenantsModule } from './tenants';
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
   ],
 })

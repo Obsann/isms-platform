@@ -3,12 +3,17 @@ import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import type { TenantStatus } from './tenant.entity';
+import { Roles } from '../common';
 
 /**
  * Platform-level tenant management. These routes run outside per-tenant RLS and
  * must be treated as platform actions by the UI.
+ *
+ * Guarded by `@Roles('super-admin')` — only super-admin JWTs may reach these
+ * endpoints. `JwtAuthGuard` + `RolesGuard` are registered globally in AppModule.
  */
 @Controller('platform/tenants')
+@Roles('super-admin')
 export class TenantsController {
   constructor(private readonly tenants: TenantsService) {}
 

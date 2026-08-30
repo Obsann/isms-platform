@@ -27,7 +27,9 @@ export type StatusType =
   | "decommissioned"
   | "success"
   | "warning"
-  | "failed";
+  | "failed"
+  | "provisioning"
+  | "suspended";
 
 export interface StatusBadgeProps {
   status: StatusType;
@@ -65,6 +67,8 @@ const statusConfig: Record<string, { styles: string; dot: string }> = {
   decommissioned:    { styles: "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-300 dark:border-slate-700 ring-slate-100 dark:ring-slate-800",          dot: "bg-slate-500" },
   success:           { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
   warning:           { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800 ring-amber-100 dark:ring-amber-900/30",          dot: "bg-amber-600" },
+  provisioning:     { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800/80 ring-amber-100 dark:ring-amber-900/30", dot: "bg-amber-500 animate-pulse" },
+  suspended:        { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30", dot: "bg-rose-600" },
   failed:            { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30",              dot: "bg-rose-600" },
 };
 

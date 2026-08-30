@@ -1,11 +1,7 @@
-import PortalPlaceholder from '@/components/layout/PortalPlaceholder';
+'use client';
+
+import SettingsPage from '@/components/settings/SettingsPage';
 
 export default function TenantAdminSettingsPage() {
-  return (
-    <PortalPlaceholder
-      eyebrow="Account"
-      title="Settings"
-      description="Tenant settings will land here. This page is an empty shell from Task 7."
-    />
-  );
+  return <SettingsPage eyebrow="Account Settings" />;
 }

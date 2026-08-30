@@ -302,17 +302,6 @@ export const PortalShell: React.FC<PortalShellProps> = ({
               </button>
             )}
 
-            {/* Dark mode toggle — sits next to the notification bell */}
-            <button
-              type="button"
-              onClick={toggleDarkMode}
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
             <div className="relative" ref={notifRef}>
               <button
                 type="button"
@@ -379,13 +368,23 @@ export const PortalShell: React.FC<PortalShellProps> = ({
               )}
             </div>
 
+            {/* Single Unified Theme Toggle Button */}
             <button
               type="button"
-              onClick={onToggleDarkMode ?? toggleTheme}
+              onClick={() => {
+                toggleDarkMode();
+                if (onToggleDarkMode) onToggleDarkMode();
+                toggleTheme();
+              }}
+              title={isDark || isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={isDark || isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
-              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
             >
-              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              {isDark || isDarkMode ? (
+                <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform duration-300" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-300 hover:-rotate-12 transition-transform duration-300" />
+              )}
             </button>
 
             {onOpenHelp && (

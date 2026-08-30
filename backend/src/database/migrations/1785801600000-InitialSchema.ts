@@ -171,8 +171,8 @@ export class InitialSchema1785801600000 implements MigrationInterface {
     await queryRunner.query(`ALTER TABLE "tenants" FORCE ROW LEVEL SECURITY`);
     await queryRunner.query(`
       CREATE POLICY "tenants_tenant_isolation" ON "tenants"
-        USING ("id" = app_current_tenant_id())
-        WITH CHECK ("id" = app_current_tenant_id())
+        USING ("id" = app_current_tenant_id() OR app_current_tenant_id() IS NULL)
+        WITH CHECK ("id" = app_current_tenant_id() OR app_current_tenant_id() IS NULL)
     `);
 
     for (const table of ['members', 'staff_accounts', 'roles_permissions', 'accounts']) {

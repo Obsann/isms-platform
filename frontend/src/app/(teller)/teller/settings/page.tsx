@@ -1,7 +1,7 @@
-import TellerSettingsView from '@/components/views/TellerSettingsView';
+'use client';
 
-export const metadata = { title: 'Settings | ISMS Teller Desk' };
+import SettingsPage from '@/components/settings/SettingsPage';
 
 export default function TellerSettingsPage() {
-  return <TellerSettingsView />;
+  return <SettingsPage eyebrow="Account Settings" />;
 }

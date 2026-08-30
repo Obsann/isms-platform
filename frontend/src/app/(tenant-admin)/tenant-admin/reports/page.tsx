@@ -30,9 +30,13 @@ export default function TenantAdminReportsPage() {
   const [savingsSummary, setSavingsSummary] = useState<ReportingSummary | null>(null);
   const [loanPortfolio, setLoanPortfolio] = useState<ReportingSummary | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalance | null>(null);
+  const [loadingReports, setLoadingReports] = useState(true);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadReports() {
+      setLoadingReports(true);
+      setReportError(null);
       try {
         const [sav, loan, tb] = await Promise.all([
           getSavingsSummaryReport().catch(() => null),
@@ -42,18 +46,20 @@ export default function TenantAdminReportsPage() {
         if (sav) setSavingsSummary(sav);
         if (loan) setLoanPortfolio(loan);
         if (tb) setTrialBalance(tb);
-      } catch {
-        // Fallback to local default data
+      } catch (err: any) {
+        setReportError('Failed to load reports from backend.');
+      } finally {
+        setLoadingReports(false);
       }
     }
     loadReports();
   }, []);
 
-  const savingsTotal = parseFloat(savingsSummary?.totalSavings ?? '14200000.00');
-  const savingsAccounts = savingsSummary?.activeMemberCount ?? 1248;
+  const savingsTotal = parseFloat(savingsSummary?.totalSavings ?? '0');
+  const savingsAccounts = savingsSummary?.activeMemberCount ?? 0;
 
-  const loanTotal = parseFloat(loanPortfolio?.totalLoansOutstanding ?? '8320000.00');
-  const loanCount = loanPortfolio?.activeMemberCount ?? 340;
+  const loanTotal = parseFloat(loanPortfolio?.totalLoansOutstanding ?? '0');
+  const loanCount = loanPortfolio?.activeMemberCount ?? 0;
 
   const tbLines = trialBalance?.lines && trialBalance.lines.length > 0
     ? trialBalance.lines.map((l) => ({
@@ -62,87 +68,27 @@ export default function TenantAdminReportsPage() {
         debit: parseFloat(l.debit || '0'),
         credit: parseFloat(l.credit || '0'),
       }))
-    : [
-        { code: '1010', account: 'Cash & Commercial Bank Deposits Asset', debit: 12450000.0, credit: 0.0 },
-        { code: '1200', account: 'Member Loans Portfolio Receivable Asset', debit: 8320000.0, credit: 0.0 },
-        { code: '2010', account: 'Member Savings Deposits Liability', debit: 0.0, credit: 14200000.0 },
-        { code: '3010', account: 'Member Share Capital Equity', debit: 0.0, credit: 5100000.0 },
-        { code: '4010', account: 'Loan Interest & Processing Fee Income', debit: 0.0, credit: 1470000.0 },
-      ];
+    : [];
 
   const totalDebits = tbLines.reduce((acc, l) => acc + l.debit, 0);
   const totalCredits = tbLines.reduce((acc, l) => acc + l.credit, 0);
-  const isBalanced = trialBalance?.balanced ?? Math.abs(totalDebits - totalCredits) < 0.01;
+  const isBalanced = trialBalance?.balanced ?? (tbLines.length > 0 ? Math.abs(totalDebits - totalCredits) < 0.01 : true);
 
   const handleGenerateDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
+    setGeneratedHtml(null);
     try {
       const html = await fetchDocumentHtml(docType, memberId, { from: fromDate, to: toDate });
       setGeneratedHtml(html);
-    } catch {
-      // Fallback local document preview template if server API is offline
-      if (docType === 'statement') {
-        setGeneratedHtml(`
-          <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a;">
-            <h2 style="text-align: center; border-bottom: 2px solid #cbd5e1; padding-bottom: 10px;">ISMS SACCO — MEMBER STATEMENT</h2>
-            <p><strong>Member ID:</strong> ${memberId}</p>
-            <p><strong>Period:</strong> ${fromDate} to ${toDate}</p>
-            <hr/>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px;">
-              <thead>
-                <tr style="background: #0f172a; color: #fff;">
-                  <th style="padding: 8px; text-align: left;">Date</th>
-                  <th style="padding: 8px; text-align: left;">Description</th>
-                  <th style="padding: 8px; text-align: right;">Debit (ETB)</th>
-                  <th style="padding: 8px; text-align: right;">Credit (ETB)</th>
-                  <th style="padding: 8px; text-align: right;">Balance (ETB)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td style="padding: 8px;">2024-01-15</td><td>Share Capital Deposit</td><td style="text-align:right;">0.00</td><td style="text-align:right;">2,500.00</td><td style="text-align:right;">2,500.00</td></tr>
-                <tr><td style="padding: 8px;">2024-02-01</td><td>Regular Savings Deposit</td><td style="text-align:right;">0.00</td><td style="text-align:right;">1,000.00</td><td style="text-align:right;">3,500.00</td></tr>
-                <tr><td style="padding: 8px;">2024-03-01</td><td>Regular Savings Deposit</td><td style="text-align:right;">0.00</td><td style="text-align:right;">1,000.00</td><td style="text-align:right;">4,500.00</td></tr>
-              </tbody>
-            </table>
-            <p style="margin-top: 24px; font-size: 11px; color: #64748b; text-align: center;">Verified against Immutable General Ledger Engine</p>
-          </div>
-        `);
-      } else if (docType === 'loan-agreement') {
-        setGeneratedHtml(`
-          <div style="font-family: Georgia, serif; padding: 24px; color: #111827;">
-            <h2 style="text-align: center;">SACCO LOAN AGREEMENT CONTRACT</h2>
-            <p style="text-align: center; color: #4b5563;">Contract Ref: ${memberId}</p>
-            <div style="border: 1px solid #d1d5db; padding: 12px; margin: 16px 0; background: #f9fafb;">
-              <p><strong>Borrower / Contract Ref:</strong> ${memberId}</p>
-              <p><strong>Principal Loan Amount:</strong> ETB 50,000.00</p>
-              <p><strong>Interest Rate:</strong> 12.0% p.a. declining balance</p>
-            </div>
-            <p>The Borrower hereby promises to repay the principal amount along with accrued interest in equal monthly installments.</p>
-          </div>
-        `);
-      } else if (docType === 'receipt') {
-        setGeneratedHtml(`
-          <div style="font-family: monospace; width: 300px; padding: 16px; border: 1px dashed #334155; margin: 0 auto;">
-            <h3 style="text-align: center; margin: 0 0 8px 0;">ISMS SACCO RECEIPT</h3>
-            <p>Txn Ref: ${memberId}</p>
-            <hr/>
-            <p>Regular Savings Deposit: ETB 1,500.00</p>
-            <p>Share Capital Purchase: ETB 500.00</p>
-            <hr/>
-            <h4>TOTAL PAID: ETB 2,000.00</h4>
-          </div>
-        `);
-      } else {
-        setGeneratedHtml(`
-          <div style="font-family: 'Times New Roman', serif; padding: 32px; border: 8px double #d97706; text-align: center;">
-            <h1 style="color: #92400e;">CERTIFICATE OF SHARE CAPITAL</h1>
-            <p>This certifies that Member <strong>${memberId}</strong> is the registered owner of</p>
-            <h2>50 FULLY PAID SHARES (ETB 5,000.00)</h2>
-            <p>In ISMS Savings & Credit Cooperative Society.</p>
-          </div>
-        `);
-      }
+    } catch (err: any) {
+      setGeneratedHtml(`
+        <div style="font-family: Arial, sans-serif; padding: 24px; color: #b91c1c; text-align: center;">
+          <h3>⚠ Document Generation Failed</h3>
+          <p>The requested ${docType.replace('-', ' ')} details for member ID "${memberId}" could not be retrieved from the database.</p>
+          <p style="font-size: 12px; color: #64748b;">Please check if the ID is correct and the backend is running.</p>
+        </div>
+      `);
     } finally {
       setIsGenerating(false);
     }
@@ -425,6 +371,12 @@ export default function TenantAdminReportsPage() {
                   <CardTitle>Member Document Generator</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2.5">
+                    <span className="text-amber-500 text-lg leading-none">⚠</span>
+                    <div className="text-xs text-amber-800">
+                      <strong>Preview Data Only.</strong> Document templates are wired for testing but currently return static placeholder amounts. Live member data integration will be completed in a future update.
+                    </div>
+                  </div>
                   <form onSubmit={handleGenerateDoc} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">

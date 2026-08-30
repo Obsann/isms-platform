@@ -27,6 +27,8 @@ export type StatusType =
   | "accepted"
   | "under_maintenance"
   | "decommissioned"
+  | "provisioning"
+  | "suspended"
   | "success"
   | "warning"
   | "failed";
@@ -51,6 +53,8 @@ const statusConfig: Record<string, { styles: string; dot: string }> = {
   repaying:          { styles: "bg-indigo-100/80 dark:bg-indigo-950/50 text-indigo-950 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 ring-indigo-100 dark:ring-indigo-900/30",      dot: "bg-indigo-600" },
   repaid:            { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },
   closed:            { styles: "bg-slate-200/70 dark:bg-slate-800/60 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 ring-slate-100 dark:ring-slate-800",          dot: "bg-slate-500" },
+  provisioning:      { styles: "bg-amber-100/80 dark:bg-amber-950/50 text-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800/80 ring-amber-100 dark:ring-amber-900/30",           dot: "bg-amber-500" },
+  suspended:         { styles: "bg-rose-100/80 dark:bg-rose-950/50 text-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800/80 ring-rose-100 dark:ring-rose-900/30",              dot: "bg-rose-600" },
 
   // Compliance & Security Statuses
   compliant:         { styles: "bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 ring-emerald-100 dark:ring-emerald-900/30",  dot: "bg-emerald-600" },

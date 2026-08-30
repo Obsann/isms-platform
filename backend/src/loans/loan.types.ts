@@ -1,4 +1,4 @@
-import type { AccountId, Amount, LoanId, MemberId, StaffId } from '../types';
+import type { AccountId, Amount, LoanId, MemberId, RoleName, StaffId } from '../types';
 import type { LoanStatus } from './entities/loan.entity';
 
 // ------------------------------------------------------------------ inputs
@@ -12,7 +12,10 @@ export interface LoanApplicationInput {
 
 export interface EligibilityDecision {
   eligible: boolean;
-  /** Ceiling from the savings multiplier plus accepted guarantor pledges. */
+  /**
+   * Ceiling strictly determined by the borrower's savings multiplier (D-30-01).
+   * Guarantor pledges provide collateral security but never raise the borrower's ceiling.
+   */
   maxAmount: Amount;
   /** Every failed rule, so the applicant sees why — not just "rejected". */
   reasons: string[];
@@ -21,6 +24,7 @@ export interface EligibilityDecision {
 export interface ApprovalDecisionInput {
   loanId: LoanId;
   approvedBy: StaffId;
+  approverRole?: RoleName;
   approved: boolean;
   note?: string;
 }

@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { DocumentsReportingService } from './documents-reporting.service';
-import { DocumentsReportingController } from './documents-reporting.controller';
 
+/**
+ * Documents & Reporting vertical — owner: Biruk (Tasks 20–21).
+ */
 @Module({
-  controllers: [DocumentsReportingController],
   providers: [DocumentsReportingService],
   exports: [DocumentsReportingService],
 })

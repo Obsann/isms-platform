@@ -1,0 +1,6 @@
+# CI / local test override – avoids port conflict with native Postgres on 5432.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+services:
+  postgres:
+    ports:
+      - '5434:5432'

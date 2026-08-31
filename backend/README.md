@@ -53,6 +53,7 @@ The API listens on `4000` so it doesn't collide with the Next.js dev server on `
 | `npm run backup:now` | pg_dump into `../backups/` |
 | `npm run backup:restore` | restore latest dump into spare `isms_restore_check` |
 | `npm run backup:rehearse` | dump → restore → RLS check (Task 33) |
+| `npm run backup:status` | confirm `isms-postgres-backup` is running and has written a dump |
 
 TypeScript is pinned to `^6` because `ts-jest` does not yet support TypeScript 7.
 

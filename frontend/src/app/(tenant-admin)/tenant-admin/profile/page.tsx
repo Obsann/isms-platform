@@ -1,7 +1,7 @@
 'use client';
 
-import StaffProfileView from '@/components/views/StaffProfileView';
+import ProfilePage from '@/components/profile/ProfilePage';
 
 export default function TenantAdminProfilePage() {
-  return <StaffProfileView portalLabel="Tenant Admin" />;
+  return <ProfilePage eyebrow="Account" />;
 }

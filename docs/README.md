@@ -23,8 +23,13 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | [`TEAM_ASSIGNMENTS.md`](./TEAM_ASSIGNMENTS.md) | Same plan organized by person / vertical |
 | [`TEAM_STATUS.md`](./TEAM_STATUS.md) | Who is on what right now, blockers |
 | [`SACCO_PROPOSAL.md`](./SACCO_PROPOSAL.md) | Background SDS — **not** MVP truth; prefer `decisions.mdc` |
+| [`rbac-matrix.md`](./rbac-matrix.md) | Role-to-endpoint permission matrix (Task 22) |
 | [`test-case-matrix.md`](./test-case-matrix.md) | Task 30 — FR → test case, UAT script, sign-off, defects (Melkamu + Biruk) |
-| [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Task 33 — backup schedule, restore rehearsal, RLS re-check (Melkamu) |
+| [`integration-pass.md`](./integration-pass.md) | Task 27 — portal walkthrough checklist |
+| [`offline-outbox-verification.md`](./offline-outbox-verification.md) | Task 29 — idempotency + SyncConflict verify |
+| [`deployment-runbook.md`](./deployment-runbook.md) | Task 32 — production deploy steps |
+| [`uat-sign-off.md`](./uat-sign-off.md) | Task 35 — final UAT sign-off sheet |
+| [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Task 33 — backup schedule, restore rehearsal, RLS re-check |
 | [`backup-rehearsal-log.md`](./backup-rehearsal-log.md) | Task 33 — recorded dump/restore/RLS pass |
 | [`README.md`](./README.md) | This index |
 
@@ -33,10 +38,6 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | File / folder | Owner | Task |
 |---|---|---|
 | `openapi/` — API spec, including mobile money C2B/B2C webhook contracts (no USSD) | Liya | 26 |
-| `rbac-matrix.md` — role-to-endpoint permission matrix | Obsan | 22 |
-| ~~`test-case-matrix.md`~~ — written: [`test-case-matrix.md`](./test-case-matrix.md) | Melkamu + Biruk | 30 |
-| `deployment-runbook.md` | Obsan | 32 |
-| ~~`backup-disaster-recovery.md`~~ — written: [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Melkamu | 33 |
 | `manuals/` — admin + portal manuals | whole team, compiled by Liya | 34 |
 
 Nothing in here is generated. If a decision was made in a meeting and code depends

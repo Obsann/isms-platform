@@ -1,13 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Repository } from 'typeorm';
 import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
+import { SyncConflictException } from '../common/sync-conflict.exception';
 import { LedgerService } from '../ledger';
 import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
@@ -54,6 +57,7 @@ export class LoanService {
     private readonly ledger: LedgerService,
     private readonly memberService: MemberService,
     private readonly notifications: NotificationService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ------------------------------------------------------------------ apply
@@ -129,6 +133,11 @@ export class LoanService {
   /**
    * Moves a `pending` loan to `approved` or `rejected`.
    * Only a loan in `pending` status can be acted on; anything else is a 409.
+   *
+   * Enforces approval threshold rule (FR-3.2 / D-30-02):
+   * - High-value applications (> threshold) must be approved by Manager (`tenant-admin` / `super-admin`).
+   * - Applications at or below threshold route to `loan-officer` (or Manager).
+   * - Unauthorized or mismatched roles are rejected with 403 Forbidden.
    */
   async decideApproval(input: ApprovalDecisionInput): Promise<LoanRow> {
     const repo = this.ctx.repo(LoanEntity);
@@ -138,6 +147,31 @@ export class LoanService {
       throw new ConflictException(
         `Loan ${input.loanId} is in status '${loan.status}' — only 'pending' loans can be approved or rejected`,
       );
+    }
+
+    // Approval threshold enforcement (FR-3.2 / D-30-02)
+    const thresholdStr = this.configService.get<string>('LOAN_APPROVAL_THRESHOLD', '50000.00');
+    const threshold = parseFloat(thresholdStr);
+    const requested = parseFloat(loan.requestedAmount);
+
+    if (input.approverRole) {
+      if (requested > threshold) {
+        if (input.approverRole !== 'tenant-admin' && input.approverRole !== 'super-admin') {
+          throw new ForbiddenException(
+            `High-value loan application of ${loan.requestedAmount} exceeds the delegated threshold of ${thresholdStr} ETB and requires Manager approval`,
+          );
+        }
+      } else {
+        if (
+          input.approverRole !== 'loan-officer' &&
+          input.approverRole !== 'tenant-admin' &&
+          input.approverRole !== 'super-admin'
+        ) {
+          throw new ForbiddenException(
+            `Role '${input.approverRole}' is not authorized to approve loan applications`,
+          );
+        }
+      }
     }
 
     loan.status = input.approved ? 'approved' : 'rejected';
@@ -218,6 +252,17 @@ export class LoanService {
     }
 
     const repaymentRepo = this.ctx.repo(LoanRepaymentEntity);
+    const ref = input.reference?.trim();
+    if (ref) {
+      const existing = await repaymentRepo.findOne({ where: { reference: ref } });
+      if (existing) {
+        if (existing.loanId === loan.id && existing.amount === input.amount) {
+          return this.toRepaymentRow(existing);
+        }
+        throw new SyncConflictException();
+      }
+    }
+
     const entry = repaymentRepo.create({
       tenantId: loan.tenantId,
       loanId: loan.id,

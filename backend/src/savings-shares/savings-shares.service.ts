@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationService } from '../channel-integration';
+import { SyncConflictException } from '../common/sync-conflict.exception';
 import { TenantContextService } from '../common';
 import {
   LedgerService,
@@ -91,6 +92,15 @@ export class SavingsSharesService {
 
     this.validatePositiveAmount(input.amount);
 
+    const replay = await this.resolveIdempotentSavingsTransaction(input.reference, {
+      accountId: input.accountId,
+      type: 'deposit',
+      amount: input.amount,
+    });
+    if (replay) {
+      return replay;
+    }
+
     const txn = await this.ledger.postDeposit({
       accountId: account.id,
       amount: input.amount,
@@ -115,6 +125,15 @@ export class SavingsSharesService {
     }
 
     this.validatePositiveAmount(input.amount);
+
+    const replay = await this.resolveIdempotentSavingsTransaction(input.reference, {
+      accountId: input.accountId,
+      type: 'withdrawal',
+      amount: input.amount,
+    });
+    if (replay) {
+      return replay;
+    }
 
     const txn = await this.ledger.postWithdrawal({
       accountId: account.id,
@@ -404,6 +423,33 @@ export class SavingsSharesService {
       currency: entity.currency,
       openedAt: entity.openedAt,
     };
+  }
+
+  private async resolveIdempotentSavingsTransaction(
+    reference: string | undefined | null,
+    expected: { accountId: string; type: Transaction['type']; amount: string },
+  ): Promise<Transaction | null> {
+    const ref = reference?.trim();
+    if (!ref) {
+      return null;
+    }
+
+    const txnRepo = this.tenantContext.repo(SavingsTransactionEntity);
+    const existing = await txnRepo.findOne({ where: { reference: ref } });
+    if (!existing) {
+      return null;
+    }
+
+    const samePayload =
+      existing.accountId === expected.accountId &&
+      existing.type === expected.type &&
+      existing.amount === expected.amount;
+
+    if (samePayload) {
+      return this.mapTransactionToContract(existing);
+    }
+
+    throw new SyncConflictException();
   }
 
   private mapTransactionToContract(entity: SavingsTransactionEntity): Transaction {

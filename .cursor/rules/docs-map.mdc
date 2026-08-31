@@ -26,4 +26,5 @@ Do **not** duplicate rule text into `docs/`. Load the right source:
 | `docs/TEAM_ASSIGNMENTS.md` | Same plan by person / vertical |
 | `docs/TEAM_STATUS.md` | Who is blocked / in progress right now |
 | `docs/SACCO_PROPOSAL.md` | Background SDS only — **MVP truth is `decisions.mdc`** |
+| `docs/rbac-matrix.md` | Role-to-endpoint permission matrix (Task 22) |
 | `docs/README.md` | Index of the docs folder |

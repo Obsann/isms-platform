@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import type { DataSource } from 'typeorm';
 import type { TenantStatus } from './tenant.entity';
@@ -54,9 +54,24 @@ export class TenantsService {
 
   async create(payload: { name: string; code: string; status?: TenantStatus }): Promise<TenantListItem> {
     const repo = this.dataSource.getRepository(TenantEntity);
-    const entity = repo.create({ name: payload.name, code: payload.code, status: payload.status ?? 'active' });
-    const saved = await repo.save(entity);
-    return { id: saved.id, name: saved.name, code: saved.code, status: saved.status, createdAt: saved.createdAt.toISOString() };
+    const code = payload.code.trim().toLowerCase();
+    const name = payload.name.trim();
+
+    const existing = await repo.findOneBy({ code });
+    if (existing) {
+      throw new ConflictException(`Tenant code '${code}' is already in use`);
+    }
+
+    try {
+      const entity = repo.create({ name, code, status: payload.status ?? 'active' });
+      const saved = await repo.save(entity);
+      return { id: saved.id, name: saved.name, code: saved.code, status: saved.status, createdAt: saved.createdAt.toISOString() };
+    } catch (error: any) {
+      if (error?.code === '23505' || error?.message?.includes('uq_tenants_code')) {
+        throw new ConflictException(`Tenant code '${code}' is already in use`);
+      }
+      throw error;
+    }
   }
 
   async provision(payload: { name: string; code: string; status?: TenantStatus }): Promise<TenantListItem> {

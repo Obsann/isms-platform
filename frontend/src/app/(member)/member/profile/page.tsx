@@ -1,7 +1,7 @@
 'use client';
 
-import StaffProfileView from '@/components/views/StaffProfileView';
+import ProfilePage from '@/components/profile/ProfilePage';
 
 export default function MemberProfilePage() {
-  return <StaffProfileView portalLabel="Member" />;
+  return <ProfilePage eyebrow="Account" />;
 }

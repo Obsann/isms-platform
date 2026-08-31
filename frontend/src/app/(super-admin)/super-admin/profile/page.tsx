@@ -1,7 +1,7 @@
 'use client';
 
-import StaffProfileView from '@/components/views/StaffProfileView';
+import ProfilePage from '@/components/profile/ProfilePage';
 
 export default function SuperAdminProfilePage() {
-  return <StaffProfileView portalLabel="Super Admin" />;
+  return <ProfilePage eyebrow="Platform Account" platformLevel />;
 }

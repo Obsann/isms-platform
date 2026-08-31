@@ -440,5 +440,3 @@ export async function fetchDocumentHtml(
 }
 
 export default apiClient;
-
-

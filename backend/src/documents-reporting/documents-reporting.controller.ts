@@ -1,8 +1,10 @@
 import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { DocumentsReportingService } from './documents-reporting.service';
+import { Roles } from '../common';
 
 @Controller('reports')
+@Roles('tenant-admin', 'super-admin')
 export class DocumentsReportingController {
   constructor(private readonly reportingService: DocumentsReportingService) {}
 

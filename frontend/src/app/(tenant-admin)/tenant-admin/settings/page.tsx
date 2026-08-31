@@ -1,7 +1,7 @@
 'use client';
 
-import StaffSettingsView from '@/components/views/StaffSettingsView';
+import SettingsPage from '@/components/settings/SettingsPage';
 
 export default function TenantAdminSettingsPage() {
-  return <StaffSettingsView portalLabel="Tenant Admin" />;
+  return <SettingsPage eyebrow="Account Settings" />;
 }

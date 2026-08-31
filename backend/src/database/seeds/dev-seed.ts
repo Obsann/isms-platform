@@ -41,7 +41,7 @@ const SEED_TENANTS: SeedTenant[] = [
   { code: 'tenant-b', name: 'Tenant B SACCO (dev seed)' },
 ];
 
-const SEED_MEMBERS: SeedMember[] = [
+const BASE_MEMBERS = [
   {
     tenantCode: 'tenant-a',
     memberNumber: 'MEM-10001',

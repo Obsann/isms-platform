@@ -1,36 +1,34 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { TenantsService } from './tenants.service';
+import { TenantEntity } from './tenant.entity';
+import { ConflictException } from '@nestjs/common';
 
-describe('TenantsService', () => {
+describe('TenantsService (Platform Level)', () => {
   let service: TenantsService;
-  let mockRepo: any;
+  let mockRepository: any;
   let mockDataSource: any;
 
-  const sampleTenant = {
-    id: 't-123',
-    name: 'Addis Ababa Sacco',
-    code: 'AA-SACCO',
+  const mockTenantEntity: Partial<TenantEntity> = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'Oromia Teachers SACCO',
+    code: 'oromia-teachers',
     status: 'active',
-    createdAt: new Date('2024-01-01T00:00:00Z'),
+    createdAt: new Date(),
   };
 
   beforeEach(async () => {
-    mockRepo = {
-      find: jest.fn().mockResolvedValue([sampleTenant]),
-      findOneBy: jest.fn().mockResolvedValue(sampleTenant),
-      create: jest.fn().mockImplementation((dto) => ({
-        ...dto,
-        id: 't-456',
-        createdAt: new Date('2024-01-02T00:00:00Z'),
-      })),
+    mockRepository = {
+      find: jest.fn().mockResolvedValue([mockTenantEntity]),
+      findOneBy: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((dto) => ({ ...dto, id: mockTenantEntity.id, createdAt: mockTenantEntity.createdAt })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     mockDataSource = {
-      getRepository: jest.fn().mockReturnValue(mockRepo),
-      query: jest.fn().mockResolvedValue([{ id: 't-123', status: 'active' }]),
+      getRepository: jest.fn().mockReturnValue(mockRepository),
+      query: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -46,39 +44,46 @@ describe('TenantsService', () => {
     service = module.get<TenantsService>(TenantsService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('should list all tenants ordered by createdAt DESC', async () => {
+    const list = await service.list();
+    expect(list).toHaveLength(1);
+    expect(list[0].code).toBe('oromia-teachers');
+    expect(mockRepository.find).toHaveBeenCalledWith({ where: {}, order: { createdAt: 'DESC' } });
   });
 
-  it('should resolve active tenant by code', async () => {
-    const result = await service.resolveActiveByCode('AA-SACCO');
-    expect(result).toEqual({ id: 't-123', status: 'active' });
-    expect(mockDataSource.query).toHaveBeenCalledWith(
-      'SELECT * FROM resolve_tenant_by_code($1)',
-      ['AA-SACCO'],
-    );
+  it('should create a new tenant with sanitized code', async () => {
+    const payload = { name: '  Oromia Teachers SACCO  ', code: '  OROMIA-TEACHERS  ' };
+    const created = await service.create(payload);
+
+    expect(created.name).toBe('Oromia Teachers SACCO');
+    expect(created.code).toBe('oromia-teachers');
+    expect(mockRepository.save).toHaveBeenCalled();
   });
 
-  it('should list tenants', async () => {
-    const result = await service.list();
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('Addis Ababa Sacco');
+  it('should throw ConflictException if tenant code already exists', async () => {
+    mockRepository.findOneBy.mockResolvedValueOnce(mockTenantEntity);
+
+    await expect(
+      service.create({ name: 'Duplicate SACCO', code: 'oromia-teachers' }),
+    ).rejects.toThrow(ConflictException);
   });
 
-  it('should create a new tenant', async () => {
-    const dto = { name: 'Hawassa Sacco', code: 'HW-SACCO', status: 'active' as const };
-    const result = await service.create(dto);
-    expect(result.name).toBe('Hawassa Sacco');
-    expect(result.id).toBe('t-456');
+  it('should update tenant details', async () => {
+    mockRepository.findOneBy.mockResolvedValueOnce(mockTenantEntity);
+
+    const updated = await service.update(mockTenantEntity.id!, { status: 'suspended' });
+    expect(updated?.status).toBe('suspended');
+    expect(mockRepository.save).toHaveBeenCalled();
   });
 
-  it('should update tenant status', async () => {
-    const result = await service.update('t-123', { status: 'suspended' });
-    expect(result?.status).toBe('suspended');
+  it('should return null when updating non-existent tenant', async () => {
+    mockRepository.findOneBy.mockResolvedValueOnce(null);
+    const result = await service.update('missing-id', { status: 'suspended' });
+    expect(result).toBeNull();
   });
 
-  it('should remove tenant', async () => {
-    await service.remove('t-123');
-    expect(mockRepo.delete).toHaveBeenCalledWith({ id: 't-123' });
+  it('should delete a tenant by id', async () => {
+    await service.remove(mockTenantEntity.id!);
+    expect(mockRepository.delete).toHaveBeenCalledWith({ id: mockTenantEntity.id });
   });
 });

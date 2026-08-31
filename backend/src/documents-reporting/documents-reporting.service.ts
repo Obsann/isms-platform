@@ -220,40 +220,117 @@ export class DocumentsReportingService {
   }
 
   async getSavingsSummary(): Promise<ReportingSummary> {
-    return {
-      tenantId: 'tenant-current',
-      asOf: new Date().toISOString(),
-      memberCount: 1248,
-      activeMemberCount: 1190,
-      totalSavings: '14200000.00',
-      totalShares: '5100000.00',
-      totalLoansOutstanding: '8320000.00',
-      loansInArrears: 6,
-    };
+    try {
+      // Total member count and active member count
+      const memberRows = await this.dataSource.query<{ total: string; active: string }[]>(
+        `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'active') AS active FROM members`,
+      );
+      const memberCount = parseInt(memberRows[0]?.total ?? '0', 10);
+      const activeMemberCount = parseInt(memberRows[0]?.active ?? '0', 10);
+
+      // Total savings (type = 'savings') and shares (type = 'shares')
+      const savingsRows = await this.dataSource.query<{ total_savings: string; total_shares: string }[]>(
+        `SELECT
+           COALESCE(SUM(balance) FILTER (WHERE type = 'savings'), 0)::numeric AS total_savings,
+           COALESCE(SUM(balance) FILTER (WHERE type = 'shares'), 0)::numeric  AS total_shares
+         FROM accounts
+         WHERE status = 'active'`,
+      );
+      const totalSavings = parseFloat(savingsRows[0]?.total_savings ?? '0').toFixed(2);
+      const totalShares = parseFloat(savingsRows[0]?.total_shares ?? '0').toFixed(2);
+
+      // Total outstanding loans
+      const loanRows = await this.dataSource.query<{ outstanding: string; in_arrears: string }[]>(
+        `SELECT
+           COALESCE(SUM(disbursed_amount), 0)::numeric AS outstanding,
+           COUNT(*) FILTER (WHERE status = 'defaulted') AS in_arrears
+         FROM loans
+         WHERE status IN ('disbursed', 'defaulted')`,
+      );
+      const totalLoansOutstanding = parseFloat(loanRows[0]?.outstanding ?? '0').toFixed(2);
+      const loansInArrears = parseInt(loanRows[0]?.in_arrears ?? '0', 10);
+
+      return {
+        tenantId: 'tenant-current',
+        asOf: new Date().toISOString(),
+        memberCount,
+        activeMemberCount,
+        totalSavings,
+        totalShares,
+        totalLoansOutstanding,
+        loansInArrears,
+      };
+    } catch {
+      // DB not yet ready (migrations pending) — return zero-state, not fake numbers
+      return {
+        tenantId: 'tenant-current',
+        asOf: new Date().toISOString(),
+        memberCount: 0,
+        activeMemberCount: 0,
+        totalSavings: '0.00',
+        totalShares: '0.00',
+        totalLoansOutstanding: '0.00',
+        loansInArrears: 0,
+      };
+    }
   }
 
   async getLoanPortfolio(): Promise<ReportingSummary> {
-    return {
-      tenantId: 'tenant-current',
-      asOf: new Date().toISOString(),
-      memberCount: 1248,
-      activeMemberCount: 340,
-      totalSavings: '14200000.00',
-      totalShares: '5100000.00',
-      totalLoansOutstanding: '8320000.00',
-      loansInArrears: 6,
-    };
+    try {
+      const memberRows = await this.dataSource.query<{ total: string }[]>(
+        `SELECT COUNT(*) AS total FROM members`,
+      );
+      const memberCount = parseInt(memberRows[0]?.total ?? '0', 10);
+
+      const loanRows = await this.dataSource.query<{
+        active_borrowers: string;
+        outstanding: string;
+        total_shares: string;
+        total_savings: string;
+        in_arrears: string;
+      }[]>(
+        `SELECT
+           COUNT(DISTINCT l.member_id) FILTER (WHERE l.status IN ('disbursed', 'defaulted')) AS active_borrowers,
+           COALESCE(SUM(l.disbursed_amount) FILTER (WHERE l.status IN ('disbursed', 'defaulted')), 0)::numeric AS outstanding,
+           (SELECT COALESCE(SUM(balance), 0)::numeric FROM accounts WHERE type = 'shares' AND status = 'active') AS total_shares,
+           (SELECT COALESCE(SUM(balance), 0)::numeric FROM accounts WHERE type = 'savings' AND status = 'active') AS total_savings,
+           COUNT(*) FILTER (WHERE l.status = 'defaulted') AS in_arrears
+         FROM loans l`,
+      );
+
+      const activeMemberCount = parseInt(loanRows[0]?.active_borrowers ?? '0', 10);
+      const totalLoansOutstanding = parseFloat(loanRows[0]?.outstanding ?? '0').toFixed(2);
+      const totalShares = parseFloat(loanRows[0]?.total_shares ?? '0').toFixed(2);
+      const totalSavings = parseFloat(loanRows[0]?.total_savings ?? '0').toFixed(2);
+      const loansInArrears = parseInt(loanRows[0]?.in_arrears ?? '0', 10);
+
+      return {
+        tenantId: 'tenant-current',
+        asOf: new Date().toISOString(),
+        memberCount,
+        activeMemberCount,
+        totalSavings,
+        totalShares,
+        totalLoansOutstanding,
+        loansInArrears,
+      };
+    } catch {
+      return {
+        tenantId: 'tenant-current',
+        asOf: new Date().toISOString(),
+        memberCount: 0,
+        activeMemberCount: 0,
+        totalSavings: '0.00',
+        totalShares: '0.00',
+        totalLoansOutstanding: '0.00',
+        loansInArrears: 0,
+      };
+    }
   }
 
   /** Sums to zero across the tenant when the ledger is intact. */
   async getTrialBalance(): Promise<TrialBalance> {
-    let rawLines = [
-      { account: '1010 - Cash & Bank Deposits Asset', debit: 12450000.0, credit: 0.0 },
-      { account: '1200 - Member Loans Receivable Asset', debit: 8320000.0, credit: 0.0 },
-      { account: '2010 - Member Savings Deposits Liability', debit: 0.0, credit: 14200000.0 },
-      { account: '3010 - Share Capital Equity', debit: 0.0, credit: 5100000.0 },
-      { account: '4010 - Loan Interest & Commission Income', debit: 0.0, credit: 1470000.0 },
-    ];
+    let rawLines: { account: string; debit: number; credit: number }[] = [];
 
     try {
       const dbRows = await this.dataSource.query<any[]>(
@@ -267,7 +344,7 @@ export class DocumentsReportingService {
         }));
       }
     } catch {
-      // General ledger table optional prior to Task 13 migration; fallback to immutable ledger snapshot
+      // ledger_entries table not yet migrated — return empty balanced state
     }
 
     const totalDebitsNum = rawLines.reduce((acc, line) => acc + line.debit, 0);

@@ -1,7 +1,7 @@
 'use client';
 
-import StaffSettingsView from '@/components/views/StaffSettingsView';
+import SettingsPage from '@/components/settings/SettingsPage';
 
 export default function SuperAdminSettingsPage() {
-  return <StaffSettingsView portalLabel="Super Admin" />;
+  return <SettingsPage eyebrow="Platform Settings" />;
 }

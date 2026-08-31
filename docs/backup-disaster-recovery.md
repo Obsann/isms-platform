@@ -16,11 +16,23 @@ It keeps the 7 newest dumps.
 Confirm it is running:
 
 ```bash
+# from backend/
+npm run backup:status
+```
+
+or:
+
+```bash
 docker compose ps postgres-backup
 docker logs isms-postgres-backup --tail 20
 ```
 
 You should see `Backup written: /backups/isms_dev_....dump`.
+
+Dump and restore talk to Postgres with `docker exec` inside `isms-postgres`.
+They do not use the host port. Compose currently publishes that container as
+`5532:5432` (host 5532 → container 5432). The API still uses `DB_PORT` in
+`backend/.env`.
 
 ## Manual dump
 

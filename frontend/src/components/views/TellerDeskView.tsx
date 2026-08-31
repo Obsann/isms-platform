@@ -8,7 +8,7 @@
  * server reconciliation, rollback protection, and full light/dark theme support.
  */
 
-import React, { useState, useCallback, useId } from 'react';
+import React, { useState, useCallback, useId, useEffect } from 'react';
 import {
   Search,
   Wallet,
@@ -36,12 +36,16 @@ import { isValidAmountDecimal, addAmounts, subtractAmounts, amountGreaterThan } 
 import { ApiRequestError } from '@/lib/api-client';
 import {
   getAccountBalance,
-  createDeposit,
-  createWithdrawal,
-  createLoanRepayment,
   getLoan,
   resolveSavingsAccount,
 } from '@/lib/api-client/teller';
+import {
+  getOutboxCounts,
+  isBrowserOffline,
+  registerOutboxSyncHandlers,
+  startOutboxAutoSync,
+  submitTellerOperation,
+} from '@/lib/offline-sync';
 import type {
   AccountBalance,
   LoanDetails,
@@ -60,7 +64,7 @@ interface PendingTx {
   type: TellerOp;
   amount: Amount;
   narration: string;
-  status: 'pending' | 'confirmed' | 'failed';
+  status: 'pending' | 'confirmed' | 'failed' | 'queued' | 'needs_review';
   serverTx?: Transaction;
   repaymentResult?: LoanRepaymentResult;
   postedAt: string;
@@ -149,6 +153,7 @@ function DepositForm({
   onOptimistic,
   onSuccess,
   onRollback,
+  onQueued,
 }: {
   accountId: string;
   currentBalance: AccountBalance;
@@ -158,6 +163,7 @@ function DepositForm({
   onOptimistic: (tx: PendingTx, newBalance: Amount) => void;
   onSuccess: (tempId: string, tx: Transaction, balanceAfter: Amount) => void;
   onRollback: (tempId: string, snapshot: AccountBalance) => void;
+  onQueued: (tempId: string) => void;
 }) {
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
@@ -206,11 +212,24 @@ function DepositForm({
     setIsSubmitting(true);
 
     try {
-      const tx = await createDeposit(accountId, {
+      const result = await submitTellerOperation({
+        kind: 'deposit',
+        feedTempId: tempId,
+        accountId,
         amount: trimmedAmount,
-        reference: reference.trim() || undefined,
-        narration: narration.trim() || undefined,
+        userReference: reference.trim() || undefined,
+        userNarration: narration.trim() || undefined,
       });
+
+      if (result.mode === 'queued') {
+        onQueued(tempId);
+        setAmount('');
+        setReference('');
+        setNarration('');
+        return;
+      }
+
+      const tx = result.deposit!;
       onSuccess(tempId, tx, tx.balanceAfter);
       setAmount('');
       setReference('');
@@ -307,6 +326,7 @@ function WithdrawalForm({
   onOptimistic,
   onSuccess,
   onRollback,
+  onQueued,
 }: {
   accountId: string;
   currentBalance: AccountBalance;
@@ -316,6 +336,7 @@ function WithdrawalForm({
   onOptimistic: (tx: PendingTx, newBalance: Amount) => void;
   onSuccess: (tempId: string, tx: Transaction, balanceAfter: Amount) => void;
   onRollback: (tempId: string, snapshot: AccountBalance) => void;
+  onQueued: (tempId: string) => void;
 }) {
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
@@ -377,11 +398,24 @@ function WithdrawalForm({
     setIsSubmitting(true);
 
     try {
-      const tx = await createWithdrawal(accountId, {
+      const result = await submitTellerOperation({
+        kind: 'withdrawal',
+        feedTempId: tempId,
+        accountId,
         amount: trimmedAmount,
-        reference: reference.trim() || undefined,
-        narration: narration.trim() || undefined,
+        userReference: reference.trim() || undefined,
+        userNarration: narration.trim() || undefined,
       });
+
+      if (result.mode === 'queued') {
+        onQueued(tempId);
+        setAmount('');
+        setReference('');
+        setNarration('');
+        return;
+      }
+
+      const tx = result.withdrawal!;
       onSuccess(tempId, tx, tx.balanceAfter);
       setAmount('');
       setReference('');
@@ -484,6 +518,7 @@ function LoanRepaymentForm({
   onOptimistic,
   onSuccess,
   onRollback,
+  onQueued,
 }: {
   isMutating: boolean;
   onStartMutation: () => void;
@@ -491,6 +526,7 @@ function LoanRepaymentForm({
   onOptimistic: (tx: PendingTx) => void;
   onSuccess: (tempId: string, result: LoanRepaymentResult) => void;
   onRollback: (tempId: string) => void;
+  onQueued: (tempId: string) => void;
 }) {
   const [loanId, setLoanId] = useState('');
   const [loanDetails, setLoanDetails] = useState<LoanDetails | null>(null);
@@ -561,12 +597,24 @@ function LoanRepaymentForm({
     setIsSubmitting(true);
 
     try {
-      const result = await createLoanRepayment(loanDetails.id, {
+      const result = await submitTellerOperation({
+        kind: 'loan-repayment',
+        feedTempId: tempId,
+        loanId: loanDetails.id,
         amount: trimmedAmount,
-        reference: reference.trim() || undefined,
+        userReference: reference.trim() || undefined,
       });
-      onSuccess(tempId, result);
-      setReceipt(result);
+
+      if (result.mode === 'queued') {
+        onQueued(tempId);
+        setAmount('');
+        setReference('');
+        return;
+      }
+
+      const repayment = result.repayment!;
+      onSuccess(tempId, repayment);
+      setReceipt(repayment);
       setAmount('');
       setReference('');
     } catch (err) {
@@ -756,6 +804,9 @@ export function TellerDeskView() {
     type: 'success' | 'error' | 'info';
     text: string;
   } | null>(null);
+  const [outboxPending, setOutboxPending] = useState(0);
+  const [outboxReview, setOutboxReview] = useState(0);
+  const [browserOffline, setBrowserOffline] = useState(isBrowserOffline());
 
   const lookupInputId = useId();
 
@@ -915,6 +966,85 @@ export function TellerDeskView() {
     );
   }, []);
 
+  const handleQueued = useCallback((tempId: string) => {
+    setTxFeed((prev) =>
+      prev.map((item) => (item.id === tempId ? { ...item, status: 'queued' } : item)),
+    );
+    setSessionMsg({
+      type: 'info',
+      text: 'Network unavailable — transaction queued locally. It will sync when connectivity returns.',
+    });
+    void getOutboxCounts().then(({ pending, needsReview }) => {
+      setOutboxPending(pending);
+      setOutboxReview(needsReview);
+    });
+  }, []);
+
+  useEffect(() => {
+    const refreshCounts = () => {
+      void getOutboxCounts().then(({ pending, needsReview }) => {
+        setOutboxPending(pending);
+        setOutboxReview(needsReview);
+      });
+    };
+
+    const onOnlineStatus = () => setBrowserOffline(isBrowserOffline());
+
+    registerOutboxSyncHandlers({
+      onDepositSynced: (item, tx) => {
+        handleTxSuccess(item.feedTempId, tx, tx.balanceAfter);
+        refreshCounts();
+      },
+      onWithdrawalSynced: (item, tx) => {
+        handleTxSuccess(item.feedTempId, tx, tx.balanceAfter);
+        refreshCounts();
+      },
+      onRepaymentSynced: (item, result) => {
+        handleRepaymentSuccess(item.feedTempId, result);
+        refreshCounts();
+      },
+      onItemNeedsReview: (item, message) => {
+        setTxFeed((prev) =>
+          prev.map((row) =>
+            row.id === item.feedTempId ? { ...row, status: 'needs_review' } : row,
+          ),
+        );
+        if (item.accountId) {
+          void getAccountBalance(item.accountId).then(setBalance).catch(() => undefined);
+        }
+        setSessionMsg({ type: 'error', text: message });
+        refreshCounts();
+      },
+      onItemFailed: (item, message) => {
+        setTxFeed((prev) =>
+          prev.map((row) =>
+            row.id === item.feedTempId ? { ...row, status: 'failed' } : row,
+          ),
+        );
+        if (item.accountId) {
+          void getAccountBalance(item.accountId).then(setBalance).catch(() => undefined);
+        }
+        setSessionMsg({ type: 'error', text: message });
+        refreshCounts();
+      },
+      onSummaryChange: (pending, needsReview) => {
+        setOutboxPending(pending);
+        setOutboxReview(needsReview);
+      },
+    });
+
+    refreshCounts();
+    window.addEventListener('online', onOnlineStatus);
+    window.addEventListener('offline', onOnlineStatus);
+    const stopSync = startOutboxAutoSync();
+
+    return () => {
+      window.removeEventListener('online', onOnlineStatus);
+      window.removeEventListener('offline', onOnlineStatus);
+      stopSync();
+    };
+  }, [handleTxSuccess, handleRepaymentSuccess]);
+
   const handleClearAccount = useCallback(() => {
     setLookupInput('');
     setAccountId('');
@@ -949,6 +1079,19 @@ export function TellerDeskView() {
           type={sessionMsg.type}
           message={sessionMsg.text}
           onDismiss={() => setSessionMsg(null)}
+        />
+      )}
+
+      {(browserOffline || outboxPending > 0 || outboxReview > 0) && (
+        <AlertBanner
+          type={outboxReview > 0 ? 'error' : browserOffline ? 'info' : 'info'}
+          message={
+            browserOffline
+              ? `Offline mode — ${outboxPending} transaction(s) queued for sync.`
+              : outboxReview > 0
+                ? `${outboxReview} queued transaction(s) need teller review. ${outboxPending} still pending sync.`
+                : `${outboxPending} transaction(s) waiting to sync with the server.`
+          }
         />
       )}
 
@@ -1114,6 +1257,7 @@ export function TellerDeskView() {
                       onOptimistic={handleOptimistic}
                       onSuccess={handleTxSuccess}
                       onRollback={handleRollback}
+                      onQueued={handleQueued}
                     />
                   )}
                   {activeOp === 'withdrawal' && (
@@ -1126,6 +1270,7 @@ export function TellerDeskView() {
                       onOptimistic={handleOptimistic}
                       onSuccess={handleTxSuccess}
                       onRollback={handleRollback}
+                      onQueued={handleQueued}
                     />
                   )}
                   {activeOp === 'loan-repayment' && (
@@ -1136,6 +1281,7 @@ export function TellerDeskView() {
                       onOptimistic={(tx) => handleOptimistic(tx)}
                       onSuccess={handleRepaymentSuccess}
                       onRollback={handleRepaymentRollback}
+                      onQueued={handleQueued}
                     />
                   )}
                 </CardContent>
@@ -1210,6 +1356,16 @@ export function TellerDeskView() {
                             {tx.status === 'failed' && (
                               <span className="inline-flex items-center gap-1 text-[9px] text-rose-800 dark:text-rose-400 font-bold">
                                 <XCircle className="w-2.5 h-2.5" /> Rolled Back
+                              </span>
+                            )}
+                            {tx.status === 'queued' && (
+                              <span className="inline-flex items-center gap-1 text-[9px] text-blue-800 dark:text-blue-400 font-bold">
+                                <Clock className="w-2.5 h-2.5" /> Queued Offline
+                              </span>
+                            )}
+                            {tx.status === 'needs_review' && (
+                              <span className="inline-flex items-center gap-1 text-[9px] text-amber-800 dark:text-amber-400 font-bold">
+                                <AlertTriangle className="w-2.5 h-2.5" /> Needs Review
                               </span>
                             )}
                           </div>

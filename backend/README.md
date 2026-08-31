@@ -49,10 +49,11 @@ The API listens on `4000` so it doesn't collide with the Next.js dev server on `
 | `npm run migration:generate -- src/database/migrations/<Name>` | generate a migration from entities |
 | `npm run migration:run` / `npm run migration:revert` | apply / roll back |
 | `npm run seed` | dev seed (`DB_USERNAME=postgres`) |
-| `npm run rls:check` | Task 28 — concurrent RLS isolation via Docker (`isms-postgres`) |
-| `npm run backup:now` | pg_dump snapshot to `backups/` (Task 33) |
-| `npm run backup:restore` | restore a dump file (Task 33) |
-| `npm run backup:rehearse` | restore to scratch DB + RLS check (Task 33) |
+| `npm run rls:check` | Task 28 RLS isolation (isms_app, concurrent tenant-a / tenant-b) |
+| `npm run backup:now` | pg_dump into `../backups/` |
+| `npm run backup:restore` | restore latest dump into spare `isms_restore_check` |
+| `npm run backup:rehearse` | dump → restore → RLS check (Task 33) |
+| `npm run backup:status` | confirm `isms-postgres-backup` is running and has written a dump |
 
 TypeScript is pinned to `^6` because `ts-jest` does not yet support TypeScript 7.
 

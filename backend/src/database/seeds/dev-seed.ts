@@ -39,56 +39,37 @@ const SEED_TENANTS: SeedTenant[] = [
   { code: 'tenant-b', name: 'Tenant B SACCO (dev seed)' },
 ];
 
-const SEED_MEMBERS: SeedMember[] = [
+const BASE_MEMBERS = [
   {
-    tenantCode: 'tenant-a',
-    memberNumber: 'MEM-10001',
-    firstName: 'Abebe',
-    middleName: 'Kebede',
-    lastName: 'Bikila',
-    nationalId: 'FIN-1001-2002-3003',
-    idType: 'national_id',
-    phone: '+251911123456',
-    email: 'abebe.bikila@tenant-a.dev',
-    status: 'active',
+    firstName: 'Abebe', middleName: 'Kebede', lastName: 'Bikila',
+    nationalId: 'FIN-1001-2002-3003', idType: 'national_id' as const,
+    phone: '+251911123456', status: 'active' as const,
   },
   {
-    tenantCode: 'tenant-a',
-    memberNumber: 'MEM-10002',
-    firstName: 'Tigist',
-    middleName: 'Worku',
-    lastName: 'Hailu',
-    nationalId: 'EP-8822991',
-    idType: 'passport',
-    phone: '+251922234567',
-    email: 'tigist.worku@tenant-a.dev',
-    status: 'active',
+    firstName: 'Tigist', middleName: 'Worku', lastName: 'Hailu',
+    nationalId: 'EP-8822991', idType: 'passport' as const,
+    phone: '+251922234567', status: 'active' as const,
   },
   {
-    tenantCode: 'tenant-a',
-    memberNumber: 'MEM-10003',
-    firstName: 'Dawit',
-    middleName: 'Solomon',
-    lastName: 'Tadesse',
-    nationalId: 'FIN-3003-4004-5005',
-    idType: 'national_id',
-    phone: '+251933345678',
-    email: 'dawit.solomon@tenant-a.dev',
-    status: 'pending',
+    firstName: 'Dawit', middleName: 'Solomon', lastName: 'Tadesse',
+    nationalId: 'FIN-3003-4004-5005', idType: 'national_id' as const,
+    phone: '+251933345678', status: 'pending' as const,
   },
   {
-    tenantCode: 'tenant-b',
-    memberNumber: 'MEM-20001',
-    firstName: 'Almaz',
-    middleName: 'Desta',
-    lastName: 'Tesfaye',
-    nationalId: 'FIN-5005-6006-7007',
-    idType: 'national_id',
-    phone: '+251944456789',
-    email: 'almaz.desta@tenant-b.dev',
-    status: 'active',
+    firstName: 'Almaz', middleName: 'Desta', lastName: 'Tesfaye',
+    nationalId: 'FIN-5005-6006-7007', idType: 'national_id' as const,
+    phone: '+251944456789', status: 'active' as const,
   },
 ];
+
+const SEED_MEMBERS: SeedMember[] = SEED_TENANTS.flatMap((tenant) => 
+  BASE_MEMBERS.map((m, i) => ({
+    ...m,
+    tenantCode: tenant.code,
+    memberNumber: `MEM-${tenant.code === 'tenant-a' ? '1' : '2'}000${i + 1}`,
+    email: `${m.firstName.toLowerCase()}.${m.lastName.toLowerCase()}@${tenant.code}.dev`,
+  }))
+);
 
 async function seed(): Promise<void> {
   const dataSource = new DataSource(

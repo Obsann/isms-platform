@@ -7,10 +7,10 @@ new task. Branch names must match `task<N>-<owner>-<short-desc>` from
 **How to refresh:** `git fetch --prune`, then check `git branch -r` and open PRs
 against the table below. Statuses: `blocked` · `ready` · `in progress` · `in review` · `merged` · `not started` · `cancelled` · `reverted`.
 
-Last refreshed: 2026-08-29 (`main` @ `fdf0970`). Scope: Fayda + USSD still out of
+Last refreshed: 2026-08-31 (`main` @ `ca56aa9`). Scope: Fayda + USSD still out of
 MVP — see [`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions.mdc) D1.
 
-**On `main`:** Tasks 1–8, 10, 11, 12, 13, 14, 16, 17, 18, 19, **22**, 23, 24, 25, 26, 30
+**On `main`:** Tasks 1–8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, **22**, 23, 24, 25, 26, 30
 + docs (Fayda/USSD drop, `rbac-matrix.md`, test-case matrix, MoMo OpenAPI).
 
 **Not on `main`:** Tasks 20, 21, 33 (open branches), Task 18 follow-up commits (7 on branch).
@@ -24,9 +24,9 @@ registration from PR #33. Biruk restores the controller with Task 20.
 
 | Owner | Vertical | Current / next task | Expected branch | Status | Depends on |
 |---|---|---|---|---|---|
-| **Obsan** | Platform | Task 15 — offline-sync | `task15-obsan-offline-sync` | **ready** | Task 14 ✅ |
-| **Melkamu** | Member Mgmt + 24 + 33 | Open PR for Task 33; Task 30 staff UAT with Biruk | `task33-melkamu-backup-restore` | Task 33 **ready to merge** | — |
-| **Jerry** | Transactions / Teller | Task 29 with Obsan after Task 15 | — | Tasks 12, 14 **merged** | Task 15 for Task 29 |
+| **Obsan** | Platform | Tasks 27–29, 32, 35 closeout + Task 33 integration | `task28-32-obsan-platform-closeout` | **in progress** | Task 15 ✅ |
+| **Melkamu** | Member Mgmt + 24 + 33 | Task 33 PR review; Task 30 staff UAT with Biruk | `task33-melkamu-backup-restore` | Task 33 **in review** (Obsan branch integrates scripts) | — |
+| **Jerry** | Transactions / Teller | Task 29 verify with Obsan | — | Tasks 12, 14, 15 **merged** | — |
 | **Abenezer** | Loans & Credit | Fix D-30-01, D-30-02; Task 31 defect list | `task18-abenezer-loan-ui` | 7 commits unmerged on branch | — |
 | **Biruk** | Admin & Reporting | Merge Task 20 + 21 (remove mock data first) | `task20-biruk-reporting`, `task21-biruk-tenant-admin-dashboard` | **in progress** — branches open | — |
 | **Liya** | Member Self-Service | Task 34 doc template; fix member `:id` ownership check | — | Tasks 7, 23, 25, 26 **merged** | — |
@@ -34,7 +34,7 @@ registration from PR #33. Biruk restores the controller with Task 20.
 **Active gates:**
 1. **Biruk merge Task 20** — reporting controller + real ledger reads (D-30-03, D-30-04).
 2. **Biruk merge Task 21** — real tenant-admin dashboard (placeholder on `main` today).
-3. **Melkamu open PR for Task 33** — backup/DR rehearsal + RLS check (covers part of Task 28).
+3. **Obsan merge platform closeout** — Tasks 27, 28, 29, 32, 35 docs + Task 33 scripts on `docker-compose`.
 4. **Everyone re-verify vertical** under enforced RBAC (Task 22 merged — see below).
 
 ### Week 0
@@ -50,13 +50,11 @@ registration from PR #33. Biruk restores the controller with Task 20.
 - **Scope change 2026-08-10.** Live Fayda + all USSD out of MVP.
 - **Task ownership (2026-08-29).** Melkamu owns Task 24 (member portal UI) and Task 33
   (backup/DR rehearsal) in addition to Member Management.
-- **Task 22 merged (PR #46, 2026-08-29).** RBAC enforced globally; audit log live.
-  Closes D-30-05 and D-30-06. Re-pull `main` before branching.
+- **Task 22 merged (PR #46).** RBAC enforced globally; audit log live. Closes D-30-05, D-30-06.
+- **Task 15 merged (PR #50).** Offline teller outbox + server idempotency.
 - **No offline/demo fallbacks in merged code.** Strip "dev fallback" commits from open
   branches before merge — Task 27 requires real endpoints only.
 - **Every PR must build** after merging `main`.
-- **Task 30 UAT matrix** on `main`: 21 PASS, 4 FAIL after Task 22 (D-30-01 through
-  D-30-04 remain). Technical dry-run — staff UAT session still pending (Melkamu + Biruk).
 
 ---
 
@@ -68,13 +66,12 @@ Full matrix: [`rbac-matrix.md`](./rbac-matrix.md).
    missing decorator = 403 (fail closed).
 2. **State-changing requests are audited** in `audit_logs` (same transaction as the
    business write). `GET /api/audit-logs` for tenant-admin and super-admin only.
-3. **Re-verify your vertical** — Obsan applied `@Roles` to endpoints that landed while
-   Task 22 was open (tenants, member self-service, loan list, member delete). Check your
-   rows in the matrix.
+3. **Re-verify your vertical** — check your rows in the matrix.
 4. **Open gap (Liya):** member self-service routes allow role `member` but do not yet
    verify `:id` is the caller's own member record.
 
-Live re-check scripts: `backend/scripts/verify-rbac.ps1`, `backend/scripts/verify-audit-log.ps1`.
+Live re-check scripts: `backend/scripts/verify-rbac.ps1`, `verify-audit-log.ps1`,
+`verify-offline-outbox.ps1`.
 
 ---
 
@@ -84,20 +81,23 @@ Live re-check scripts: `backend/scripts/verify-rbac.ps1`, `backend/scripts/verif
 |---|---|---|---|
 | 1–5, 13 Backend + auth + ledger | various | **merged** | |
 | 4 Login & role routing | `task4-obsan-login-routing` | **merged** (PR #22) | |
-| 22 Security & Audit / RBAC | `task22-obsan-rbac-audit` | **merged** (PR #46) | RolesGuard, audit log, `rbac-matrix.md`; fixed `main` compile break |
-| 15 Offline-sync | `task15-obsan-offline-sync` | **ready** | next — Task 14 merged |
-| 28 RLS concurrent load | — | partial | Melkamu's Task 33 branch has isolation check |
-| 32 Deployment runbook | — | not started | Week 6 |
-| 27, 29, 35 | — | later | Week 5–6 |
+| 22 Security & Audit / RBAC | `task22-obsan-rbac-audit` | **merged** (PR #46) | RolesGuard, audit log, `rbac-matrix.md` |
+| 15 Offline-sync | `task15-obsan-offline-sync` | **merged** (PR #50) | outbox + idempotency |
+| 27 Integration pass | `task28-32-obsan-platform-closeout` | **in progress** | `integration-pass.md` |
+| 28 RLS concurrent load | same | **in progress** | `npm run rls:check` |
+| 29 Offline outbox edge cases | same | **in progress** | `verify-offline-outbox.ps1` |
+| 32 Deployment runbook | same | **in progress** | `deployment-runbook.md` |
+| 35 Final UAT sign-off | same | **in progress** | `uat-sign-off.md` template |
+| 33 Backup & DR (scripts) | Melkamu branch + Obsan closeout | **in review** | credit Melkamu; Obsan wires compose + npm scripts |
 
 ## Melkamu — Member Management (+ Tasks 24, 33)
 
 | Task | Branch | Status | Notes |
 |---|---|---|---|
 | 6, 8, 10, 11 | various | **merged** | PR #40, #41 |
-| 24 Member portal UI | `task24-melkamu-member-portal-ui` | **merged** (PR #45) | Melkamu owns ongoing portal work through Task 27 |
+| 24 Member portal UI | `task24-melkamu-member-portal-ui` | **merged** (PR #45) | |
 | 30 Test matrix / UAT | — | **merged** (PR #44) | Staff UAT session with Biruk still to run |
-| 33 Backup & DR rehearsal | `task33-melkamu-backup-restore` | **ready** | 11 commits, current with `main` — open PR |
+| 33 Backup & DR rehearsal | `task33-melkamu-backup-restore` | **in review** | scripts integrated on Obsan closeout branch |
 | 34 Docs — Member section | — | not started | Week 6 |
 
 ## Jerry — Transactions / Teller Desk
@@ -106,7 +106,7 @@ Live re-check scripts: `backend/scripts/verify-rbac.ps1`, `backend/scripts/verif
 |---|---|---|---|
 | 12 Savings & Shares backend | `task12-jerry-savings` | **merged** (PR #19) | |
 | 14 Teller Desk UI | `task14-teller-desk-v2` | **merged** (PR #32) | |
-| 29 Offline outbox test | — | blocked | after Obsan Task 15 |
+| 29 Offline outbox test | — | **ready** | run with Obsan verify script |
 
 ## Abenezer — Loans & Credit
 
@@ -144,19 +144,19 @@ Live re-check scripts: `backend/scripts/verify-rbac.ps1`, `backend/scripts/verif
 |---|---|
 | Task 20 | reporting endpoints; D-30-03, D-30-04 |
 | Task 21 | real tenant-admin dashboard |
-| Task 33 | Task 28 partial coverage |
-| Task 15 | Jerry Task 29 |
+| Obsan closeout PR | Week 5–6 platform sign-off docs |
+| Melkamu Task 33 | can close when Obsan closeout merges (scripts credited to Melkamu) |
 
 ---
 
 ## Remote branches (raw)
 
-As of 2026-08-29 (`main` @ `fdf0970`):
+As of 2026-08-31 (`main` @ `ca56aa9`):
 
-- `origin/main` — through Task 22 (PR #46); **builds**
-- `origin/task20-biruk-reporting` — Task 20 (2 commits ahead)
-- `origin/task21-biruk-tenant-admin-dashboard` — Task 21 (11 commits ahead)
-- `origin/task33-melkamu-backup-restore` — Task 33 (11 commits; rebase onto `fdf0970` before PR)
+- `origin/main` — through Task 15 (PR #50); **builds**
+- `origin/task20-biruk-reporting` — Task 20
+- `origin/task21-biruk-tenant-admin-dashboard` — Task 21
+- `origin/task33-melkamu-backup-restore` — Task 33 (11 commits)
 - `origin/task18-abenezer-loan-ui` — 7 follow-up commits (demo fallbacks — strip before merge)
 - `origin/task19-biruk-super-admin` — 2 follow-up commits
-- Stale after merge: `task22-obsan-rbac-audit`, `task1`…`task16`, older docs branches — delete when convenient
+- Local: `task28-32-obsan-platform-closeout` — not yet pushed

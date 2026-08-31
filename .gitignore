@@ -35,6 +35,10 @@ logs/
 coverage/
 *.lcov
 
+# Database dumps (Task 33) — never commit live backups
+backups/*
+!backups/.gitkeep
+
 # Caches
 .eslintcache
 *.tsbuildinfo

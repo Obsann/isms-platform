@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Repository } from 'typeorm';
 import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
+import { SyncConflictException } from '../common/sync-conflict.exception';
 import { LedgerService } from '../ledger';
 import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
@@ -251,6 +252,17 @@ export class LoanService {
     }
 
     const repaymentRepo = this.ctx.repo(LoanRepaymentEntity);
+    const ref = input.reference?.trim();
+    if (ref) {
+      const existing = await repaymentRepo.findOne({ where: { reference: ref } });
+      if (existing) {
+        if (existing.loanId === loan.id && existing.amount === input.amount) {
+          return this.toRepaymentRow(existing);
+        }
+        throw new SyncConflictException();
+      }
+    }
+
     const entry = repaymentRepo.create({
       tenantId: loan.tenantId,
       loanId: loan.id,

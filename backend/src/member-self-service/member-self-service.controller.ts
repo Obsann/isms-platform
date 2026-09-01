@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { Roles } from '../common';
+import { Controller, ForbiddenException, Get, Param, Query } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles, type AuthenticatedUser } from '../common';
 import { MemberStatementQueryDto } from './dto/member-statement-query.dto';
 import { MemberSelfServiceService } from './member-self-service.service';
 import type {
@@ -25,15 +26,26 @@ import type {
 export class MemberSelfServiceController {
   constructor(private readonly memberSelfService: MemberSelfServiceService) {}
 
+  private assertOwnership(user: AuthenticatedUser, requestedMemberId: string): void {
+    if (user.role === 'member' && user.staffId !== requestedMemberId) {
+      throw new ForbiddenException('Members can only access their own record');
+    }
+  }
+
   /**
    * `GET /members/:id/balance`
    *
    * Returns all savings & share accounts for the member with live balance figures.
    * Throws 404 if the member does not exist (propagated from MemberService).
+   * Throws 403 if role is 'member' and requested ID does not match the authenticated user.
    */
   @Get('balance')
   @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
-  getBalance(@Param('id') id: string): Promise<MemberBalanceView> {
+  getBalance(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MemberBalanceView> {
+    this.assertOwnership(user, id);
     return this.memberSelfService.getBalance(id);
   }
 
@@ -43,13 +55,16 @@ export class MemberSelfServiceController {
    * Returns transaction history across all accounts, newest-first.
    * Optional query params: `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `limit`, `offset`.
    * Throws 404 if the member does not exist (propagated from MemberService).
+   * Throws 403 if role is 'member' and requested ID does not match the authenticated user.
    */
   @Get('statement')
   @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
   getStatement(
     @Param('id') id: string,
     @Query() query: MemberStatementQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<MemberStatementView> {
+    this.assertOwnership(user, id);
     return this.memberSelfService.getStatement(id, query);
   }
 
@@ -65,10 +80,15 @@ export class MemberSelfServiceController {
    * unavailable; the `status` field carries that signal at the application layer.
    *
    * Throws 404 if the member does not exist (propagated from MemberService).
+   * Throws 403 if role is 'member' and requested ID does not match the authenticated user.
    */
   @Get('loans')
   @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
-  getLoans(@Param('id') id: string): Promise<MemberLoansView> {
+  getLoans(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MemberLoansView> {
+    this.assertOwnership(user, id);
     return this.memberSelfService.getLoans(id);
   }
 }

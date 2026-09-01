@@ -14,7 +14,7 @@ export interface MemberSearchResult {
 
 export interface LegacyRowError {
   row: number;
-  column?: string;
+  field: string;
   message: string;
 }
 
@@ -24,10 +24,11 @@ export interface LegacyImportPreview {
   totalRows: number;
   validRows: number;
   errors: LegacyRowError[];
+  preview: Record<string, string>[];
 }
 
 export interface LegacyImportCommitResult {
   stagingId: string;
-  importedRows: number;
-  skippedRows: number;
+  committed: number;
+  skipped: number;
 }

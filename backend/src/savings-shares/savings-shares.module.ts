@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ChannelIntegrationModule } from '../channel-integration';
 import { LedgerModule } from '../ledger';
 import { MemberModule } from '../members';
 import { AccountEntity } from './account.entity';
@@ -20,6 +21,7 @@ import { SavingsTransactionEntity } from './savings-transaction.entity';
     ConfigModule,
     MemberModule,
     LedgerModule,
+    ChannelIntegrationModule,
     TypeOrmModule.forFeature([AccountEntity, SavingsTransactionEntity, FundsHoldEntity]),
   ],
   controllers: [SavingsSharesController],

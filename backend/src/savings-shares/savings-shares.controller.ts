@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, BadRequestException } from '@nestjs/common';
 import type { Request } from 'express';
 import { Roles } from '../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
@@ -15,13 +15,22 @@ export class SavingsSharesController {
   constructor(private readonly savingsSharesService: SavingsSharesService) {}
 
   @Post()
-  @Roles('teller', 'tenant-admin')
+  @Roles('teller', 'tenant-admin', 'loan-officer')
   createAccount(@Body() dto: CreateAccountDto): Promise<Account> {
     return this.savingsSharesService.createAccount(dto);
   }
 
+  @Get()
+  @Roles('teller', 'tenant-admin', 'loan-officer')
+  listByMember(@Query('memberId') memberId?: string): Promise<Account[]> {
+    if (!memberId) {
+      throw new BadRequestException('memberId query parameter is required');
+    }
+    return this.savingsSharesService.getAccountsByMember(memberId);
+  }
+
   @Get(':id')
-  @Roles('teller', 'tenant-admin', 'member')
+  @Roles('teller', 'tenant-admin', 'loan-officer', 'member')
   getBalance(@Param('id') id: string): Promise<AccountBalance> {
     return this.savingsSharesService.getBalance(id);
   }

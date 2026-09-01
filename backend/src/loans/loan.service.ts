@@ -1,16 +1,24 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Repository } from 'typeorm';
+import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
+import { SyncConflictException } from '../common/sync-conflict.exception';
 import { LedgerService } from '../ledger';
+import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
 import { LoanEntity } from './entities/loan.entity';
+import type { PaginatedResult } from '../types';
+import { LoanSearchQueryDto } from './dto/loan-search-query.dto';
 import type {
   ApprovalDecisionInput,
   DisbursementInput,
@@ -41,10 +49,15 @@ import type {
  */
 @Injectable()
 export class LoanService {
+  private readonly logger = new Logger(LoanService.name);
+
   constructor(
     private readonly ctx: TenantContextService,
     private readonly savingsSharesService: SavingsSharesService,
     private readonly ledger: LedgerService,
+    private readonly memberService: MemberService,
+    private readonly notifications: NotificationService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ------------------------------------------------------------------ apply
@@ -120,6 +133,11 @@ export class LoanService {
   /**
    * Moves a `pending` loan to `approved` or `rejected`.
    * Only a loan in `pending` status can be acted on; anything else is a 409.
+   *
+   * Enforces approval threshold rule (FR-3.2 / D-30-02):
+   * - High-value applications (> threshold) must be approved by Manager (`tenant-admin` / `super-admin`).
+   * - Applications at or below threshold route to `loan-officer` (or Manager).
+   * - Unauthorized or mismatched roles are rejected with 403 Forbidden.
    */
   async decideApproval(input: ApprovalDecisionInput): Promise<LoanRow> {
     const repo = this.ctx.repo(LoanEntity);
@@ -131,6 +149,31 @@ export class LoanService {
       );
     }
 
+    // Approval threshold enforcement (FR-3.2 / D-30-02)
+    const thresholdStr = this.configService.get<string>('LOAN_APPROVAL_THRESHOLD', '50000.00');
+    const threshold = parseFloat(thresholdStr);
+    const requested = parseFloat(loan.requestedAmount);
+
+    if (input.approverRole) {
+      if (requested > threshold) {
+        if (input.approverRole !== 'tenant-admin' && input.approverRole !== 'super-admin') {
+          throw new ForbiddenException(
+            `High-value loan application of ${loan.requestedAmount} exceeds the delegated threshold of ${thresholdStr} ETB and requires Manager approval`,
+          );
+        }
+      } else {
+        if (
+          input.approverRole !== 'loan-officer' &&
+          input.approverRole !== 'tenant-admin' &&
+          input.approverRole !== 'super-admin'
+        ) {
+          throw new ForbiddenException(
+            `Role '${input.approverRole}' is not authorized to approve loan applications`,
+          );
+        }
+      }
+    }
+
     loan.status = input.approved ? 'approved' : 'rejected';
     loan.approvedBy = input.approvedBy;
     loan.approvalNote = input.note ?? null;
@@ -140,7 +183,11 @@ export class LoanService {
     }
 
     const saved = await repo.save(loan);
-    return this.toRow(saved);
+    const row = this.toRow(saved);
+    if (input.approved) {
+      await this.queueLoanApprovedNotification(row);
+    }
+    return row;
   }
 
   // ---------------------------------------------------------------- disburse
@@ -205,6 +252,17 @@ export class LoanService {
     }
 
     const repaymentRepo = this.ctx.repo(LoanRepaymentEntity);
+    const ref = input.reference?.trim();
+    if (ref) {
+      const existing = await repaymentRepo.findOne({ where: { reference: ref } });
+      if (existing) {
+        if (existing.loanId === loan.id && existing.amount === input.amount) {
+          return this.toRepaymentRow(existing);
+        }
+        throw new SyncConflictException();
+      }
+    }
+
     const entry = repaymentRepo.create({
       tenantId: loan.tenantId,
       loanId: loan.id,
@@ -242,6 +300,41 @@ export class LoanService {
     return this.toRepaymentRow(saved);
   }
 
+  // ---------------------------------------------------------------- findAll
+
+  /**
+   * List all loans in the current tenant with optional search, status filtering, and pagination.
+   */
+  async findAll(query?: LoanSearchQueryDto): Promise<PaginatedResult<LoanRow>> {
+    const repo = this.ctx.repo(LoanEntity);
+    const qb = repo.createQueryBuilder('loan');
+
+    if (query?.status && query.status !== 'all') {
+      qb.andWhere('loan.status = :status', { status: query.status });
+    }
+
+    if (query?.search) {
+      const searchPattern = `%${query.search}%`;
+      qb.andWhere(
+        '(loan.loanNumber ILIKE :search OR loan.purpose ILIKE :search)',
+        { search: searchPattern },
+      );
+    }
+
+    const limit = query?.limit ?? 50;
+    const offset = query?.offset ?? 0;
+
+    qb.orderBy('loan.appliedAt', 'DESC');
+    qb.take(limit);
+    qb.skip(offset);
+
+    const [entities, total] = await qb.getManyAndCount();
+    return {
+      items: entities.map((entity) => this.toRow(entity)),
+      total,
+    };
+  }
+
   // ---------------------------------------------------------------- findById
 
   async findById(loanId: string): Promise<LoanRow> {
@@ -250,7 +343,23 @@ export class LoanService {
     return this.toRow(loan);
   }
 
+  // ---------------------------------------------------------- findByMemberId
+
+  /**
+   * Fetches all loans associated with a specific member.
+   * Required for Member Self-Service API (Task 23).
+   */
+  async findByMemberId(memberId: string): Promise<LoanRow[]> {
+    const repo = this.ctx.repo(LoanEntity);
+    const loans = await repo.find({
+      where: { memberId },
+      order: { appliedAt: 'DESC' },
+    });
+    return loans.map((loan) => this.toRow(loan));
+  }
+
   // ------------------------------------------------ guarantor logic (Task 17)
+
 
   /**
    * Records a guarantor pledge and holds the requested amount on the guarantor's
@@ -342,6 +451,34 @@ export class LoanService {
       pledgedAmount: p.pledgedAmount,
       holdId: p.holdId,
     }));
+  }
+
+  /**
+   * Resolve the member email while tenant-context is still open, then fire-and-forget
+   * SMTP. A missing address or send failure must not change the loan status (Task 25).
+   */
+  private async queueLoanApprovedNotification(loan: LoanRow): Promise<void> {
+    try {
+      const member = await this.memberService.findById(loan.memberId);
+      if (!member.email) {
+        this.logger.warn(`Skipping loan-approved: member ${loan.memberId} has no email`);
+        return;
+      }
+      this.notifications.enqueue({
+        template: 'loan-approved',
+        to: member.email,
+        data: {
+          memberName: member.fullName,
+          loanNumber: loan.loanNumber,
+          amount: loan.approvedAmount ?? loan.requestedAmount,
+          currency: 'ETB',
+          termMonths: loan.termMonths,
+        },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Could not queue loan-approved: ${message}`);
+    }
   }
 
   // ---------------------------------------------------------------- helpers

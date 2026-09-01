@@ -18,7 +18,11 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "seed": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" src/database/seeds/dev-seed.ts"
+    "seed": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" src/database/seeds/dev-seed.ts",
+    "rls:check": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/rls-isolation-check.ts",
+    "backup:now": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/backup-database.ts",
+    "backup:restore": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/restore-database.ts",
+    "backup:rehearse": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/rehearse-restore.ts"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -53,6 +57,7 @@
     "class-validator": "^0.15.1",
     "D": "1.0.0",
     "dotenv": "^17.4.2",
+    "nodemailer": "^9.0.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.22.0",
@@ -69,6 +74,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^26.1.2",
+    "@types/nodemailer": "^8.0.1",
     "@types/passport-jwt": "^4.0.1",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",

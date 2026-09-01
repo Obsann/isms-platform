@@ -28,6 +28,7 @@ import type {
   HoldFundsInput,
   LoanEligibilityCeiling,
   SharePurchaseInput,
+  TenantAccountSummary,
   TransactionHistoryFilter,
   WithdrawalInput,
 } from './savings-shares.types';
@@ -343,6 +344,54 @@ export class SavingsSharesService {
 
     const txns = await qb.getMany();
     return txns.map((t) => this.mapTransactionToContract(t));
+  }
+
+  /** One savings/share posting by id — used for receipts. */
+  async getTransactionById(transactionId: string): Promise<Transaction> {
+    const txn = await this.tenantContext.repo(SavingsTransactionEntity).findOne({
+      where: { id: transactionId },
+    });
+    if (!txn) {
+      throw new NotFoundException(`Transaction "${transactionId}" not found`);
+    }
+    return this.mapTransactionToContract(txn);
+  }
+
+  /** Newest postings across the tenant (Teller / Tenant Admin dashboards). */
+  async getRecentTransactions(limit = 8): Promise<Transaction[]> {
+    const take = Math.min(Math.max(1, limit), 50);
+    const txns = await this.tenantContext.repo(SavingsTransactionEntity).find({
+      order: { postedAt: 'DESC', id: 'DESC' },
+      take,
+    });
+    return txns.map((t) => this.mapTransactionToContract(t));
+  }
+
+  /** Active-account totals for the current tenant. Does not write balances. */
+  async getTenantAccountSummary(): Promise<TenantAccountSummary> {
+    const accounts = await this.tenantContext.repo(AccountEntity).find({
+      where: { status: 'active' },
+    });
+    let savingsCents = 0n;
+    let shareCents = 0n;
+    let savingsAccountCount = 0;
+    let shareAccountCount = 0;
+    for (const account of accounts) {
+      const cents = toCents(account.balance);
+      if (account.type === 'savings') {
+        savingsCents += cents;
+        savingsAccountCount += 1;
+      } else if (account.type === 'share') {
+        shareCents += cents;
+        shareAccountCount += 1;
+      }
+    }
+    return {
+      totalSavings: fromCents(savingsCents),
+      totalShares: fromCents(shareCents),
+      savingsAccountCount,
+      shareAccountCount,
+    };
   }
 
   /**

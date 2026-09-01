@@ -13,6 +13,7 @@ import type {
   FundsHold,
   HoldFundsInput,
   LedgerLine,
+  LedgerTrialBalance,
   LoanMovementInput,
   MemberMovementInput,
   PostingMeta,
@@ -355,6 +356,47 @@ export class LedgerService {
       status: row.status,
       type: row.type,
       currency: row.currency.trim(),
+    };
+  }
+
+  /**
+   * Tenant trial balance grouped by hard-coded GL code (D2). Debits must equal
+   * credits when every posting went through `postLines`.
+   */
+  async getTrialBalance(): Promise<LedgerTrialBalance> {
+    const entries = await this.tenantContext.repo(LedgerEntryEntity).find();
+    const byGl = new Map<string, { debit: bigint; credit: bigint }>();
+
+    for (const entry of entries) {
+      const current = byGl.get(entry.glCode) ?? { debit: 0n, credit: 0n };
+      const cents = toCents(entry.amount);
+      if (entry.side === 'debit') {
+        current.debit += cents;
+      } else {
+        current.credit += cents;
+      }
+      byGl.set(entry.glCode, current);
+    }
+
+    let totalDebit = 0n;
+    let totalCredit = 0n;
+    const lines = [...byGl.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([glCode, totals]) => {
+        totalDebit += totals.debit;
+        totalCredit += totals.credit;
+        return {
+          glCode: glCode as LedgerTrialBalance['lines'][number]['glCode'],
+          debit: fromCents(totals.debit),
+          credit: fromCents(totals.credit),
+        };
+      });
+
+    return {
+      lines,
+      totalDebits: fromCents(totalDebit),
+      totalCredits: fromCents(totalCredit),
+      balanced: totalDebit === totalCredit,
     };
   }
 

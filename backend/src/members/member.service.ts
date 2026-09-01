@@ -35,6 +35,8 @@ const CSV_FIELDS = [
 ] as const;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function parseCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -117,6 +119,29 @@ export class MemberService {
       throw new NotFoundException(`Member with ID "${memberId}" not found`);
     }
     return this.mapToContract(member);
+  }
+
+  /** UUID or human member number (e.g. MEM-10001). */
+  async findByIdOrNumber(idOrNumber: string): Promise<Member> {
+    const trimmed = idOrNumber.trim();
+    if (UUID_RE.test(trimmed)) {
+      return this.findById(trimmed);
+    }
+    const repo = this.tenantContext.repo(MemberEntity);
+    const member = await repo.findOne({
+      where: { memberNumber: normalizeMemberNumber(trimmed) },
+    });
+    if (!member) {
+      throw new NotFoundException(`Member "${trimmed}" not found`);
+    }
+    return this.mapToContract(member);
+  }
+
+  async countMembers(): Promise<{ total: number; active: number }> {
+    const repo = this.tenantContext.repo(MemberEntity);
+    const total = await repo.count();
+    const active = await repo.count({ where: { status: 'active' } });
+    return { total, active };
   }
 
   /** `GET /api/members?search=` */

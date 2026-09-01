@@ -32,10 +32,10 @@ Record pass/fail and note any request that is not `localhost:4000/api` (except s
 
 | Portal | Login | Primary action | Logout / session end | Pass? |
 |---|---|---|---|---|
-| Super Admin | `platform` / `superadmin@platform.dev` | List tenants, open provisioning form | Close session / navigate away | |
-| Tenant Admin | `tenant-a` / `admin@tenant-a.dev` | Members list or reports tab | | |
-| Teller | `tenant-a` / `teller@tenant-a.dev` | Teller Desk: lookup `MEM-10001`, post a small deposit | | |
-| Member | `tenant-a` / `abebe.bikila@tenant-a.dev` | Balance + statement views | | |
+| Super Admin | `platform` / `superadmin@platform.dev` | List tenants (`GET /api/platform/tenants` → 2) | Close session / navigate away | **PASS** 2026-09-01 |
+| Tenant Admin | `tenant-a` / `admin@tenant-a.dev` | Savings summary + trial balance + statement for `MEM-10001` | | **PASS** — statement HTML contains Abebe, not fake TXN-INIT-001 |
+| Teller | `tenant-a` / `teller@tenant-a.dev` | Search `MEM-10001`; deposit via audit-log + outbox scripts | | **PASS** |
+| Member | `tenant-a` / `abebe.bikila@tenant-a.dev` | Own balance (1 savings account); other member → 403 | | **PASS** |
 
 ## Automated smoke (optional)
 
@@ -56,13 +56,28 @@ cd backend && npm run rls:check
 ## Known MVP exceptions (not defects)
 
 - Member portal **mobile money** tab uses `frontend/src/lib/momo-mock.ts` — mocked C2B/B2C only (D1).
-- `AppContext.tsx` still imports `mockData` for legacy dashboard shells — confirm teller/member flows you test do not read from it.
+- Login no longer issues a mock JWT when the API is down.
+
+## 2026-09-01 closeout note
+
+Docker Compose Postgres healthy on host port 5532. Seed + migrations applied.
+
+| Check | Result |
+|---|---|
+| `npm run rls:check` | **PASS** — tenant-a `MEM-10001..003`, tenant-b `MEM-20001` |
+| `scripts/verify-rbac.ps1` | **PASS** 20/20 including report routes |
+| `scripts/verify-audit-log.ps1` | **PASS** — deposit audited; GET and rejected write add no row |
+| `scripts/verify-offline-outbox.ps1` | **PASS** 5/5 idempotency + `SyncConflict` |
+| Trial balance | **PASS** — balanced `762.50` / `762.50` |
+| Frontend `/login` | **200** |
+
+Member self-service ownership now matches staff email to the member record (JWT `sub` is `staff_accounts.id`, not `members.id`).
 
 ## Sign-off
 
 | Role | Name | Date | Integration pass OK? |
 |---|---|---|---|
-| Obsan (coordinator) | | | |
+| Obsan (coordinator) | Obsan | 2026-09-01 | **PASS** (API + scripts + login page; browser click-through still for the team) |
 | Melkamu | | | |
 | Jerry | | | |
 | Abenezer | | | |

@@ -41,7 +41,7 @@ const SEED_TENANTS: SeedTenant[] = [
   { code: 'tenant-b', name: 'Tenant B SACCO (dev seed)' },
 ];
 
-const BASE_MEMBERS = [
+const BASE_MEMBERS: SeedMember[] = [
   {
     tenantCode: 'tenant-a',
     memberNumber: 'MEM-10001',
@@ -226,7 +226,7 @@ async function seed(): Promise<void> {
     let firstMemberId: string | null = null;
     const tenantAId = tenantIds.get('tenant-a')!;
 
-    for (const member of SEED_MEMBERS) {
+    for (const member of BASE_MEMBERS) {
       const tenantId = tenantIds.get(member.tenantCode)!;
       const [{ id: memberId }] = await dataSource.query<[{ id: string }]>(
         `

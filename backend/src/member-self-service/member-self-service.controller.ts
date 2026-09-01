@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles, type AuthenticatedUser } from '../common';
 import { MemberStatementQueryDto } from './dto/member-statement-query.dto';
@@ -26,12 +26,6 @@ import type {
 export class MemberSelfServiceController {
   constructor(private readonly memberSelfService: MemberSelfServiceService) {}
 
-  private assertOwnership(user: AuthenticatedUser, requestedMemberId: string): void {
-    if (user.role === 'member' && user.staffId !== requestedMemberId) {
-      throw new ForbiddenException('Members can only access their own record');
-    }
-  }
-
   /**
    * `GET /members/:id/balance`
    *
@@ -41,11 +35,11 @@ export class MemberSelfServiceController {
    */
   @Get('balance')
   @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
-  getBalance(
+  async getBalance(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<MemberBalanceView> {
-    this.assertOwnership(user, id);
+    await this.memberSelfService.assertCallerOwnsMember(user, id);
     return this.memberSelfService.getBalance(id);
   }
 
@@ -59,12 +53,12 @@ export class MemberSelfServiceController {
    */
   @Get('statement')
   @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
-  getStatement(
+  async getStatement(
     @Param('id') id: string,
     @Query() query: MemberStatementQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<MemberStatementView> {
-    this.assertOwnership(user, id);
+    await this.memberSelfService.assertCallerOwnsMember(user, id);
     return this.memberSelfService.getStatement(id, query);
   }
 
@@ -84,11 +78,11 @@ export class MemberSelfServiceController {
    */
   @Get('loans')
   @Roles('member', 'teller', 'tenant-admin', 'loan-officer')
-  getLoans(
+  async getLoans(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<MemberLoansView> {
-    this.assertOwnership(user, id);
+    await this.memberSelfService.assertCallerOwnsMember(user, id);
     return this.memberSelfService.getLoans(id);
   }
 }

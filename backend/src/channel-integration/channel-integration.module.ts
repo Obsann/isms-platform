@@ -7,7 +7,7 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
  * contracts (Task 26, documented only).
  *
  * SMTP settings are read through ConfigService / `process.env` here only.
- * TODO(Task 26): document mobile money C2B/B2C webhook contracts in `docs/openapi/`.
+ * Mobile money C2B/B2C webhook contracts live in `docs/openapi/`.
  */
 @Module({
   imports: [ConfigModule],

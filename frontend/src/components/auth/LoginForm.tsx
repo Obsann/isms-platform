@@ -77,7 +77,7 @@ export default function LoginForm() {
                 label="Tenant code"
                 htmlFor="tenantCode"
                 required
-                helperText={`SACCO code (tenant-a or tenant-b). Super Admin uses “${PLATFORM_TENANT_CODE}”.`}
+                helperText={`SACCO code (tenant-a or tenant-b after seed). Super Admin uses “${PLATFORM_TENANT_CODE}”.`}
               >
                 <input
                   id="tenantCode"
@@ -126,10 +126,6 @@ export default function LoginForm() {
               >
                 {submitting ? "Signing in…" : "Sign in"}
               </button>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Member portal (after seed): tenant-a / abebe.bikila@tenant-a.dev, same password as other
-                dev staff.
-              </p>
             </form>
           </CardContent>
         </Card>

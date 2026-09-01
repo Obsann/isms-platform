@@ -4,14 +4,15 @@ Web only. There is no USSD in MVP.
 
 ## Sign in
 
-Seed member for Tenant A:
+Seed member for Tenant A (after `npm run seed`):
 
 - Tenant code: `tenant-a`
 - Email: `abebe.bikila@tenant-a.dev`
-- Password: same shared dev password as staff
+- Password: same shared dev password as staff (`DevPassword!123`)
 
 The portal resolves your member record by email, then calls `/api/members/{your-id}/…`.
-You cannot read another member's id (403).
+You cannot read another member's id (403). Staff register members; there is no
+self-registration.
 
 ## What you can see
 

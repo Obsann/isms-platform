@@ -51,4 +51,21 @@ describe('LedgerService.postLines', () => {
     expect(save).not.toHaveBeenCalled();
     expect(query).not.toHaveBeenCalled();
   });
+
+  it('sums debit and credit sides per GL code', async () => {
+    const service = new LedgerService({
+      getTenantId: () => 'tenant-1',
+      repo: () => ({
+        find: async () => [
+          { glCode: GL.CASH, side: 'debit', amount: '10.00' },
+          { glCode: GL.MEMBER_SAVINGS, side: 'credit', amount: '10.00' },
+        ],
+      }),
+    } as never);
+
+    const trial = await service.getTrialBalance();
+    expect(trial.balanced).toBe(true);
+    expect(trial.totalDebits).toBe('10.00');
+    expect(trial.totalCredits).toBe('10.00');
+  });
 });

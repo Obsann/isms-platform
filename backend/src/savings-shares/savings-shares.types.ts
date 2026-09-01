@@ -63,3 +63,11 @@ export interface TransactionHistoryFilter {
   offset?: number;
 }
 
+/** Tenant-wide savings/share totals for reporting (Task 20). */
+export interface TenantAccountSummary {
+  totalSavings: Amount;
+  totalShares: Amount;
+  savingsAccountCount: number;
+  shareAccountCount: number;
+}
+

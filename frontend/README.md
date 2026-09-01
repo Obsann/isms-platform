@@ -42,7 +42,7 @@ src/
 │   ├── (tenant-admin)/    Tenant Admin portal — Biruk / Melkamu screens
 │   ├── (teller)/          Teller Desk — Jerry / Abenezer loan screens
 │   └── (member)/          Member self-service — Liya
-├── components/            SHARED UI only (Liya Task 7 kit lives here)
+├── components/            Shared UI used by every portal
 │   └── ui/
 ├── lib/api-client/        ONLY place that calls the backend
 └── types/                 shared contracts — mirror of backend/src/types
@@ -78,16 +78,11 @@ Sign in at `/login`. Seeded accounts (password `DevPassword!123`):
 | `tenant-a` | `admin@tenant-a.dev` | Tenant Admin |
 | `tenant-a` | `loan-officer@tenant-a.dev` | Tenant Admin |
 | `tenant-a` | `teller@tenant-a.dev` | Teller |
+| `tenant-a` | `abebe.bikila@tenant-a.dev` | Member |
 
 A logged-in role cannot open another portal; `/` redirects to login or that role's home.
 
-## Not wired yet, on purpose
+## Scope notes
 
-| Piece | Arrives in |
-|---|---|
-| Design system / Shadcn kit | Liya Task 7 |
-| Member register/search UI | Melkamu Task 10 |
-| Teller Desk | Jerry Task 14 |
-| Loan screens | Abenezer Task 18 |
-| Super Admin / Tenant Admin dashboards | Biruk Tasks 19, 21 |
-| Member self-service screens | Liya Task 24 |
+Portals call the live API. Mobile money in the member portal is labeled mock-only
+(decision D1) — it does not post to the ledger.

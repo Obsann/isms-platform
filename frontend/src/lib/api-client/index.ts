@@ -12,7 +12,7 @@
  * retrying.
  */
 
-import { ROLE_PORTAL, type ApiErrorBody, type AuthUser, type LoginRequest, type LoginResponse, type PortalName, type RoleName } from "@/types";
+import { ROLE_PORTAL, type ApiErrorBody, type AuthUser, type LoginRequest, type LoginResponse, type PortalName, type RoleName, type Transaction } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -101,27 +101,7 @@ export async function login(body: LoginRequest): Promise<LoginResponse> {
     if (err instanceof ApiRequestError && err.statusCode === 401) {
       throw err;
     }
-    // Dev fallback when backend API is offline or database is initializing
-    const roleMap: Record<string, RoleName> = {
-      'superadmin@platform.dev': 'super-admin',
-      'admin@tenant-a.dev': 'tenant-admin',
-      'teller@tenant-a.dev': 'teller',
-      'loan-officer@tenant-a.dev': 'tenant-admin',
-    };
-    const role: RoleName = roleMap[body.email.toLowerCase()] ?? (body.tenantCode === 'platform' ? 'super-admin' : 'tenant-admin');
-    const devResponse: LoginResponse = {
-      accessToken: 'dev-token-mock',
-      expiresIn: 86400,
-      user: {
-        id: 'user-dev-1',
-        email: body.email,
-        fullName: body.email.split('@')[0],
-        role,
-        tenantId: body.tenantCode === 'platform' ? null : 'tenant-a-id',
-      },
-    };
-    saveSession(devResponse);
-    return devResponse;
+    throw err;
   }
 }
 
@@ -408,6 +388,10 @@ export function getLoanPortfolioReport() {
 
 export function getTrialBalanceReport() {
   return apiClient.get<TrialBalance>('/reports/trial-balance');
+}
+
+export function getRecentTransactionsReport(limit = 8) {
+  return apiClient.get<Transaction[]>(`/reports/recent-transactions?limit=${limit}`);
 }
 
 export async function fetchDocumentHtml(

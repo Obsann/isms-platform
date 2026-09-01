@@ -18,9 +18,6 @@ export interface Column<T> {
 export interface DataTableProps<T> {
   columns?: Column<T>[];
   data?: T[];
-  members?: any;
-  statusFilter?: any;
-  onDeleteMember?: any;
   emptyMessage?: string;
   className?: string;
   rowKey?: (row: T, index: number) => string | number;
@@ -309,4 +306,3 @@ export function DataTable<T>({
 }
 
 export default DataTable;
-export const initialMembersData = [];

@@ -28,9 +28,8 @@ export interface NotificationResult {
 /**
  * Mobile money C2B (member deposit) callback shape.
  *
- * TODO(Task 26 — Liya): this phase documents the contract in `docs/openapi/` and the
- * member portal mocks it. Nothing here talks to a live gateway, and a mocked flow is
- * always shown as "pending confirmation", never as a completed deposit.
+ * Documented in `docs/openapi/`. The member portal mocks C2B/B2C as
+ * "pending confirmation" only — nothing here talks to a live gateway.
  */
 export interface MobileMoneyC2BWebhook {
   providerReference: string;

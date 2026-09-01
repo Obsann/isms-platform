@@ -11,7 +11,7 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ eyebrow = 'Account Configuration' }: SettingsPageProps) {
-  const { darkMode, toggleDarkMode } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const user = useAuthUser();
 
   const [saving, setSaving] = useState(false);
@@ -66,14 +66,14 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
               </div>
               <button
                 type="button"
-                onClick={toggleDarkMode}
+                onClick={toggleTheme}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 ${
-                  darkMode ? 'bg-gold' : 'bg-slate-300 dark:bg-slate-700'
+                  resolvedTheme === 'dark' ? 'bg-gold' : 'bg-slate-300 dark:bg-slate-700'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    darkMode ? 'translate-x-6' : 'translate-x-1'
+                    resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>

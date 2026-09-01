@@ -8,6 +8,7 @@ export type {
   HoldFundsInput,
   LoanEligibilityCeiling,
   SharePurchaseInput,
+  TenantAccountSummary,
   TransactionHistoryFilter,
   WithdrawalInput,
 } from './savings-shares.types';

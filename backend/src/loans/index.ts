@@ -15,6 +15,7 @@ export type {
   GuarantorPledge,
   GuarantorPledgeInput,
   LoanApplicationInput,
+  LoanPortfolioSummary,
   LoanRepaymentRow,
   LoanRow,
   RepaymentInput,

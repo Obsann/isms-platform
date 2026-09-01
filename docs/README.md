@@ -32,13 +32,8 @@ under [`.cursor/rules/`](../.cursor/rules/) — no duplicate copies in this fold
 | [`backup-disaster-recovery.md`](./backup-disaster-recovery.md) | Task 33 — backup schedule, restore rehearsal, RLS re-check |
 | [`backup-rehearsal-log.md`](./backup-rehearsal-log.md) | Task 33 — recorded dump/restore/RLS pass |
 | [`README.md`](./README.md) | This index |
-
-## Expected later (docs only until written)
-
-| File / folder | Owner | Task |
-|---|---|---|
-| `openapi/` — API spec, including mobile money C2B/B2C webhook contracts (no USSD) | Liya | 26 |
-| `manuals/` — admin + portal manuals | whole team, compiled by Liya | 34 |
+| [`manuals/`](./manuals/README.md) | Task 34 — admin + per-portal manuals + final report |
+| [`openapi/`](./openapi/README.md) | Task 26 — mobile money C2B/B2C webhook contracts |
 
 Nothing in here is generated. If a decision was made in a meeting and code depends
 on it, record it in `.cursor/rules/decisions.mdc`.

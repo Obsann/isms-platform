@@ -57,3 +57,17 @@ export interface FundsHold {
   amount: Amount;
   releasedAt: string | null;
 }
+
+/** One GL code's debit/credit totals for a tenant trial balance. */
+export interface GlBalanceLine {
+  glCode: GlCode;
+  debit: Amount;
+  credit: Amount;
+}
+
+export interface LedgerTrialBalance {
+  lines: GlBalanceLine[];
+  totalDebits: Amount;
+  totalCredits: Amount;
+  balanced: boolean;
+}

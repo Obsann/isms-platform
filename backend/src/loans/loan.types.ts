@@ -100,3 +100,13 @@ export interface LoanRepaymentRow {
   reference: string | null;
   paidAt: Date;
 }
+
+/** Tenant-wide loan figures for reporting (Task 20). */
+export interface LoanPortfolioSummary {
+  outstanding: Amount;
+  activeBorrowers: number;
+  loansInArrears: number;
+  pendingCount: number;
+  disbursedCount: number;
+  defaultedCount: number;
+}

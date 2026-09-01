@@ -38,6 +38,11 @@ describe('MemberSelfServiceController - Ownership Security', () => {
       getBalance: jest.fn().mockResolvedValue(mockBalance),
       getStatement: jest.fn().mockResolvedValue(mockStatement),
       getLoans: jest.fn().mockResolvedValue(mockLoans),
+      assertCallerOwnsMember: jest.fn().mockImplementation(async (user: AuthenticatedUser, id: string) => {
+        if (user.role === 'member' && id !== 'MEM-1001') {
+          throw new ForbiddenException('Members can only access their own record');
+        }
+      }),
     } as unknown as jest.Mocked<MemberSelfServiceService>;
 
     controller = new MemberSelfServiceController(service);
@@ -76,18 +81,18 @@ describe('MemberSelfServiceController - Ownership Security', () => {
       role: 'member',
     };
 
-    it('throws 403 ForbiddenException on getBalance when requested ID belongs to another member', () => {
-      expect(() => controller.getBalance('MEM-9999', memberUser)).toThrow(ForbiddenException);
+    it('throws 403 ForbiddenException on getBalance when requested ID belongs to another member', async () => {
+      await expect(controller.getBalance('MEM-9999', memberUser)).rejects.toThrow(ForbiddenException);
       expect(service.getBalance).not.toHaveBeenCalled();
     });
 
-    it('throws 403 ForbiddenException on getStatement when requested ID belongs to another member', () => {
-      expect(() => controller.getStatement('MEM-9999', {}, memberUser)).toThrow(ForbiddenException);
+    it('throws 403 ForbiddenException on getStatement when requested ID belongs to another member', async () => {
+      await expect(controller.getStatement('MEM-9999', {}, memberUser)).rejects.toThrow(ForbiddenException);
       expect(service.getStatement).not.toHaveBeenCalled();
     });
 
-    it('throws 403 ForbiddenException on getLoans when requested ID belongs to another member', () => {
-      expect(() => controller.getLoans('MEM-9999', memberUser)).toThrow(ForbiddenException);
+    it('throws 403 ForbiddenException on getLoans when requested ID belongs to another member', async () => {
+      await expect(controller.getLoans('MEM-9999', memberUser)).rejects.toThrow(ForbiddenException);
       expect(service.getLoans).not.toHaveBeenCalled();
     });
   });

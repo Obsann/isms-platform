@@ -11,7 +11,7 @@ import type { Repository } from 'typeorm';
 import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
 import { SyncConflictException } from '../common/sync-conflict.exception';
-import { LedgerService } from '../ledger';
+import { LedgerService, fromCents, toCents } from '../ledger';
 import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
@@ -26,10 +26,14 @@ import type {
   GuarantorPledge,
   GuarantorPledgeInput,
   LoanApplicationInput,
+  LoanPortfolioSummary,
   LoanRepaymentRow,
   LoanRow,
   RepaymentInput,
 } from './loan.types';
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Loans & Credit vertical — owner: **Abenezer** (Tasks 16–18).
@@ -341,6 +345,65 @@ export class LoanService {
     const repo = this.ctx.repo(LoanEntity);
     const loan = await this.requireLoan(repo, loanId);
     return this.toRow(loan);
+  }
+
+  /** UUID or human loan number (e.g. LN-2026-000001). */
+  async findByIdOrNumber(idOrNumber: string): Promise<LoanRow> {
+    const trimmed = idOrNumber.trim();
+    if (UUID_RE.test(trimmed)) {
+      return this.findById(trimmed);
+    }
+    const repo = this.ctx.repo(LoanEntity);
+    const loan = await repo.findOne({ where: { loanNumber: trimmed } });
+    if (!loan) {
+      throw new NotFoundException(`Loan "${trimmed}" not found`);
+    }
+    return this.toRow(loan);
+  }
+
+  /**
+   * Outstanding principal = disbursed amount minus repayments posted for that
+   * loan. Defaulted loans stay in the outstanding total (arrears count is separate).
+   */
+  async getPortfolioSummary(): Promise<LoanPortfolioSummary> {
+    const loans = await this.ctx.repo(LoanEntity).find();
+    const repayments = await this.ctx.repo(LoanRepaymentEntity).find();
+    const repaidByLoan = new Map<string, bigint>();
+    for (const row of repayments) {
+      repaidByLoan.set(row.loanId, (repaidByLoan.get(row.loanId) ?? 0n) + toCents(row.amount));
+    }
+
+    let outstandingCents = 0n;
+    const borrowerIds = new Set<string>();
+    let loansInArrears = 0;
+    let pendingCount = 0;
+    let disbursedCount = 0;
+    let defaultedCount = 0;
+
+    for (const loan of loans) {
+      if (loan.status === 'pending') pendingCount += 1;
+      if (loan.status === 'disbursed') disbursedCount += 1;
+      if (loan.status === 'defaulted') {
+        defaultedCount += 1;
+        loansInArrears += 1;
+      }
+      if (loan.status === 'disbursed' || loan.status === 'defaulted') {
+        borrowerIds.add(loan.memberId);
+        const disbursed = toCents(loan.disbursedAmount ?? '0.00');
+        const repaid = repaidByLoan.get(loan.id) ?? 0n;
+        const remaining = disbursed > repaid ? disbursed - repaid : 0n;
+        outstandingCents += remaining;
+      }
+    }
+
+    return {
+      outstanding: fromCents(outstandingCents),
+      activeBorrowers: borrowerIds.size,
+      loansInArrears,
+      pendingCount,
+      disbursedCount,
+      defaultedCount,
+    };
   }
 
   // ---------------------------------------------------------- findByMemberId

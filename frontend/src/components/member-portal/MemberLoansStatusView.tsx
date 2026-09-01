@@ -108,14 +108,6 @@ export default function MemberLoansStatusView({ member }: { member: Member }) {
     );
   }
 
-  if (data.status === 'dependency_unavailable') {
-    return (
-      <p className="text-sm text-slate-600 dark:text-slate-400">
-        Loan status is not available from the loans service yet. Your savings balances are still live.
-      </p>
-    );
-  }
-
   if (data.loans.length === 0) {
     return <p className="text-sm text-slate-600 dark:text-slate-400">You have no loan applications.</p>;
   }

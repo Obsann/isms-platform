@@ -63,6 +63,14 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | PATCH | `/api/platform/tenants/:id` | Yes | | | | |
 | DELETE | `/api/platform/tenants/:id` | Yes | | | | |
 | GET | `/api/audit-logs` | Yes | Yes | | | |
+| GET | `/api/reports/savings-summary` | Yes | Yes | | Yes | |
+| GET | `/api/reports/loan-portfolio` | Yes | Yes | | Yes | |
+| GET | `/api/reports/trial-balance` | Yes | Yes | | Yes | |
+| GET | `/api/reports/recent-transactions` | Yes | Yes | Yes | Yes | |
+| GET | `/api/reports/members/:id/statement` | Yes | Yes | Yes | Yes | |
+| GET | `/api/reports/loans/:id/agreement` | Yes | Yes | Yes | Yes | |
+| GET | `/api/reports/transactions/:id/receipt` | Yes | Yes | Yes | Yes | |
+| GET | `/api/reports/members/:id/share-certificate` | Yes | Yes | Yes | Yes | |
 
 High-value vs standard loan approval is a **business rule** inside Loans (Task 16),
 not a second role. Both `loan-officer` and `tenant-admin` may call `PATCH .../approve`.

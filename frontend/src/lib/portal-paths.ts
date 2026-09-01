@@ -14,7 +14,7 @@ export function portalDashboardHref(pathname: string): string | null {
   return root ? `${root}/dashboard` : null;
 }
 
-/** Exact path, nested path, or in-page hash (for /task7-verify). */
+/** Exact path, nested path, or in-page hash. */
 export function isNavActive(pathname: string, href: string, hash = ''): boolean {
   const hashIndex = href.indexOf('#');
   if (hashIndex >= 0) {

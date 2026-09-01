@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import type { AuthenticatedUser } from '../common';
 import { LoanService } from '../loans';
 import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
+import { StaffAccountService } from '../security-audit';
 import type { MemberId } from '../types';
 import type { MemberStatementQueryDto } from './dto/member-statement-query.dto';
 import type {
@@ -23,7 +25,25 @@ export class MemberSelfServiceService {
     private readonly memberService: MemberService,
     private readonly savingsSharesService: SavingsSharesService,
     private readonly loanService: LoanService,
+    private readonly staffAccounts: StaffAccountService,
   ) {}
+
+  /**
+   * Object-level check: a `member` JWT is a `staff_accounts` row. Its `sub` is
+   * not the `members.id` the portal calls with. Match on email instead.
+   */
+  async assertCallerOwnsMember(user: AuthenticatedUser, requestedMemberId: string): Promise<void> {
+    if (user.role !== 'member') {
+      return;
+    }
+    const staff = await this.staffAccounts.findSummaryById(user.staffId);
+    const member = await this.memberService.findById(requestedMemberId);
+    const staffEmail = staff?.email?.trim().toLowerCase() ?? '';
+    const memberEmail = member.email?.trim().toLowerCase() ?? '';
+    if (!staffEmail || !memberEmail || staffEmail !== memberEmail) {
+      throw new ForbiddenException('Members can only access their own record');
+    }
+  }
 
   // ----------------------------------------------------------------- getBalance
 

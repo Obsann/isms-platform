@@ -47,7 +47,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-5 right-5 z-50 max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm ${
+          className={`fixed bottom-5 left-5 z-[20000] max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm ${
             toast.type === 'error'
               ? 'bg-rose-950 border-rose-500/40 text-rose-50'
               : toast.type === 'warning'

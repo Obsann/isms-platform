@@ -1,23 +1,35 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 
-const UUID_RE =
-  '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const TX_REF_RE = new RegExp(`^isms-(${UUID_RE})-(${UUID_RE})$`, 'i');
+/** Compact UUID (32 hex) + up to 12 hex nonce. Chapa rejects tx_ref over 50 chars. */
+const COMPACT_UUID_RE = '[0-9a-f]{32}';
+const TX_REF_RE = new RegExp(`^isms-(${COMPACT_UUID_RE})-([0-9a-f]{1,12})$`, 'i');
 const AMOUNT_RE = /^(0|[1-9]\d*)(\.\d{1,2})?$/;
 
+function compactUuid(uuid: string): string {
+  return uuid.replace(/-/g, '').toLowerCase();
+}
+
+/** Reconstruct a UUID from 32 hex using the 8-4-4-4-12 grouping. */
+function expandCompactUuid(hex: string): string {
+  const h = hex.toLowerCase();
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
 /**
- * Chapa hosted checkout reference. Tenant id is embedded so the public webhook
- * can open the right RLS session without a JWT.
+ * Chapa hosted checkout reference (≤50 chars). Tenant id is a compact UUID so
+ * the public webhook can open the right RLS session without a JWT.
+ * Format: `isms-{32hex}-{12hex}` (50 chars).
  */
 export function buildChapaTxRef(tenantId: string): string {
-  return `isms-${tenantId}-${randomUUID()}`;
+  const compactTenant = compactUuid(tenantId);
+  const nonce = randomBytes(6).toString('hex');
+  return `isms-${compactTenant}-${nonce}`;
 }
 
 export function parseTenantIdFromTxRef(txRef: string): string | null {
   const match = TX_REF_RE.exec(txRef.trim());
-  return match?.[1]?.toLowerCase() ?? null;
+  return match?.[1] ? expandCompactUuid(match[1]) : null;
 }
 
 /**

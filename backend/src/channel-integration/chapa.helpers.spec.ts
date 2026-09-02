@@ -50,10 +50,26 @@ describe('chapa helpers', () => {
   });
 
   describe('tx_ref tenant embedding', () => {
-    it('round-trips tenant id', () => {
+    it('round-trips tenant id in a Chapa-safe ≤50 char ref', () => {
       const tenantId = '11111111-1111-4111-8111-111111111111';
       const txRef = buildChapaTxRef(tenantId);
+      expect(txRef).toHaveLength(50);
+      expect(txRef).toMatch(/^isms-[0-9a-f]{32}-[0-9a-f]{12}$/);
       expect(parseTenantIdFromTxRef(txRef)).toBe(tenantId);
+    });
+
+    it('reconstructs UUID hyphens from a compact 32-hex tenant segment', () => {
+      expect(
+        parseTenantIdFromTxRef('isms-11111111111141118111111111111111-a1b2c3d4e5f6'),
+      ).toBe('11111111-1111-4111-8111-111111111111');
+    });
+
+    it('rejects hyphenated UUID refs that exceed Chapa 50-char limit', () => {
+      expect(
+        parseTenantIdFromTxRef(
+          'isms-11111111-1111-4111-8111-111111111111-22222222-2222-4222-8222-222222222222',
+        ),
+      ).toBeNull();
     });
   });
 

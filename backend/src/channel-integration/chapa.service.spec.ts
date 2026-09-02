@@ -11,6 +11,7 @@ describe('ChapaService', () => {
     tenantId: '11111111-1111-4111-8111-111111111111',
     role: 'member',
   };
+  const compactTenantId = memberUser.tenantId!.replace(/-/g, '');
 
   const linkedMember = {
     id: 'member-1',
@@ -99,7 +100,8 @@ describe('ChapaService', () => {
     expect(result.mode).toBe('mock');
     expect(result.status).toBe('pending');
     expect(result.checkoutUrl).toContain('/member/mobile-money?tx_ref=');
-    expect(result.txRef.startsWith(`isms-${memberUser.tenantId}-`)).toBe(true);
+    expect(result.txRef.startsWith(`isms-${compactTenantId}-`)).toBe(true);
+    expect(result.txRef.length).toBeLessThanOrEqual(50);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
@@ -132,10 +134,10 @@ describe('ChapaService', () => {
     env.CHAPA_WEBHOOK_SECRET = 'whsec-test';
     env.CHAPA_SECRET_KEY = 'CHASECK_TEST-live';
     const rawBody = Buffer.from(
-      JSON.stringify({ tx_ref: `isms-${memberUser.tenantId}-22222222-2222-4222-8222-222222222222` }),
+      JSON.stringify({ tx_ref: `isms-${compactTenantId}-222222222222` }),
     );
     paymentRepo.findOne.mockResolvedValue({
-      txRef: `isms-${memberUser.tenantId}-22222222-2222-4222-8222-222222222222`,
+      txRef: `isms-${compactTenantId}-222222222222`,
       memberId: 'member-1',
       accountId: 'acc-own',
       amount: '1500.00',

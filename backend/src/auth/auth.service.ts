@@ -42,6 +42,35 @@ export class AuthService {
     };
   }
 
+  async changePassword(
+    staffId: string,
+    tenantId: string | null,
+    currentPass: string,
+    newPass: string,
+  ): Promise<{ success: boolean; message: string }> {
+    let credential: StaffCredential | null = null;
+
+    if (!tenantId) {
+      const summary = await this.staffAccountService.findSummaryById(staffId);
+      if (summary) {
+        credential = await this.staffAccountService.findActivePlatformByEmail(summary.email);
+      }
+    } else {
+      credential = await this.staffAccountService.findCredentialById(staffId);
+    }
+
+    if (!credential) {
+      throw new UnauthorizedException('Account not found');
+    }
+
+    await this.assertPassword(currentPass, credential.passwordHash);
+
+    const newHash = await bcrypt.hash(newPass, 10);
+    await this.staffAccountService.updatePassword(staffId, newHash);
+
+    return { success: true, message: 'Password updated successfully' };
+  }
+
   private async authenticateTenantStaff(dto: LoginDto): Promise<StaffCredential> {
     // Resolves via the SECURITY DEFINER function — bypasses RLS for this one lookup
     // only, since no tenant context can exist yet at this point in the flow.

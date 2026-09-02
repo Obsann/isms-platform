@@ -104,12 +104,20 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
 
     setPwSaving(true);
     try {
-      // Backend doesn't have a password change endpoint yet — simulate success
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await apiClient.post('/auth/change-password', {
+        currentPassword: pwForm.current,
+        newPassword: pwForm.next,
+      });
       setPwSuccess(true);
       setPwForm({ current: '', next: '', confirm: '' });
-    } catch {
-      setPwError('Failed to update password. Please try again.');
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Failed to update password. Please check current password and try again.';
+      setPwError(msg);
     } finally {
       setPwSaving(false);
     }
@@ -425,21 +433,23 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
                   </div>
                 )}
 
-                <div className="mb-6 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2.5">
-                  <span className="text-amber-500 text-lg leading-none">⚠</span>
-                  <div className="text-xs text-amber-800">
-                    <strong>Password updates currently disabled.</strong> The authentication backend is being migrated to a new identity provider. Password changes will be re-enabled in a future update.
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-end pt-2">
                   <button
-                    type="button"
-                    disabled
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gold text-midnight font-semibold text-sm tracking-wide disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    type="submit"
+                    disabled={pwSaving}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light font-bold text-xs sm:text-sm tracking-wide shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                   >
-                    <Save className="w-4 h-4" />
-                    Update Password (Coming Soon)
+                    {pwSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Updating Password...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Update Password
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

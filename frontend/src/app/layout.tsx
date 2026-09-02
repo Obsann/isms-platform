@@ -40,46 +40,6 @@ export default function RootLayout({
             `,
           }}
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  if (window.__ismsGtPatched) return;
-                  if (typeof Node !== 'function' || !Node.prototype) return;
-                  window.__ismsGtPatched = true;
-                  var origRemoveChild = Node.prototype.removeChild;
-                  Node.prototype.removeChild = function(child) {
-                    if (child.parentNode !== this) return child;
-                    return origRemoveChild.apply(this, arguments);
-                  };
-                  var origInsertBefore = Node.prototype.insertBefore;
-                  Node.prototype.insertBefore = function(newNode, refNode) {
-                    if (refNode && refNode.parentNode !== this) return newNode;
-                    return origInsertBefore.apply(this, arguments);
-                  };
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.googleTranslateElementInit = function () {
-                var host = document.getElementById('google_translate_element');
-                if (!host || host.getAttribute('data-isms-gt') === '1') return;
-                if (!window.google || !window.google.translate || !window.google.translate.TranslateElement) return;
-                host.setAttribute('data-isms-gt', '1');
-                new window.google.translate.TranslateElement({
-                  pageLanguage: 'en',
-                  includedLanguages: 'en,am,om',
-                  autoDisplay: false
-                }, 'google_translate_element');
-              };
-            `,
-          }}
-        />
       </head>
       {/* Extensions (e.g. Grammarly) inject attributes on <body> before hydrate. */}
       <body
@@ -89,7 +49,7 @@ export default function RootLayout({
         <div
           id="google_translate_element"
           className="notranslate"
-          aria-label="Select language"
+          suppressHydrationWarning
         />
         <ThemeProvider>
           <LangProvider>
@@ -97,20 +57,6 @@ export default function RootLayout({
           </LangProvider>
         </ThemeProvider>
         <GoogleTranslate />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                if (document.getElementById('isms-gt-element-js')) return;
-                var s = document.createElement('script');
-                s.id = 'isms-gt-element-js';
-                s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-                s.async = true;
-                document.body.appendChild(s);
-              })();
-            `,
-          }}
-        />
       </body>
     </html>
   );

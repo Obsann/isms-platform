@@ -19,10 +19,12 @@ declare global {
     };
     googleTranslateElementInit?: () => void;
     __ismsGtPatched?: boolean;
+    __ismsGtInited?: boolean;
   }
 }
 
 const ELEMENT_SCRIPT_ID = 'isms-gt-element-js';
+const HOST_ID = 'google_translate_element';
 
 function patchGoogleTranslateDom(): void {
   if (typeof window === 'undefined') return;
@@ -48,9 +50,34 @@ function patchGoogleTranslateDom(): void {
   } as typeof Node.prototype.insertBefore;
 }
 
+function initTranslateElement(): void {
+  if (window.__ismsGtInited) return;
+
+  const host = document.getElementById(HOST_ID);
+  if (!host) return;
+  if (host.querySelector('.goog-te-gadget')) {
+    window.__ismsGtInited = true;
+    return;
+  }
+  if (!window.google?.translate?.TranslateElement) return;
+
+  window.__ismsGtInited = true;
+  new window.google.translate.TranslateElement(
+    {
+      pageLanguage: 'en',
+      includedLanguages: 'en,am,om',
+      autoDisplay: false,
+    },
+    HOST_ID,
+  );
+}
+
 function loadTranslateElement(): void {
   if (document.getElementById(ELEMENT_SCRIPT_ID)) return;
-  if (document.querySelector('script[src*="translate.google.com/translate_a/element.js"]')) return;
+  if (document.querySelector('script[src*="translate.google.com/translate_a/element.js"]')) {
+    initTranslateElement();
+    return;
+  }
 
   const script = document.createElement('script');
   script.id = ELEMENT_SCRIPT_ID;
@@ -62,8 +89,8 @@ function loadTranslateElement(): void {
 export default function GoogleTranslate() {
   useEffect(() => {
     patchGoogleTranslateDom();
+    window.googleTranslateElementInit = initTranslateElement;
     loadTranslateElement();
-    window.googleTranslateElementInit?.();
   }, []);
 
   return null;

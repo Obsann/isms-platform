@@ -10,7 +10,8 @@ Seed member for Tenant A (after `npm run seed`):
 - Email: `abebe.bikila@tenant-a.dev`
 - Password: same shared dev password as staff (`DevPassword!123`)
 
-The portal resolves your member record by email, then calls `/api/members/{your-id}/…`.
+The portal resolves your member record via `GET /api/self-service/me` (login
+email must match the member profile email), then calls `/api/members/{your-id}/…`.
 You cannot read another member's id (403). Staff register members; there is no
 self-registration.
 

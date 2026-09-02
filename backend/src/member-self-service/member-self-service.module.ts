@@ -3,6 +3,7 @@ import { LoanModule } from '../loans';
 import { MemberModule } from '../members';
 import { SavingsSharesModule } from '../savings-shares';
 import { SecurityAuditModule } from '../security-audit';
+import { MemberSelfProfileController } from './member-self-profile.controller';
 import { MemberSelfServiceController } from './member-self-service.controller';
 import { MemberSelfServiceService } from './member-self-service.service';
 
@@ -19,7 +20,7 @@ import { MemberSelfServiceService } from './member-self-service.service';
     LoanModule,
     SecurityAuditModule,
   ],
-  controllers: [MemberSelfServiceController],
+  controllers: [MemberSelfServiceController, MemberSelfProfileController],
   providers: [MemberSelfServiceService],
 })
 export class MemberSelfServiceModule {}

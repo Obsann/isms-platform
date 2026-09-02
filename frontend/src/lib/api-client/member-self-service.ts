@@ -3,8 +3,8 @@
  * Balance, statement, and loans are real API data — never mocked.
  */
 
-import type { Account, IsoDateTime, Member, MemberId, PaginatedResult, Transaction } from '@/types';
-import { apiClient, getSessionUser } from './index';
+import type { Account, IsoDateTime, Member, MemberId, Transaction } from '@/types';
+import { ApiRequestError, apiClient, getSessionUser } from './index';
 
 export interface MemberBalanceView {
   memberId: MemberId;
@@ -70,8 +70,9 @@ export function getMemberLoans(memberId: string) {
 }
 
 /**
- * Staff JWT `id` is not the members table id. Match the signed-in email to a
- * member record in this tenant so the portal can call Task 23 routes.
+ * Staff JWT `id` is not the members table id. `GET /members?search=` is staff-only
+ * (members 403). Resolve via `GET /self-service/me`, which matches login email to
+ * the caller's own member row.
  */
 const LINKED_MEMBER_KEY = 'isms_linked_member';
 
@@ -97,10 +98,14 @@ export async function findMemberForSession(): Promise<Member | null> {
   if (!user?.email) return null;
   const cached = readCachedMember(user.email);
   if (cached) return cached;
-  const query = new URLSearchParams({ search: user.email, limit: '5' });
-  const result = await apiClient.get<PaginatedResult<Member>>(`/members?${query.toString()}`);
-  const email = user.email.trim().toLowerCase();
-  const member = result.items.find((row) => (row.email ?? '').trim().toLowerCase() === email) ?? null;
-  if (member) writeCachedMember(user.email, member);
-  return member;
+  try {
+    const member = await apiClient.get<Member>('/self-service/me');
+    writeCachedMember(user.email, member);
+    return member;
+  } catch (err: unknown) {
+    if (err instanceof ApiRequestError && err.statusCode === 404) {
+      return null;
+    }
+    throw err;
+  }
 }

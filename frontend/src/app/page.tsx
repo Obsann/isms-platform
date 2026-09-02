@@ -1,16 +1,12 @@
-"use client";
+import type { Metadata } from "next";
+import WelcomePage from "@/components/welcome/WelcomePage";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { getSessionUser, portalHome } from "@/lib/api-client";
+export const metadata: Metadata = {
+  title: "Welcome",
+  description:
+    "Integrated Savings and Credit Management System for SACCO members and staff.",
+};
 
 export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const user = getSessionUser();
-    router.replace(user ? portalHome(user.role) : "/login");
-  }, [router]);
-
-  return <div className="min-h-screen bg-midnight" aria-hidden="true" />;
+  return <WelcomePage />;
 }

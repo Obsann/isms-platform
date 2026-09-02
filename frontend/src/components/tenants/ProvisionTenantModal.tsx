@@ -1,14 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { Globe, X, CheckCircle2, AlertCircle, Loader2, ShieldAlert } from 'lucide-react';
-import apiClient, { ApiRequestError } from '@/lib/api-client';
+import React, { useState } from 'react';
+import {
+  Globe,
+  ShieldAlert,
+  X,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+} from 'lucide-react';
+import { apiClient, ApiRequestError } from '@/lib/api-client';
 import type { Tenant, TenantStatus } from '@/types';
 
 interface ProvisionTenantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (tenant: Tenant) => void;
+  onSuccess: (newTenant: Tenant) => void;
 }
 
 export default function ProvisionTenantModal({
@@ -19,28 +26,26 @@ export default function ProvisionTenantModal({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<TenantStatus>('active');
-
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleNameChange = (val: string) => {
-    setName(val);
-    setErrorMsg(null);
-    const slugified = val
+  const generateSlug = (val: string) => {
+    return val
       .toLowerCase()
+      .trim()
       .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-');
-    if (!code || code === slugified.slice(0, code.length)) {
-      setCode(slugified);
-    }
+      .replace(/\s+/g, '-')
+      .slice(0, 30);
   };
 
-  const handleCodeChange = (val: string) => {
-    setCode(val.toLowerCase().replace(/\s+/g, '-'));
-    setErrorMsg(null);
+  const handleNameChange = (val: string) => {
+    setName(val);
+    if (!code || code === generateSlug(name)) {
+      setCode(generateSlug(val));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,12 +56,12 @@ export default function ProvisionTenantModal({
     const trimmedName = name.trim();
     const trimmedCode = code.trim().toLowerCase();
 
-    if (!trimmedName || trimmedName.length < 2) {
-      setErrorMsg('Tenant name must be at least 2 characters.');
+    if (!trimmedName || !trimmedCode) {
+      setErrorMsg('Both Organization Name and Tenant Code are required.');
       return;
     }
 
-    if (!trimmedCode || trimmedCode.length < 2) {
+    if (trimmedCode.length < 2) {
       setErrorMsg('Tenant code must be at least 2 characters.');
       return;
     }
@@ -80,10 +85,10 @@ export default function ProvisionTenantModal({
         onSuccess(created);
         handleResetAndClose();
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof ApiRequestError) {
         setErrorMsg(err.messages.join(' '));
-      } else if (err?.message) {
+      } else if (err instanceof Error) {
         setErrorMsg(err.message);
       } else {
         setErrorMsg('Failed to provision tenant. Please check network connection and try again.');
@@ -108,11 +113,11 @@ export default function ProvisionTenantModal({
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl">
+            <div className="w-10 h-10 rounded-xl bg-midnight text-gold dark:bg-gold/15 dark:text-gold flex items-center justify-center font-bold border border-gold/30 shrink-0">
               <Globe className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 font-serif">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
                 Provision New SACCO Tenant
               </h2>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -125,18 +130,18 @@ export default function ProvisionTenantModal({
           <button
             onClick={handleResetAndClose}
             disabled={loading}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg transition-colors"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Platform Warning Banner */}
+        {/* Platform Warning Notice */}
         <div className="mx-6 mt-5 p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
           <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold">Platform-Level System Action:</span> This operation registers a new global tenant root entity. It bypasses per-tenant RLS isolation to initialize the tenant environment.
+            <span className="font-bold">Platform-Level Action:</span> This operation registers a new global tenant root entity. It initializes the isolated tenant context and default Chart of Accounts.
           </div>
         </div>
 
@@ -169,7 +174,7 @@ export default function ProvisionTenantModal({
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g. Addis Ababa Teachers SACCO"
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-colors"
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold transition-colors"
             />
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Official legal or display name of the SACCO organization.
@@ -178,16 +183,16 @@ export default function ProvisionTenantModal({
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-              Tenant Identifier Code <span className="text-rose-500">*</span>
+              Tenant Code (Slug Identifier) <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
                 type="text"
                 required
                 value={code}
-                onChange={(e) => handleCodeChange(e.target.value)}
-                placeholder="e.g. addis-teachers-sacco"
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-colors"
+                onChange={(e) => setCode(e.target.value.toLowerCase().trim())}
+                placeholder="e.g. aat-sacco"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold transition-colors"
               />
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -202,7 +207,7 @@ export default function ProvisionTenantModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TenantStatus)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-colors"
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold transition-colors"
             >
               <option value="active">Active (Ready for operational use)</option>
               <option value="provisioning">Provisioning (Setup in progress)</option>
@@ -216,14 +221,14 @@ export default function ProvisionTenantModal({
               type="button"
               onClick={handleResetAndClose}
               disabled={loading}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light text-xs font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>

@@ -60,11 +60,11 @@ export class LoanController {
     return this.loanService.findByMemberId(memberId);
   }
 
-  /** Fetch a single loan by its id. 404 if not found or belongs to another tenant (RLS). */
+  /** Fetch a single loan by its id or human loan number. 404 if not found or belongs to another tenant (RLS). */
   @Get(':id')
   @Roles('teller', 'loan-officer', 'tenant-admin', 'member')
-  findById(@Param('id', ParseUUIDPipe) id: string): Promise<LoanRow> {
-    return this.loanService.findById(id);
+  findById(@Param('id') id: string): Promise<LoanRow> {
+    return this.loanService.findByIdOrNumber(id);
   }
 
   /**

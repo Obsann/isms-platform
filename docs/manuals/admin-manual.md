@@ -15,6 +15,10 @@ admin requests are. The UI flags this.
 
 You land on `/super-admin/dashboard`.
 
+After `npm run seed`, the tenants list shows **Tsehay Sacco** (`tenant-a`) and
+**Chereka Sacco** (`tenant-b`) — those are display names from the API. Login still
+uses the codes. Super Admin (`platform`) is unchanged.
+
 ## Provision a tenant
 
 1. Open **Tenants** (`/super-admin/tenants`).

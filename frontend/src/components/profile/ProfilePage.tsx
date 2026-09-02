@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { FormFieldGroup } from '@/components/forms/FormFieldGroup';
 import { apiClient, getSessionUser } from '@/lib/api-client';
 import type { AuthUser } from '@/types';
+import { useLang } from '@/components/i18n';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -42,7 +43,8 @@ interface PasswordForm {
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-export default function ProfilePage({ eyebrow = 'Account', platformLevel = false }: ProfilePageProps) {
+export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platformLevel = false }: ProfilePageProps) {
+  const { t } = useLang();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
         if (session) {
           setUser(session);
         } else {
-          setError('Could not load profile. Please sign in again.');
+          setError(t('profile.loadError'));
         }
       } finally {
         setLoading(false);
@@ -137,7 +139,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-gold animate-spin" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading profile…</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('profile.loading')}</p>
         </div>
       </div>
     );
@@ -150,7 +152,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
         <Card className="max-w-md w-full">
           <CardContent className="text-center py-10">
             <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{error}</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{error ?? t('profile.loadError')}</p>
           </CardContent>
         </Card>
       </div>
@@ -161,10 +163,10 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">{eyebrow}</p>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">My Profile</h1>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">{t(eyebrow)}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t('profile.title')}</h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          View your account information and manage security settings.
+          {t('profile.subtitle')}
         </p>
       </div>
 
@@ -173,7 +175,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
           <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
-            Platform-Level Account · Operates outside per-tenant RLS scoping
+            {t('profile.platformBadge')}
           </p>
         </div>
       )}

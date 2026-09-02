@@ -5,6 +5,7 @@ import { Mail, Shield, Building2, KeyRound, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useAuthUser, formatRoleLabel } from '@/components/auth/useAuthUser';
 import { StatusBadge } from '@/components/badges/StatusBadge';
+import { useLang } from '@/components/i18n';
 
 interface StaffProfileViewProps {
   portalLabel: string;
@@ -12,6 +13,7 @@ interface StaffProfileViewProps {
 
 export function StaffProfileView({ portalLabel }: StaffProfileViewProps) {
   const user = useAuthUser();
+  const { t } = useLang();
   const initials = user?.fullName
     ? user.fullName
         .split(' ')
@@ -25,13 +27,13 @@ export function StaffProfileView({ portalLabel }: StaffProfileViewProps) {
     <div className="space-y-4 max-w-4xl">
       <div className="pb-3 border-b border-slate-200/80 dark:border-slate-800">
         <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-gold">
-          Staff Account
+          {t('profile.staffEyebrow')}
         </span>
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 font-serif tracking-tight mt-0.5">
-          {portalLabel} Profile
+          {t('profile.staffTitle', { portal: portalLabel })}
         </h1>
         <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-          Signed-in identity, role, and tenant. Members of another SACCO are not visible in this session.
+          {t('profile.staffSubtitle')}
         </p>
       </div>
 

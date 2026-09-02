@@ -11,6 +11,7 @@ import {
   type TenantListItem,
 } from '@/lib/api-client';
 import type { Tenant, TenantStatus } from '@/types';
+import { useLang } from '@/components/i18n';
 import {
   Globe,
   Plus,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 
 export default function SuperAdminTenantsPage() {
+  const { t } = useLang();
   const [tenants, setTenants] = useState<TenantListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -173,17 +175,17 @@ export default function SuperAdminTenantsPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-              Platform Admin
+              {t('dash.tenantsEyebrow')}
             </span>
             <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
               /platform/tenants
             </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-serif">
-            SACCO Tenant Registry
+            {t('dash.tenantsTitle')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Provision and manage tenant instances across the ISMS platform.
+            {t('dash.tenantsDesc')}
           </p>
         </div>
 

@@ -3,13 +3,15 @@
 import { LinkedMemberGate } from '@/components/member-portal/LinkedMemberGate';
 import MemberLoansStatusView from '@/components/member-portal/MemberLoansStatusView';
 import { MemberPage } from '@/components/member-portal/MemberPage';
+import { useLang } from '@/components/i18n';
 
 export default function MemberLoansPage() {
+  const { t } = useLang();
   return (
     <MemberPage
-      eyebrow="My accounts"
-      title="Loan status"
-      description="Applications and disbursements from the loans service. Amounts are full figures, not estimates."
+      eyebrow={t('dash.memberAccounts')}
+      title={t('dash.memberLoansTitle')}
+      description={t('dash.memberLoansDesc')}
     >
       <LinkedMemberGate>{(member) => <MemberLoansStatusView member={member} />}</LinkedMemberGate>
     </MemberPage>

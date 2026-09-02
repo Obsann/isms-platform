@@ -13,7 +13,7 @@ export default function BrandMark({
   return (
     <div
       className={cn(
-        'rounded-full bg-gold text-midnight flex items-center justify-center shrink-0 font-display font-bold tracking-wider shadow-[0_0_0_3px_rgba(197,155,39,0.2)]',
+        'notranslate rounded-full bg-gold text-midnight flex items-center justify-center shrink-0 font-display font-bold tracking-wider shadow-[0_0_0_3px_rgba(197,155,39,0.2)]',
         box,
         className,
       )}

@@ -15,7 +15,6 @@ import { portalHome } from '@/lib/api-client';
 import PortalFooter from '@/components/layout/PortalFooter';
 import HeroLedgerVisual from './HeroLedgerVisual';
 import WelcomeNav from './WelcomeNav';
-import { setWelcomeLang, useWelcomeLang } from './useWelcomeLang';
 import { WELCOME_COPY } from './welcome-copy';
 
 const SERVICE_ICONS = [PiggyBank, Wallet, Landmark, Receipt, BarChart3, Smartphone] as const;
@@ -26,14 +25,13 @@ export default function WelcomePage() {
   const user = useAuthUser();
   const continueHref = user ? portalHome(user.role) : '/login';
 
-  const lang = useWelcomeLang();
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const elapsedRef = useRef(0);
   const slideRef = useRef(slide);
 
-  const copy = WELCOME_COPY[lang];
+  const copy = WELCOME_COPY;
   const slideCount = copy.slides.length;
 
   useEffect(() => {
@@ -78,7 +76,7 @@ export default function WelcomePage() {
   const primaryLabel = user ? copy.ctaContinue : copy.ctaSignIn;
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-surface" lang={lang}>
+    <div className="min-h-[100dvh] flex flex-col bg-surface">
       <a
         href="#welcome-main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-20 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-gold focus:text-midnight focus:text-sm focus:font-semibold"
@@ -105,22 +103,20 @@ export default function WelcomePage() {
             user={user}
             continueHref={continueHref}
             copy={copy}
-            lang={lang}
-            onLangChange={setWelcomeLang}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-10 lg:gap-14 items-center pt-8 pb-14 md:pt-12 md:pb-20">
             <div className="max-w-2xl">
               <div className="relative min-h-[7.5rem] sm:min-h-[9rem]">
                 <p
-                  key={`badge-${lang}-${slide}`}
+                  key={`badge-${slide}`}
                   className="text-[11px] font-bold uppercase tracking-[0.22em] text-gold-dark dark:text-gold mb-4 transition-opacity duration-300"
                 >
                   <span aria-hidden="true">✦ </span>
                   {active.badge}
                 </p>
                 <h1
-                  key={`title-${lang}-${slide}`}
+                  key={`title-${slide}`}
                   className="font-heading text-3xl sm:text-4xl md:text-[2.75rem] font-bold tracking-tight leading-tight transition-opacity duration-300"
                 >
                   {active.title}

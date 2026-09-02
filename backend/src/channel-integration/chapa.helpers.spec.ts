@@ -7,6 +7,7 @@ import {
   mapChapaCustomerEmail,
   normalizeEthiopianPhone,
   parseTenantIdFromTxRef,
+  stringifyChapaError,
   toChapaPhone,
 } from './chapa.helpers';
 
@@ -50,15 +51,21 @@ describe('chapa helpers', () => {
   });
 
   describe('tx_ref tenant embedding', () => {
-    it('round-trips tenant id in a Chapa-safe ≤50 char ref', () => {
+    it('round-trips tenant id in a Chapa-safe 45-char ref', () => {
       const tenantId = '11111111-1111-4111-8111-111111111111';
       const txRef = buildChapaTxRef(tenantId);
-      expect(txRef).toHaveLength(50);
-      expect(txRef).toMatch(/^isms-[0-9a-f]{32}-[0-9a-f]{12}$/);
+      expect(txRef).toHaveLength(45);
+      expect(txRef).toMatch(/^isms-[0-9a-f]{40}$/);
       expect(parseTenantIdFromTxRef(txRef)).toBe(tenantId);
     });
 
     it('reconstructs UUID hyphens from a compact 32-hex tenant segment', () => {
+      expect(
+        parseTenantIdFromTxRef('isms-11111111111141118111111111111111a1b2c3d4'),
+      ).toBe('11111111-1111-4111-8111-111111111111');
+    });
+
+    it('still parses the previous hyphenated 50-char refs', () => {
       expect(
         parseTenantIdFromTxRef('isms-11111111111141118111111111111111-a1b2c3d4e5f6'),
       ).toBe('11111111-1111-4111-8111-111111111111');
@@ -70,6 +77,16 @@ describe('chapa helpers', () => {
           'isms-11111111-1111-4111-8111-111111111111-22222222-2222-4222-8222-222222222222',
         ),
       ).toBeNull();
+    });
+  });
+
+  describe('stringifyChapaError', () => {
+    it('surfaces nested Chapa validation messages such as tx_ref length', () => {
+      expect(
+        stringifyChapaError({
+          message: { tx_ref: ['The tx ref must not exceed 50 characters.'] },
+        }),
+      ).toBe('{"tx_ref":["The tx ref must not exceed 50 characters."]}');
     });
   });
 

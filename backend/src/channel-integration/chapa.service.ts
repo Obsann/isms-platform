@@ -355,6 +355,10 @@ export class ChapaService {
     const body = await response.json().catch(() => ({}));
     const checkoutUrl = (body as { data?: { checkout_url?: string } }).data?.checkout_url;
     if (!response.ok || !checkoutUrl) {
+      const txRef = typeof payload.tx_ref === 'string' ? payload.tx_ref : '';
+      this.logger.warn(
+        `Chapa initialize ${response.status} tx_ref_len=${txRef.length}: ${stringifyChapaError(body)}`,
+      );
       throw new ServiceUnavailableException(stringifyChapaError(body));
     }
     return checkoutUrl;

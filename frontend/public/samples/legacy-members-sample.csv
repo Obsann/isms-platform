@@ -1,5 +1,11 @@
 memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
-MEM-93001,Kidist,Hailu,Worku,FIN-9301-2002-3003,national_id,+251911930001,kidist.worku@example.com,1991-04-18,active,2024-02-10
-MEM-93002,Bereket,,Negash,EP930002,passport,+251922930002,bereket.negash@example.com,1987-09-25,pending,2024-04-02
-MEM-93003,Meron,Alemayehu,Kebede,,,+251933930003,,1984-12-08,active,2023-11-20
-MEM-93004,Daniel,Solomon,Tadesse,FIN-9304-1111-2222,national_id,+251944930004,daniel.tadesse@example.com,1992-05-12,active,2024-07-01
+MEM-99001,Kidist,Hailu,Worku,FIN-9901-2002-3003,national_id,+251911991111,kidist.worku@gmail.com,1991-04-18,active,2024-02-10
+MEM-99002,Bereket,,Negash,EP990002,passport,+251922992222,bereket.negash@yahoo.com,1987-09-25,pending,2024-04-02
+MEM-99003,Meron,Alemayehu,Kebede,,,+251933993333,,1984-12-08,active,2023-11-20
+MEM-99004,Daniel,Solomon,Tadesse,FIN-9904-1111-2222,national_id,+251944994444,daniel.tadesse@gmail.com,1992-05-12,active,2024-07-01
+MEM-99005,Hanna,Girma,Mohammed,LAKE99005,other,+251955995555,hanna.girma@yahoo.com,1989-03-22,active,2024-01-15
+MEM-99006,Yonas,,Bekele,FIN-9906-3333-4444,national_id,+251966996666,yonas.bekele@gmail.com,1995-08-30,pending,2024-09-01
+MEM-99007,Selam,Tigist,Assefa,EP990007,passport,+251977997777,selam.assefa@gmail.com,1983-11-05,inactive,2023-06-18
+MEM-99008,Fikadu,Haile,Tesfaye,,,+251988998888,,1990-01-01,active,2024-11-01
+MEM-99009,Ruth,Sara,Gebre,FIN-9909-5555-6666,national_id,+251911997777,ruth.gebre@gmail.com,1988-07-14,active,2024-03-08
+MEM-99010,Tadesse,Kifle,Ayele,EP990010,passport,+251922998888,tadesse.ayele@yahoo.com,1993-02-28,pending,2024-10-15

@@ -67,6 +67,19 @@ export class StaffAccountService {
     return staff ? toSummary(staff) : null;
   }
 
+  /** Used by password change flow inside tenant context */
+  async findCredentialById(staffId: StaffId): Promise<StaffCredential | null> {
+    const staff = await this.tenantContext.repo(StaffAccountEntity).findOne({ where: { id: staffId } });
+    return staff ? toCredential(staff) : null;
+  }
+
+  /** Updates staff password hash inside tenant context */
+  async updatePassword(staffId: StaffId, newPasswordHash: string): Promise<void> {
+    await this.tenantContext
+      .repo(StaffAccountEntity)
+      .update({ id: staffId }, { passwordHash: newPasswordHash });
+  }
+
   async touchLastLogin(staffId: StaffId): Promise<void> {
     await this.tenantContext
       .repo(StaffAccountEntity)

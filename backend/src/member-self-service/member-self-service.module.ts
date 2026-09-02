@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
+import { ChannelIntegrationModule } from '../channel-integration';
 import { LoanModule } from '../loans';
 import { MemberModule } from '../members';
 import { SavingsSharesModule } from '../savings-shares';
 import { SecurityAuditModule } from '../security-audit';
+import { MemberSelfLookupController } from './member-self-lookup.controller';
+import { MemberSelfMomoController } from './member-self-momo.controller';
 import { MemberSelfProfileController } from './member-self-profile.controller';
 import { MemberSelfServiceController } from './member-self-service.controller';
 import { MemberSelfServiceService } from './member-self-service.service';
@@ -15,12 +18,18 @@ import { MemberSelfServiceService } from './member-self-service.service';
  */
 @Module({
   imports: [
+    ChannelIntegrationModule,
     MemberModule,
     SavingsSharesModule,
     LoanModule,
     SecurityAuditModule,
   ],
-  controllers: [MemberSelfServiceController, MemberSelfProfileController],
+  controllers: [
+    MemberSelfServiceController,
+    MemberSelfProfileController,
+    MemberSelfLookupController,
+    MemberSelfMomoController,
+  ],
   providers: [MemberSelfServiceService],
 })
 export class MemberSelfServiceModule {}

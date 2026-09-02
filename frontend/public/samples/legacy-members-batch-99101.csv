@@ -1,0 +1,11 @@
+memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
+MEM-99101,Almaz,Desta,Tesfaye,FIN-9911-1001-2001,national_id,+251911982111,almaz.import@gmail.com,1990-06-12,active,2024-01-20
+MEM-99102,Kebede,,Molla,EP991102,passport,+251922983222,kebede.molla@yahoo.com,1986-11-03,pending,2024-05-14
+MEM-99103,Sara,Hanan,Mekonnen,,,+251933984333,,1985-08-19,active,2023-12-05
+MEM-99104,Girma,Solomon,Haile,FIN-9914-2222-3333,national_id,+251944985444,girma.haile@gmail.com,1994-01-25,active,2024-08-22
+MEM-99105,Bethel,Alemu,Negussie,WARD99105,other,+251955986555,bethel.negussie@yahoo.com,1991-09-09,active,2024-02-28
+MEM-99106,Elias,,Tesfaye,FIN-9916-4444-5555,national_id,+251966987666,elias.tesfaye@gmail.com,1996-04-17,pending,2024-09-10
+MEM-99107,Marta,Ruth,Bekele,EP991107,passport,+251977988777,marta.bekele@yahoo.com,1982-12-30,inactive,2023-07-15
+MEM-99108,Samuel,Daniel,Worku,,,+251988989888,,1989-03-08,active,2024-11-12
+MEM-99109,Tigist,Mulu,Gebreyes,FIN-9919-6666-7777,national_id,+251911987777,tigist.gebreyes@gmail.com,1987-07-21,active,2024-04-03
+MEM-99110,Haile,Girma,Ayele,EP991110,passport,+251922988888,haile.ayele@yahoo.com,1993-10-11,pending,2024-10-28

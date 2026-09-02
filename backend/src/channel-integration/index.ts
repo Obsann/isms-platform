@@ -1,5 +1,5 @@
-// Public surface of the Channel Integration module.
 export { ChannelIntegrationModule } from './channel-integration.module';
+export { MobileMoneyMockService } from './mobile-money-mock.service';
 export { NotificationService } from './notification.service';
 export { ChapaService } from './chapa.service';
 export type { ChapaCheckoutMode, ChapaInitializeResult, ChapaPaymentView } from './chapa.service';
@@ -10,3 +10,4 @@ export type {
   NotificationTemplate,
   SendNotificationInput,
 } from './channel-integration.types';
+export type { StagedMomoRequestView } from './mobile-money-mock.types';

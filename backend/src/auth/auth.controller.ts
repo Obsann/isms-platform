@@ -5,6 +5,7 @@ import type { AuthUser, LoginResponse } from '../types';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -33,5 +34,19 @@ export class AuthController {
       throw new NotFoundException('Staff account not found');
     }
     return summary;
+  }
+
+  @Post('change-password')
+  @Roles('super-admin', 'tenant-admin', 'teller', 'loan-officer', 'member')
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.authService.changePassword(
+      user.staffId,
+      user.tenantId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 }

@@ -226,16 +226,20 @@ async function seed(): Promise<void> {
     for (const account of staff) {
       const tenantId = account.tenantCode ? tenantIds.get(account.tenantCode)! : null;
 
+      // Never DELETE staff: audit_logs.actor_staff_id is ON DELETE RESTRICT and
+      // audit rows are append-only. Upsert so re-runs keep the same staff id.
       if (tenantId === null) {
-        await dataSource.query(
-          `DELETE FROM "staff_accounts" WHERE "tenant_id" IS NULL AND "email" = $1`,
-          [account.email],
-        );
         await dataSource.query(
           `
             INSERT INTO "staff_accounts"
               ("tenant_id", "email", "password_hash", "full_name", "role", "is_active")
             VALUES (NULL, $1, $2, $3, $4, true)
+            ON CONFLICT ("email") WHERE "tenant_id" IS NULL
+              DO UPDATE SET
+                "password_hash" = EXCLUDED."password_hash",
+                "full_name" = EXCLUDED."full_name",
+                "role" = EXCLUDED."role",
+                "is_active" = true
           `,
           [account.email, passwordHash, account.fullName, account.role],
         );

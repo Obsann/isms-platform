@@ -1,7 +1,15 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { Not, QueryFailedError } from 'typeorm';
+import { In, Not, QueryFailedError } from 'typeorm';
+import { MobileMoneyStagedRequestEntity } from '../channel-integration/mobile-money-staged-request.entity';
 import { TenantContextService } from '../common/tenant-context/tenant-context.service';
+import { LedgerEntryEntity } from '../ledger/ledger-entry.entity';
+import { LoanGuarantorEntity } from '../loans/entities/loan-guarantor.entity';
+import { LoanRepaymentEntity } from '../loans/entities/loan-repayment.entity';
+import { LoanEntity } from '../loans/entities/loan.entity';
+import { AccountEntity } from '../savings-shares/account.entity';
+import { FundsHoldEntity } from '../savings-shares/funds-hold.entity';
+import { SavingsTransactionEntity } from '../savings-shares/savings-transaction.entity';
 import {
   normalizeEmail,
   normalizeMemberNumber,
@@ -248,7 +256,7 @@ export class MemberService {
     }
   }
 
-  /** `DELETE /api/members/{id}` — hard delete when no related rows; otherwise 409. */
+  /** `DELETE /api/members/{id}` — tenant-admin hard delete; cascades related tenant rows. */
   async remove(memberId: MemberId): Promise<void> {
     const repo = this.tenantContext.repo(MemberEntity);
     const member = await repo.findOne({ where: { id: memberId } });
@@ -256,16 +264,48 @@ export class MemberService {
       throw new NotFoundException(`Member with ID "${memberId}" not found`);
     }
 
-    try {
-      await repo.remove(member);
-    } catch (err) {
-      if (this.isFkViolation(err)) {
-        throw new ConflictException(
-          'This member has savings accounts, loans, or other records. Set status to Inactive instead of deleting.',
-        );
-      }
-      throw err;
+    await this.cascadeDeleteMemberRecords(memberId);
+    await repo.remove(member);
+  }
+
+  /**
+   * Removes dependent rows that block `members` FK constraints. Tenant-admin only
+   * (route RBAC); tellers use status changes instead.
+   */
+  private async cascadeDeleteMemberRecords(memberId: MemberId): Promise<void> {
+    const manager = this.tenantContext.getManager();
+
+    const accounts = await manager.getRepository(AccountEntity).find({
+      where: { memberId },
+      select: { id: true },
+    });
+    const accountIds = accounts.map((account) => account.id);
+
+    await manager.getRepository(LoanGuarantorEntity).delete({ guarantorMemberId: memberId });
+    if (accountIds.length > 0) {
+      await manager.getRepository(LoanGuarantorEntity).delete({ pledgedAccountId: In(accountIds) });
     }
+
+    const loans = await manager.getRepository(LoanEntity).find({
+      where: { memberId },
+      select: { id: true },
+    });
+    const loanIds = loans.map((loan) => loan.id);
+
+    if (loanIds.length > 0) {
+      await manager.getRepository(LoanRepaymentEntity).delete({ loanId: In(loanIds) });
+      await manager.getRepository(LoanGuarantorEntity).delete({ loanId: In(loanIds) });
+      await manager.getRepository(LoanEntity).delete({ id: In(loanIds) });
+    }
+
+    if (accountIds.length > 0) {
+      await manager.getRepository(LedgerEntryEntity).delete({ accountId: In(accountIds) });
+      await manager.getRepository(SavingsTransactionEntity).delete({ accountId: In(accountIds) });
+      await manager.getRepository(FundsHoldEntity).delete({ accountId: In(accountIds) });
+      await manager.getRepository(AccountEntity).delete({ id: In(accountIds) });
+    }
+
+    await manager.getRepository(MobileMoneyStagedRequestEntity).delete({ memberId });
   }
 
   /** Validates a legacy CSV and stages it for review without writing member rows. */
@@ -637,14 +677,6 @@ export class MemberService {
       throw new ConflictException('This email is already registered in this SACCO');
     }
     throw new ConflictException('A member with these details is already registered in this SACCO');
-  }
-
-  private isFkViolation(err: unknown): boolean {
-    if (!(err instanceof QueryFailedError)) {
-      return false;
-    }
-    const driver = err as QueryFailedError & { driverError?: { code?: string } };
-    return driver.driverError?.code === '23503';
   }
 
   /** Maps a database MemberEntity to the public API Member contract. */

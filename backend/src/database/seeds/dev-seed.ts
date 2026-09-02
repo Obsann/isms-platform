@@ -270,6 +270,7 @@ async function seed(): Promise<void> {
     console.log('\nSeeding Members & Savings Accounts...');
     let firstMemberId: string | null = null;
     const tenantAId = tenantIds.get('tenant-a')!;
+    const memberIdsByNumber = new Map<string, { memberId: string; tenantId: string }>();
 
     for (const member of BASE_MEMBERS) {
       const tenantId = tenantIds.get(member.tenantCode)!;
@@ -309,6 +310,8 @@ async function seed(): Promise<void> {
         firstMemberId = memberId;
       }
 
+      memberIdsByNumber.set(member.memberNumber, { memberId, tenantId });
+
       if (member.accountNumber && member.initialSavingsBalance) {
         await dataSource.query(
           `
@@ -340,6 +343,107 @@ async function seed(): Promise<void> {
         [tenantAId, firstMemberId],
       );
       console.log(`  loan LN-2026-000001: id="${firstMemberId}", amount="50000.00", status="approved"`);
+    }
+
+    const loanRows = await dataSource.query<{ id: string }[]>(
+      `SELECT "id" FROM "loans" WHERE "tenant_id" = $1 AND "loan_number" = 'LN-2026-000001'`,
+      [tenantAId],
+    );
+    const abebeLoanId = loanRows[0]?.id ?? null;
+
+    // 5. Seed shared mobile-money pending mocks (Task 24 — member portal, database-backed)
+    console.log('\nSeeding demo mobile-money pending mocks...');
+    type DemoMomoSeed = {
+      memberNumber: string;
+      direction: 'c2b' | 'b2c';
+      providerReference: string;
+      provider: 'telebirr' | 'mpesa' | 'cbe_birr';
+      amount: string;
+      accountNumber?: string;
+      loanId?: string | null;
+      msisdn: string;
+      occurredAt: string;
+    };
+
+    const DEMO_MOMO_STAGED: DemoMomoSeed[] = [
+      {
+        memberNumber: 'MEM-10001',
+        direction: 'c2b',
+        providerReference: 'MOCK-C2B-DEMO-ABEBE',
+        provider: 'telebirr',
+        amount: '500.00',
+        accountNumber: 'SAV-10001',
+        msisdn: '+251911123456',
+        occurredAt: '2026-08-15T10:30:00.000Z',
+      },
+      {
+        memberNumber: 'MEM-10001',
+        direction: 'b2c',
+        providerReference: 'MOCK-B2C-DEMO-ABEBE',
+        provider: 'telebirr',
+        amount: '10000.00',
+        loanId: abebeLoanId,
+        msisdn: '+251911123456',
+        occurredAt: '2026-08-16T14:00:00.000Z',
+      },
+      {
+        memberNumber: 'MEM-10002',
+        direction: 'c2b',
+        providerReference: 'MOCK-C2B-DEMO-TIGIST',
+        provider: 'mpesa',
+        amount: '750.00',
+        accountNumber: 'SAV-10002',
+        msisdn: '+251922234567',
+        occurredAt: '2026-08-17T09:15:00.000Z',
+      },
+      {
+        memberNumber: 'MEM-20001',
+        direction: 'c2b',
+        providerReference: 'MOCK-C2B-DEMO-ALMAZ',
+        provider: 'cbe_birr',
+        amount: '2500.00',
+        accountNumber: 'SAV-20001',
+        msisdn: '+251944456789',
+        occurredAt: '2026-08-15T11:45:00.000Z',
+      },
+    ];
+
+    for (const demo of DEMO_MOMO_STAGED) {
+      const row = memberIdsByNumber.get(demo.memberNumber);
+      if (!row) continue;
+      await dataSource.query(
+        `
+          INSERT INTO "mobile_money_staged_requests"
+            ("tenant_id", "member_id", "direction", "provider", "provider_reference", "account_number", "loan_id", "msisdn", "amount", "currency", "status", "failure_reason", "occurred_at")
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ETB', 'PENDING', NULL, $10)
+          ON CONFLICT ("tenant_id", "provider_reference")
+            DO UPDATE SET
+              "member_id" = EXCLUDED."member_id",
+              "direction" = EXCLUDED."direction",
+              "provider" = EXCLUDED."provider",
+              "account_number" = EXCLUDED."account_number",
+              "loan_id" = EXCLUDED."loan_id",
+              "msisdn" = EXCLUDED."msisdn",
+              "amount" = EXCLUDED."amount",
+              "occurred_at" = EXCLUDED."occurred_at",
+              "updated_at" = NOW()
+        `,
+        [
+          row.tenantId,
+          row.memberId,
+          demo.direction,
+          demo.provider,
+          demo.providerReference,
+          demo.direction === 'c2b' ? demo.accountNumber ?? null : null,
+          demo.direction === 'b2c' ? demo.loanId ?? null : null,
+          demo.msisdn,
+          demo.amount,
+          demo.occurredAt,
+        ],
+      );
+      console.log(
+        `  momo pending ${demo.providerReference}: member="${demo.memberNumber}", ${demo.direction}, amount="${demo.amount}"`,
+      );
     }
   } finally {
     try {

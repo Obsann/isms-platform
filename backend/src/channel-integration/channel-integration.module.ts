@@ -7,19 +7,21 @@ import { SecurityAuditModule } from '../security-audit';
 import { ChapaPaymentEntity } from './chapa-payment.entity';
 import { ChapaController, ChapaWebhookController } from './chapa.controller';
 import { ChapaService } from './chapa.service';
+import { MobileMoneyMockService } from './mobile-money-mock.service';
+import { MobileMoneyStagedRequestEntity } from './mobile-money-staged-request.entity';
 import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './notification.service';
 
 /**
- * Channel Integration — SMTP notifications (Task 25) + Chapa C2B deposits
- * (opt-in live gateway; mock checkout when `CHAPA_SECRET_KEY` is unset).
+ * Channel Integration — SMTP notifications (Task 25), Chapa C2B deposits
+ * (opt-in live gateway; mock checkout when `CHAPA_SECRET_KEY` is unset), and
+ * staged mobile-money webhook shapes for dev/docs (Task 24/26).
  *
  * Keys are read through ConfigService / `process.env` here only.
- * Generic Telebirr/M-PESA/CBE Birr webhook contracts remain in `docs/openapi/`.
  */
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([ChapaPaymentEntity]),
+    TypeOrmModule.forFeature([ChapaPaymentEntity, MobileMoneyStagedRequestEntity]),
     MemberModule,
     SecurityAuditModule,
     forwardRef(() => SavingsSharesModule),
@@ -33,7 +35,8 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
     },
     NotificationService,
     ChapaService,
+    MobileMoneyMockService,
   ],
-  exports: [NotificationService, ChapaService],
+  exports: [NotificationService, ChapaService, MobileMoneyMockService],
 })
 export class ChannelIntegrationModule {}

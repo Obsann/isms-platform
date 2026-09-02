@@ -228,7 +228,7 @@ export default function LegacyImportPage() {
           <p>
             Use a real member list, not a document. Dates must be <code className="font-mono">YYYY-MM-DD</code>.{' '}
             <a
-              href="/samples/legacy-members-sample.csv?v=4"
+              href="/samples/legacy-members-sample.csv?v=5"
               download="sacco-new-members.csv"
               className="font-bold text-amber-800 dark:text-gold hover:underline"
             >

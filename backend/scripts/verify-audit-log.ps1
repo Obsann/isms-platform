@@ -53,6 +53,6 @@ $afterFail = (( Call $admin 'GET' '/audit-logs?limit=1' $null ).Body | ConvertFr
 Write-Output "rows after a rejected write: $afterGet -> $afterFail (must be unchanged)"
 
 # 4. A 403 must leave no audit row.
-Call $teller 'DELETE' "/members/$memberId" $null | Out-Null
+Call $member 'DELETE' "/members/$memberId" $null | Out-Null
 $afterForbidden = (( Call $admin 'GET' '/audit-logs?limit=1' $null ).Body | ConvertFrom-Json).total
 Write-Output "rows after a 403: $afterFail -> $afterForbidden (must be unchanged)"

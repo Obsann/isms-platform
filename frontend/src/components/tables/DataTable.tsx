@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { TablePagination, type TablePaginationProps } from "@/components/ui/TablePagination";
 
 export interface Column<T> {
   key?: string;
@@ -15,6 +16,12 @@ export interface Column<T> {
   className?: string;
 }
 
+export interface DataTablePaginationProps extends Omit<TablePaginationProps, "page" | "pageSize" | "totalItems"> {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+}
+
 export interface DataTableProps<T> {
   columns?: Column<T>[];
   data?: T[];
@@ -25,7 +32,10 @@ export interface DataTableProps<T> {
   title?: string;
   description?: string;
   searchPlaceholder?: string;
+  /** Client-side pagination page size. Omit to show all rows. */
   defaultPageSize?: number;
+  /** Server-driven pagination — pass API totals and handlers; table renders `data` as-is. */
+  pagination?: DataTablePaginationProps;
   onRowClick?: (row: T) => void;
 }
 
@@ -40,13 +50,23 @@ export function DataTable<T>({
   description,
   searchPlaceholder = "Search...",
   defaultPageSize,
+  pagination,
   onRowClick,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(defaultPageSize || 10);
+  const [pageSize, setPageSize] = useState(defaultPageSize || pagination?.pageSize || 10);
+
+  const isServerPagination = Boolean(pagination);
+  const shouldPaginate = isServerPagination || Boolean(defaultPageSize);
+
+  useEffect(() => {
+    if (pagination) {
+      setPageSize(pagination.pageSize);
+    }
+  }, [pagination?.pageSize, pagination]);
 
   // 1. Search Filter
   const filteredData = useMemo(() => {
@@ -86,15 +106,40 @@ export function DataTable<T>({
     });
   }, [filteredData, sortKey, sortDirection]);
 
-  // 3. Pagination
-  const shouldPaginate = Boolean(defaultPageSize);
-  const totalPages = shouldPaginate ? Math.ceil(sortedData.length / pageSize) : 1;
-  
+  // 3. Pagination (client-side slice only when not server-driven)
+  const totalItems = isServerPagination ? pagination!.totalItems : sortedData.length;
+  const activePage = isServerPagination ? pagination!.page : currentPage;
+  const activePageSize = isServerPagination ? pagination!.pageSize : pageSize;
+
   const paginatedData = useMemo(() => {
-    if (!shouldPaginate) return sortedData;
+    if (!shouldPaginate || isServerPagination) return sortedData;
     const start = (currentPage - 1) * pageSize;
     return sortedData.slice(start, start + pageSize);
-  }, [sortedData, shouldPaginate, currentPage, pageSize]);
+  }, [sortedData, shouldPaginate, isServerPagination, currentPage, pageSize]);
+
+  const handleClientPageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleClientPageSizeChange = (nextSize: number) => {
+    setPageSize(nextSize);
+    setCurrentPage(1);
+  };
+
+  const paginationProps: TablePaginationProps | null = shouldPaginate
+    ? {
+        page: activePage,
+        pageSize: activePageSize,
+        totalItems,
+        onPageChange: isServerPagination ? pagination!.onPageChange : handleClientPageChange,
+        onPageSizeChange: isServerPagination
+          ? pagination!.onPageSizeChange
+          : handleClientPageSizeChange,
+        pageSizeOptions: pagination?.pageSizeOptions,
+        itemLabel: pagination?.itemLabel,
+        className: pagination?.className,
+      }
+    : null;
 
   const handleSort = (columnKey: string, sortable?: boolean) => {
     if (!sortable) return;
@@ -108,6 +153,9 @@ export function DataTable<T>({
     } else {
       setSortKey(columnKey);
       setSortDirection("asc");
+    }
+    if (!isServerPagination) {
+      setCurrentPage(1);
     }
   };
 
@@ -270,37 +318,7 @@ export function DataTable<T>({
       </div>
 
       {/* Pagination Footer */}
-      {shouldPaginate && totalPages > 1 && (
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>
-            Showing <strong className="font-semibold text-slate-700 dark:text-slate-300">{(currentPage - 1) * pageSize + 1}</strong> to{" "}
-            <strong className="font-semibold text-slate-700 dark:text-slate-300">
-              {Math.min(currentPage * pageSize, sortedData.length)}
-            </strong>{" "}
-            of <strong className="font-semibold text-slate-700 dark:text-slate-300">{sortedData.length}</strong> results
-          </span>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              Previous
-            </button>
-            <span className="px-2 font-medium">
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      {paginationProps && <TablePagination {...paginationProps} />}
     </div>
   );
 }

@@ -459,6 +459,7 @@ export default function LoansView() {
           columns={columns}
           emptyMessage="No loan records found in this tenant."
           searchPlaceholder="Search by loan # or purpose..."
+          defaultPageSize={10}
         />
       )}
 

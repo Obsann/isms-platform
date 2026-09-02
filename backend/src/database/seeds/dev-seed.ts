@@ -1,7 +1,7 @@
 import { config as loadDotenv } from 'dotenv';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { buildDataSourceOptions } from '../data-source';
+import { buildAdminDataSourceOptions } from '../data-source';
 import type { RoleName } from '../../types';
 
 loadDotenv({ quiet: true });
@@ -101,19 +101,46 @@ const BASE_MEMBERS: SeedMember[] = [
 ];
 
 /**
+ * Temporarily drop FORCE RLS so a non-superuser table owner (Render) can seed.
+ * `ENABLE ROW LEVEL SECURITY` stays on, so `isms_app` is still isolated.
+ * Local `postgres` is a superuser and would bypass anyway; restoring FORCE is still required.
+ */
+async function relaxForceRls(dataSource: DataSource, names: string[]): Promise<void> {
+  const tables: Array<{ relname: string }> = await dataSource.query(`
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind = 'r'
+      AND c.relrowsecurity
+      AND c.relforcerowsecurity
+  `);
+  for (const { relname } of tables) {
+    await dataSource.query(`ALTER TABLE "${relname}" NO FORCE ROW LEVEL SECURITY`);
+    names.push(relname);
+  }
+}
+
+async function restoreForceRls(dataSource: DataSource, names: string[]): Promise<void> {
+  for (const name of names) {
+    await dataSource.query(`ALTER TABLE "${name}" FORCE ROW LEVEL SECURITY`);
+  }
+}
+
+/**
  * Dev seed for Task 3 isolation checks, Task 4 portal routing, Task 8 Member directory,
  * Task 18 Loans, and Task 23 Self-Service API. Same password for every staff account.
  *
- * Runs as the `postgres` role regardless of `.env`'s `DB_USERNAME`, since seeding
+ * Runs as the database owner / `postgres` role, not `isms_app`, since seeding
  * writes across tenants and RLS would block that. Idempotent.
  */
 async function seed(): Promise<void> {
-  const dataSource = new DataSource(
-    buildDataSourceOptions({ ...process.env, DB_USERNAME: 'postgres' }),
-  );
+  const dataSource = new DataSource(buildAdminDataSourceOptions());
   await dataSource.initialize();
 
+  const forcedTables: string[] = [];
   try {
+    await relaxForceRls(dataSource, forcedTables);
     const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
     const tenantIds = new Map<string, string>();
 
@@ -297,6 +324,11 @@ async function seed(): Promise<void> {
       console.log(`  loan LN-2026-000001: id="${firstMemberId}", amount="50000.00", status="approved"`);
     }
   } finally {
+    try {
+      await restoreForceRls(dataSource, forcedTables);
+    } catch (restoreError: unknown) {
+      console.error('Failed to restore FORCE ROW LEVEL SECURITY after seed:', restoreError);
+    }
     await dataSource.destroy();
   }
 }

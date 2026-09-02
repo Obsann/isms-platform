@@ -137,3 +137,21 @@ Walk [`integration-pass.md`](./integration-pass.md) against the deployed URLs.
    or restore to a spare DB and rehearse per `backup-disaster-recovery.md`.
 3. Redeploy the previous API/frontend build artifacts.
 4. Re-run `npm run rls:check` before reopening to staff.
+
+---
+
+## 9. Managed hosting (Vercel + Render)
+
+Internship default when not using a VPS:
+
+| Piece | Host | Root |
+|---|---|---|
+| Next.js | Vercel | `frontend/` |
+| NestJS API | Render web service | `backend/` |
+| Postgres 16 | Render PostgreSQL | Blueprint `isms-postgres` |
+
+`render.yaml` at the repo root is the Blueprint. Pre-deploy runs `npm run release`: create `isms_app`, migrate as the Render owner, seed demo data.
+
+Set `CORS_ORIGIN` to the Vercel origin (not `*`) and `NEXT_PUBLIC_API_URL` to `https://<api>.onrender.com/api`. Redeploy Vercel after the API URL is known.
+
+Rotate `DevPassword!123` (dev seed) before any real users. SMTP stays unset until you add `SMTP_*` on the Render service. Do not commit `.env`.

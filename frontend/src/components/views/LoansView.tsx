@@ -25,7 +25,7 @@ import DataTable, { Column } from '@/components/tables/DataTable';
 import { Card } from '@/components/ui/Card';
 import ApplyLoanModal, { ApplyLoanFormData } from '@/components/forms/ApplyLoanModal';
 import { loanApi, type LoanRow, type GuarantorPledge } from '@/lib/loanApi';
-import { getMembers } from '@/lib/api-client';
+import { getMembers, getMemberBalance } from '@/lib/api-client';
 import { createSavingsAccount, listAccountsByMember } from '@/lib/api-client/teller';
 import type { Member } from '@/types';
 
@@ -133,11 +133,33 @@ export default function LoansView() {
         purpose: data.purpose,
       });
 
+      // Record attached guarantor pledges if any
+      if (data.guarantors && data.guarantors.length > 0) {
+        for (const g of data.guarantors) {
+          try {
+            const gBal = await getMemberBalance(g.guarantorMemberId);
+            const savingsAcc = gBal.accounts.find((a) => a.type === 'savings' && a.status === 'active');
+            if (savingsAcc) {
+              await loanApi.recordGuarantorPledge(
+                created.id,
+                g.guarantorMemberId,
+                savingsAcc.id,
+                String(g.pledgedAmount),
+              );
+            }
+          } catch (gErr) {
+            console.warn('Could not record guarantor pledge:', gErr);
+          }
+        }
+      }
+
       showToast('Application Submitted', `Loan ${created.loanNumber} created in pending status.`, 'success');
       setIsApplyModalOpen(false);
       await fetchLoans();
     } catch (err) {
-      showToast('Application Failed', err instanceof Error ? err.message : 'Could not submit loan application.', 'error');
+      const msg = err instanceof Error ? err.message : 'Could not submit loan application.';
+      showToast('Application Failed', msg, 'error');
+      throw err;
     }
   };
 

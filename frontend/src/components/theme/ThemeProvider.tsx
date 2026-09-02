@@ -32,6 +32,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return;
     const isDark = resolveIsDark(currentTheme);
     const root = document.documentElement;
+    // Tailwind `darkMode: 'class'` uses `html.dark` only. Never add `html.light` —
+    // globals.css has leftover `html.light` !important rules that fight this store.
+    root.classList.remove('light');
     if (isDark) {
       root.classList.add('dark');
       setResolvedTheme('dark');

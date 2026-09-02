@@ -18,8 +18,10 @@ import {
 } from '@/lib/api-client';
 import { loanApi, type LoanRow } from '@/lib/loanApi';
 import type { Member, Transaction } from '@/types';
+import { useLang } from '@/components/i18n';
 
 export default function TenantAdminDashboardPage() {
+  const { t } = useLang();
   const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,13 +74,13 @@ export default function TenantAdminDashboardPage() {
     <div className="space-y-6 max-w-6xl">
       <div>
         <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">
-          Tenant Admin
+          {t('dash.tenantEyebrow')}
         </p>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Executive Dashboard
+          {t('dash.tenantTitle')}
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          {userName ? `Welcome back, ${userName}` : 'Welcome back'} — live figures from the ledger.
+          {userName ? t('dash.tenantIntroNamed', { name: userName }) : t('dash.tenantIntro')}
         </p>
       </div>
 

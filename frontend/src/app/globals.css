@@ -130,9 +130,9 @@ a {
   text-decoration: none;
 }
 
-/* ====================================================
-   LIGHT & DARK MODE STYLING (Accurate Figma Theme from UI Original Change)
-   ==================================================== */
+/* Light mode is the absence of `html.dark` (ThemeProvider / isms-theme).
+   Do not add `html.light` — these leftover selectors fight Tailwind `dark:` chrome.
+   Prefer component `dark:` classes. The block below is inert unless `html.light` is set. */
 
 html.light {
   background-color: #f2f4f7;

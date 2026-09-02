@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { Building2, Users, AlertTriangle, Shield, CheckCircle2, ArrowRight, Activity, Server } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { getTenants, type TenantListItem } from '@/lib/api-client';
+import { useLang } from '@/components/i18n';
 
 export default function SuperAdminDashboardPage() {
+  const { t } = useLang();
   const [tenants, setTenants] = useState<TenantListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,11 +40,11 @@ export default function SuperAdminDashboardPage() {
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Shield className="w-4 h-4 text-amber-500" />
-          <p className="text-[11px] font-bold uppercase tracking-widest text-amber-500">Platform Overview</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-amber-500">{t('dash.superEyebrow')}</p>
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Super Admin Dashboard</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t('dash.superTitle')}</h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          Global platform statistics and tenant management overview.
+          {t('dash.superIntro')}
         </p>
       </div>
 

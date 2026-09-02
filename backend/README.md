@@ -37,6 +37,34 @@ curl http://localhost:4000/api/health
 
 The API listens on `4000` so it doesn't collide with the Next.js dev server on `3000`.
 
+### Shared member-portal mobile-money mocks (Task 24)
+
+Mobile-money C2B/B2C demos are **not** stored in the browser. They live in
+`mobile_money_staged_requests` (migration `1787600000000-MobileMoneyStagedRequests`)
+and are loaded through `GET /api/member-self/momo/pending`.
+
+After pulling latest `main` (or a branch that includes the migration), every developer
+should run:
+
+```bash
+docker compose up -d
+cd backend
+npm run migration:run
+npm run seed
+npm run start:dev
+```
+
+`npm run seed` upserts these shared pending mocks (always `PENDING`, never posts to the ledger):
+
+| Member login | Tenant | Demo rows |
+|---|---|---|
+| `abebe.bikila@tenant-a.dev` | `tenant-a` | C2B Telebirr 500.00 ETB + B2C Telebirr 10,000.00 ETB |
+| `tigist.worku@tenant-a.dev` | `tenant-a` | C2B M-PESA 750.00 ETB |
+| `almaz.desta@tenant-b.dev` | `tenant-b` | C2B CBE Birr 2,500.00 ETB |
+
+Members stage additional mocks with `POST /api/member-self/momo/stage`; those rows are
+also persisted in Postgres for the whole team on the same database.
+
 ## Scripts
 
 | Script | What it does |
@@ -48,7 +76,7 @@ The API listens on `4000` so it doesn't collide with the Next.js dev server on `
 | `npm test` | Jest |
 | `npm run migration:generate -- src/database/migrations/<Name>` | generate a migration from entities |
 | `npm run migration:run` / `npm run migration:revert` | apply / roll back |
-| `npm run seed` | dev seed (`DB_USERNAME=postgres`) |
+| `npm run seed` | dev seed (`DB_USERNAME=postgres`) — members, accounts, loans, **mobile-money pending mocks** |
 | `npm run rls:check` | Task 28 RLS isolation (isms_app, concurrent tenant-a / tenant-b) |
 | `npm run backup:now` | pg_dump into `../backups/` |
 | `npm run backup:restore` | restore latest dump into spare `isms_restore_check` |

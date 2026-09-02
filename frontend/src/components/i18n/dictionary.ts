@@ -180,9 +180,9 @@ const en: LeafDict = {
     memberLoansDesc:
       'Applications and disbursements from the loans service. Amounts are full figures, not estimates.',
     memberChannels: 'Channels',
-    memberMomoTitle: 'Mobile money',
+    memberMomoTitle: 'Pay with Chapa',
     memberMomoDesc:
-      'Deposit from Chapa into your savings. Success is shown only after verify posts the ledger. Withdrawals stay with the teller.',
+      'Open Chapa checkout to deposit into your savings. Use sandbox phone 0900123456 (OTP 12345).',
     tenantsEyebrow: 'Platform Admin',
     tenantsTitle: 'SACCO Tenant Registry',
     tenantsDesc: 'Provision and manage tenant instances across the ISMS platform.',
@@ -352,8 +352,8 @@ const am: LeafDict = {
     memberLoansTitle: 'የብድር ሁኔታ',
     memberLoansDesc: 'ከብድር አገልግሎቱ ማመልከቻዎችና ክፍያዎች። መጠኖቹ ሙሉ ቁጥሮች ናቸው፤ ግምት አይደሉም።',
     memberChannels: 'ቻናሎች',
-    memberMomoTitle: 'የሞባይል ገንዘብ',
-    memberMomoDesc: 'ከChapa ወደ ቁጠባዎ ያስገቡ። ስኬት የሚታየው ማረጋገጫ ሒሳቡን ካስመዘገበ በኋላ ብቻ ነው። ወጪ በቴለር ይቆያል።',
+    memberMomoTitle: 'በChapa ይክፈሉ',
+    memberMomoDesc: 'ወደ ቁጠባ ለማስገባት የChapa ክፍያ ገጽ ይከፈታል። የሙከራ ስልክ 0900123456 (OTP 12345)።',
     tenantsEyebrow: 'የመድረክ አድሚን',
     tenantsTitle: 'የSACCO ድርጅት መዝገብ',
     tenantsDesc: 'በISMS መድረክ ላይ የድርጅት ምሳሌዎችን ያዘጋጁ እና ያስተዳድሩ።',

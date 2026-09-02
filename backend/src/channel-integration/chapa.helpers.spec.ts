@@ -19,6 +19,11 @@ describe('chapa helpers', () => {
       expect(normalizeEthiopianPhone('911234567')).toBe('+251911234567');
     });
 
+    it('accepts Chapa sandbox test numbers including 0900 and 0700', () => {
+      expect(normalizeEthiopianPhone('0900123456')).toBe('+251900123456');
+      expect(normalizeEthiopianPhone('0700123456')).toBe('+251700123456');
+    });
+
     it('rejects incomplete numbers', () => {
       expect(normalizeEthiopianPhone('91123')).toBeNull();
       expect(normalizeEthiopianPhone('')).toBeNull();
@@ -32,13 +37,15 @@ describe('chapa helpers', () => {
   });
 
   describe('mapChapaCustomerEmail', () => {
-    it('keeps gmail in test mode and maps other domains', () => {
-      expect(mapChapaCustomerEmail('abebe@gmail.com', false)).toBe('abebe@gmail.com');
-      expect(mapChapaCustomerEmail('abebe@sacco.et', false)).toBe('abebe@gmail.com');
+    it('maps demo domains in sandbox and keeps gmail', () => {
+      expect(mapChapaCustomerEmail('abebe@gmail.com', true)).toBe('abebe@gmail.com');
+      expect(mapChapaCustomerEmail('abebe.bikila@tenant-a.dev', true)).toBe(
+        'abebe.bikila@gmail.com',
+      );
     });
 
-    it('keeps the stored address in live mode', () => {
-      expect(mapChapaCustomerEmail('abebe@sacco.et', true)).toBe('abebe@sacco.et');
+    it('keeps the stored address for production keys', () => {
+      expect(mapChapaCustomerEmail('abebe@sacco.et', false)).toBe('abebe@sacco.et');
     });
   });
 

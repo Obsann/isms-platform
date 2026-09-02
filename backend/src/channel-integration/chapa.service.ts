@@ -24,11 +24,15 @@ import {
   buildChapaTxRef,
   chapaStatusIsFailed,
   chapaStatusIsPaid,
+  clipChapaName,
   extractChapaTxRef,
+  isChapaConfigured,
+  isChapaTestKey,
   mapChapaCustomerEmail,
   normalizeEthiopianPhone,
   normalizeEtbAmount,
   parseTenantIdFromTxRef,
+  stringifyChapaError,
   toChapaPhone,
 } from './chapa.helpers';
 
@@ -75,7 +79,7 @@ export class ChapaService {
   ) {}
 
   isLiveConfigured(): boolean {
-    return Boolean(this.config.get<string>('CHAPA_SECRET_KEY')?.trim());
+    return isChapaConfigured(this.config.get<string>('CHAPA_SECRET_KEY'));
   }
 
   getMode(): ChapaCheckoutMode {
@@ -94,7 +98,10 @@ export class ChapaService {
     const phone =
       normalizeEthiopianPhone(input.phone) ?? normalizeEthiopianPhone(member.phone);
     const live = this.isLiveConfigured();
-    const email = mapChapaCustomerEmail(member.email, live);
+    const email = mapChapaCustomerEmail(
+      member.email,
+      isChapaTestKey(this.config.get<string>('CHAPA_SECRET_KEY')),
+    );
     const returnUrl = `${this.frontendOrigin()}/member/mobile-money?tx_ref=${encodeURIComponent(txRef)}`;
 
     const repo = this.tenantContext.repo(ChapaPaymentEntity);
@@ -289,8 +296,8 @@ export class ChapaService {
       amount: input.amount,
       currency: 'ETB',
       email: input.email,
-      first_name: input.firstName,
-      last_name: input.lastName,
+      first_name: clipChapaName(input.firstName, 'Member'),
+      last_name: clipChapaName(input.lastName, 'Member'),
       tx_ref: input.txRef,
       return_url: input.returnUrl,
       customization: {
@@ -303,13 +310,40 @@ export class ChapaService {
         account_id: input.accountId,
       },
     };
-    if (input.phone) {
-      payload.phone_number = toChapaPhone(input.phone);
+    const phone = input.phone ? toChapaPhone(input.phone) : null;
+    if (phone) {
+      payload.phone_number = phone;
     }
     if (callbackUrl) {
       payload.callback_url = callbackUrl;
     }
 
+    try {
+      return await this.postChapaInitialize(secret, payload);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      const retry = { ...payload };
+      let shouldRetry = false;
+      if (phone && /phone/i.test(message)) {
+        delete retry.phone_number;
+        shouldRetry = true;
+      }
+      if (/email/i.test(message)) {
+        const slug = input.txRef.replace(/[^a-z0-9]/gi, '').slice(-10) || 'member';
+        retry.email = `member.${slug}@gmail.com`;
+        shouldRetry = true;
+      }
+      if (shouldRetry) {
+        return this.postChapaInitialize(secret, retry);
+      }
+      throw err;
+    }
+  }
+
+  private async postChapaInitialize(
+    secret: string,
+    payload: Record<string, unknown>,
+  ): Promise<string> {
     const response = await this.chapaFetch(CHAPA_INITIALIZE_URL, {
       method: 'POST',
       headers: {
@@ -318,19 +352,12 @@ export class ChapaService {
       },
       body: JSON.stringify(payload),
     });
-    const body = (await response.json().catch(() => ({}))) as {
-      message?: string;
-      status?: string;
-      data?: { checkout_url?: string };
-    };
-    if (!response.ok || !body.data?.checkout_url) {
-      const message =
-        typeof body.message === 'string' && body.message.trim()
-          ? body.message
-          : 'Could not start Chapa checkout';
-      throw new ServiceUnavailableException(message);
+    const body = await response.json().catch(() => ({}));
+    const checkoutUrl = (body as { data?: { checkout_url?: string } }).data?.checkout_url;
+    if (!response.ok || !checkoutUrl) {
+      throw new ServiceUnavailableException(stringifyChapaError(body));
     }
-    return body.data.checkout_url;
+    return checkoutUrl;
   }
 
   private async callChapaVerify(txRef: string): Promise<ChapaVerifyPayload> {

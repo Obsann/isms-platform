@@ -21,8 +21,8 @@ export function parseTenantIdFromTxRef(txRef: string): string | null {
 }
 
 /**
- * Normalize an Ethiopian MSISDN to E.164 (`+2519…`). Returns null when the
- * digits are not a plausible local mobile number.
+ * Normalize an Ethiopian MSISDN to E.164 (`+2519…` or `+2517…`).
+ * Accepts Chapa sandbox test numbers (`0900123456`, `0700123456`).
  */
 export function normalizeEthiopianPhone(input: string | null | undefined): string | null {
   if (!input?.trim()) {
@@ -37,38 +37,95 @@ export function normalizeEthiopianPhone(input: string | null | undefined): strin
   } else if (digits.length === 9) {
     national = digits;
   }
-  if (!national || !/^9[1-9]\d{7}$/.test(national)) {
+  if (!national || !/^[97]\d{8}$/.test(national)) {
     return null;
   }
   return `+251${national}`;
 }
 
-/** Chapa's initialize payload prefers `09xxxxxxxx` over E.164. */
+/** Chapa's initialize payload prefers `09xxxxxxxx` / `07xxxxxxxx`. */
 export function toChapaPhone(e164: string): string {
   const digits = e164.replace(/\D/g, '');
   if (digits.startsWith('251') && digits.length === 12) {
     return `0${digits.slice(3)}`;
   }
+  if (/^[97]\d{8}$/.test(digits)) {
+    return `0${digits}`;
+  }
   return e164;
 }
 
+export function readChapaSecret(raw: string | undefined): string {
+  return raw?.trim() ?? '';
+}
+
+export function isPlaceholderChapaKey(secret: string): boolean {
+  if (!secret) return true;
+  const lower = secret.toLowerCase();
+  if (lower.includes('xxx') || lower.includes('your-chapa')) return true;
+  return secret.length < 20;
+}
+
+/** Real test or live secret — not empty and not an example placeholder. */
+export function isChapaConfigured(raw: string | undefined): boolean {
+  const secret = readChapaSecret(raw);
+  return Boolean(secret && !isPlaceholderChapaKey(secret));
+}
+
+export function isChapaTestKey(raw: string | undefined): boolean {
+  const secret = readChapaSecret(raw);
+  return Boolean(secret && /^CHASECK_TEST[-_]/i.test(secret) && !isPlaceholderChapaKey(secret));
+}
+
+export function clipChapaName(value: string, fallback: string): string {
+  const cleaned = value.replace(/[^\p{L}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  return (cleaned || fallback).slice(0, 50) || fallback;
+}
+
 /**
- * Chapa test/sandbox merchants often reject non-gmail/yahoo addresses.
- * Live mode keeps the member email as stored. Never used as an auth signal.
+ * Chapa sandbox often rejects demo domains (`@tenant-a.dev`). Production keys
+ * keep the stored address. Never used as an auth signal.
  */
 export function mapChapaCustomerEmail(
   email: string | null | undefined,
-  live: boolean,
+  sandbox: boolean,
 ): string {
   const trimmed = email?.trim().toLowerCase() ?? '';
-  if (live) {
-    return trimmed.includes('@') ? trimmed : 'member@gmail.com';
+  if (!trimmed.includes('@')) {
+    return 'member@gmail.com';
+  }
+  if (!sandbox) {
+    return trimmed;
   }
   if (/@(gmail|yahoo)\.com$/i.test(trimmed)) {
     return trimmed;
   }
   const local = (trimmed.split('@')[0] || 'member').replace(/[^a-z0-9.]/gi, '') || 'member';
   return `${local.slice(0, 32)}@gmail.com`;
+}
+
+export function stringifyChapaError(json: unknown, fallback = 'Could not start Chapa checkout'): string {
+  if (typeof json === 'string' && json.trim() && json.trim() !== '[object Object]') {
+    return json.trim();
+  }
+  if (!json || typeof json !== 'object') {
+    return fallback;
+  }
+  const message = (json as { message?: unknown }).message;
+  if (typeof message === 'string' && message.trim()) {
+    return message.trim();
+  }
+  if (message && typeof message === 'object') {
+    try {
+      const serialized = JSON.stringify(message);
+      if (serialized && serialized !== '{}') {
+        return serialized.length > 400 ? `${serialized.slice(0, 400)}…` : serialized;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return fallback;
 }
 
 export function normalizeEtbAmount(value: unknown): string {

@@ -143,10 +143,3 @@ export function verifyChapaDeposit(txRef: string) {
     `/channel/chapa/deposits/${encodeURIComponent(txRef)}`,
   );
 }
-
-export function confirmMockChapaDeposit(txRef: string) {
-  return apiClient.post<ChapaPaymentView>(
-    `/channel/chapa/deposits/${encodeURIComponent(txRef)}/mock-complete`,
-    {},
-  );
-}

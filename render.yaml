@@ -1,0 +1,61 @@
+# ISMS — Render Blueprint (API + Postgres)
+#
+# Vercel hosts the Next.js app in frontend/. This file is the Nest API and
+# Postgres. After the first deploy:
+#   1. Set CORS_ORIGIN to the real Vercel origin (https://….vercel.app), no
+#      trailing slash. Update this value if the predicted URL below is wrong.
+#   2. Set frontend NEXT_PUBLIC_API_URL to https://<this-service>.onrender.com/api
+#      and redeploy Vercel (NEXT_PUBLIC_* is baked at build time).
+#   3. Fill SMTP_* on the Render service if notification emails should send.
+#
+# RLS: pre-deploy creates isms_app (NOSUPERUSER NOBYPASSRLS), runs migrations as
+# the Render owner, then the API connects as isms_app. Render's owner is not a
+# superuser; FORCE ROW LEVEL SECURITY still applies to it. The remaining gap vs
+# local docker is that we cannot GRANT BYPASSRLS / use a postgres superuser.
+#
+# Free Postgres expires after 30 days on Render — upgrade the plan for a
+# longer-lived demo.
+
+databases:
+  - name: isms-postgres
+    postgresMajorVersion: '16'
+    databaseName: isms
+    user: isms_owner
+    plan: free
+
+services:
+  - type: web
+    name: isms-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: npm run release
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: '20'
+      - key: NODE_ENV
+        value: production
+      - key: API_PREFIX
+        value: api
+      - key: SAVINGS_LOAN_MULTIPLIER
+        value: '3'
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: isms-postgres
+          property: connectionString
+      - key: DB_USERNAME
+        value: isms_app
+      - key: DB_APP_USERNAME
+        value: isms_app
+      - key: DB_PASSWORD
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://isms-platform.vercel.app

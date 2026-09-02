@@ -26,10 +26,10 @@ async function bootstrap(): Promise<void> {
   });
   app.enableShutdownHooks();
 
-  const port = Number(config.get<string>('PORT', '4000'));
-  await app.listen(port);
+  const port = Number(process.env.PORT ?? config.get<string>('PORT') ?? 4000);
+  await app.listen(port, '0.0.0.0');
 
-  Logger.log(`ISMS API listening on http://localhost:${port}/${apiPrefix}`, 'Bootstrap');
+  Logger.log(`ISMS API listening on http://0.0.0.0:${port}/${apiPrefix}`, 'Bootstrap');
 }
 
 void bootstrap();

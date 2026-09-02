@@ -121,7 +121,22 @@ async function relaxForceRls(dataSource: DataSource, names: string[]): Promise<v
   }
 }
 
+async function canForceRls(dataSource: DataSource): Promise<boolean> {
+  const rows: Array<{ allowed: boolean }> = await dataSource.query(`
+    SELECT (rolsuper OR rolbypassrls) AS allowed
+    FROM pg_roles
+    WHERE rolname = current_user
+  `);
+  return Boolean(rows[0]?.allowed);
+}
+
 async function restoreForceRls(dataSource: DataSource, names: string[]): Promise<void> {
+  if (!(await canForceRls(dataSource))) {
+    console.warn(
+      'seed: current role cannot BYPASSRLS — leaving FORCE RLS off so the managed-Postgres owner can seed and serve. ENABLE RLS remains.',
+    );
+    return;
+  }
   for (const name of names) {
     await dataSource.query(`ALTER TABLE "${name}" FORCE ROW LEVEL SECURITY`);
   }

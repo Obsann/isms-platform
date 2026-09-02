@@ -107,11 +107,26 @@ export async function createLoanRepayment(
 }
 
 /**
- * Fetch loan details by ID.
- * GET /api/loans/:id
+ * Fetch loan details by UUID or human Loan Number (e.g. LN-2026-137844).
+ * GET /api/loans/:idOrNumber
  */
-export async function getLoan(loanId: string): Promise<LoanDetails> {
-  return apiClient.get<LoanDetails>(`/loans/${encodeURIComponent(loanId)}`);
+export async function getLoan(loanIdOrNumber: string): Promise<LoanDetails> {
+  const trimmed = loanIdOrNumber.trim();
+  try {
+    return await apiClient.get<LoanDetails>(`/loans/${encodeURIComponent(trimmed)}`);
+  } catch (err) {
+    // Fallback: search via loan list query
+    const res = await apiClient.get<{ items: LoanDetails[] }>(
+      `/loans?search=${encodeURIComponent(trimmed)}&limit=5`,
+    );
+    const found =
+      res.items?.find((l) => l.loanNumber.toUpperCase() === trimmed.toUpperCase()) ||
+      res.items?.[0];
+    if (found) {
+      return found;
+    }
+    throw err;
+  }
 }
 
 /**

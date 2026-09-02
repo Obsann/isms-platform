@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Loader2,
   X,
+  Receipt,
 } from 'lucide-react';
 import {
   ApiRequestError,
@@ -304,6 +305,15 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
+                        {portalType === 'teller' && (
+                          <Link
+                            href={`/teller/desk?lookup=${encodeURIComponent(m.memberNumber)}`}
+                            title="Open in Teller Desk"
+                            className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-gold border border-amber-200 dark:border-amber-900/50"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
                         <button
                           type="button"
                           title="View"
@@ -395,6 +405,15 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
               </div>
             </div>
             <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex justify-end gap-2">
+              {portalType === 'teller' && (
+                <Link
+                  href={`/teller/desk?lookup=${encodeURIComponent(selectedMember.memberNumber)}`}
+                  onClick={() => setSelectedMember(null)}
+                  className="px-4 py-2 bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light text-xs font-bold rounded-xl shadow-sm inline-flex items-center gap-1.5"
+                >
+                  <Receipt className="w-3.5 h-3.5" /> Transact in Desk
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => {

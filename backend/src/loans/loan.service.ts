@@ -354,7 +354,13 @@ export class LoanService {
       return this.findById(trimmed);
     }
     const repo = this.ctx.repo(LoanEntity);
-    const loan = await repo.findOne({ where: { loanNumber: trimmed } });
+    let loan = await repo.findOne({ where: { loanNumber: trimmed } });
+    if (!loan) {
+      loan = await repo
+        .createQueryBuilder('loan')
+        .where('loan.loanNumber ILIKE :num', { num: trimmed })
+        .getOne();
+    }
     if (!loan) {
       throw new NotFoundException(`Loan "${trimmed}" not found`);
     }

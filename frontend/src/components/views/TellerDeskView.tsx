@@ -37,6 +37,7 @@ import { ApiRequestError } from '@/lib/api-client';
 import {
   getAccountBalance,
   getLoan,
+  getMember,
   resolveSavingsAccount,
 } from '@/lib/api-client/teller';
 import {
@@ -511,6 +512,11 @@ function WithdrawalForm({
 // LoanRepaymentForm
 // ---------------------------------------------------------------------------
 
+interface ExtendedLoanDetails extends LoanDetails {
+  borrowerName?: string;
+  borrowerNumber?: string;
+}
+
 function LoanRepaymentForm({
   isMutating,
   onStartMutation,
@@ -528,8 +534,8 @@ function LoanRepaymentForm({
   onRollback: (tempId: string) => void;
   onQueued: (tempId: string) => void;
 }) {
-  const [loanId, setLoanId] = useState('');
-  const [loanDetails, setLoanDetails] = useState<LoanDetails | null>(null);
+  const [loanQuery, setLoanQuery] = useState('');
+  const [loanDetails, setLoanDetails] = useState<ExtendedLoanDetails | null>(null);
   const [isLoadingLoan, setIsLoadingLoan] = useState(false);
   const [loanError, setLoanError] = useState<string | null>(null);
 
@@ -544,15 +550,30 @@ function LoanRepaymentForm({
   const refId = useId();
 
   const handleLoadLoan = async () => {
-    const id = loanId.trim();
-    if (!id) return;
+    const q = loanQuery.trim();
+    if (!q) return;
     setIsLoadingLoan(true);
     setLoanError(null);
     setLoanDetails(null);
     setReceipt(null);
     try {
-      const loan = await getLoan(id);
-      setLoanDetails(loan);
+      const loan = await getLoan(q);
+      let borrowerName: string | undefined;
+      let borrowerNumber: string | undefined;
+      if (loan.memberId) {
+        try {
+          const m = await getMember(loan.memberId);
+          borrowerName = m.fullName;
+          borrowerNumber = m.memberNumber;
+        } catch {
+          // Member name is non-blocking for repayment
+        }
+      }
+      setLoanDetails({
+        ...loan,
+        borrowerName,
+        borrowerNumber,
+      });
     } catch (err) {
       setLoanError(getErrorMessage(err));
     } finally {
@@ -629,52 +650,67 @@ function LoanRepaymentForm({
   return (
     <div className="space-y-3.5">
       <FormFieldGroup
-        label="Loan UUID"
+        label="Loan ID / Loan Number"
         htmlFor={loanInputId}
         required
         error={loanError ?? undefined}
-        helperText="Enter loan UUID to fetch contract terms"
+        helperText="Search by Loan Number (e.g. LN-2026-137844) or ID"
       >
         <div className="flex gap-2">
           <input
             id={loanInputId}
             type="text"
-            value={loanId}
+            value={loanQuery}
             onChange={(e) => {
-              setLoanId(e.target.value);
+              setLoanQuery(e.target.value);
               setLoanDetails(null);
               setLoanError(null);
               setReceipt(null);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleLoadLoan();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLoadLoan();
+              }
             }}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            placeholder="e.g. LN-2026-137844"
             className="flex-1 font-mono text-xs"
             disabled={isMutating}
           />
           <button
             type="button"
             onClick={handleLoadLoan}
-            disabled={isLoadingLoan || !loanId.trim() || isMutating}
+            disabled={isLoadingLoan || !loanQuery.trim() || isMutating}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
           >
-            {isLoadingLoan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
-            <span>Fetch</span>
+            {isLoadingLoan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            <span>Search</span>
           </button>
         </div>
       </FormFieldGroup>
 
       {loanDetails && (
-        <div className="p-3 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2 text-xs">
+        <div className="p-3.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2.5 text-xs">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-slate-800 dark:text-slate-200">
-              Loan #{loanDetails.loanNumber}
-            </span>
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-amber-800 dark:text-gold" />
+              <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-sm">
+                {loanDetails.loanNumber}
+              </span>
+            </div>
             <StatusBadge status={loanDetails.status as any} size="sm" />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+          {loanDetails.borrowerName && (
+            <div className="flex items-center justify-between text-xs py-1 border-y border-slate-200/60 dark:border-slate-700/60">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Borrower:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {loanDetails.borrowerName} {loanDetails.borrowerNumber ? `(${loanDetails.borrowerNumber})` : ''}
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] pt-1">
             <div>
               <span className="text-slate-400 dark:text-slate-500 block">Requested</span>
               <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
@@ -695,6 +731,11 @@ function LoanRepaymentForm({
                 {loanDetails.termMonths} mos
               </span>
             </div>
+            {loanDetails.purpose && (
+              <div className="col-span-2 sm:col-span-3 text-[11px] text-slate-500 dark:text-slate-400 italic">
+                Purpose: {loanDetails.purpose}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -756,7 +797,8 @@ function LoanRepaymentForm({
             <CheckCircle2 className="w-4 h-4" />
             <span>Repayment Posted Successfully</span>
           </div>
-          <p>ID: {receipt.repaymentId}</p>
+          <p>Loan: #{loanDetails?.loanNumber || receipt.loanId}</p>
+          <p>Repayment ID: {receipt.repaymentId}</p>
           <p>Amount: {formatAmount(receipt.amount)} ETB</p>
           <button
             type="button"
@@ -784,6 +826,44 @@ const OPS: { key: TellerOp; label: string; icon: React.ReactNode }[] = [
   { key: 'withdrawal', label: 'Withdrawal', icon: <ArrowUpCircle className="w-3.5 h-3.5" /> },
   { key: 'loan-repayment', label: 'Loan Repay', icon: <CreditCard className="w-3.5 h-3.5" /> },
 ];
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Context Preservation
+// ---------------------------------------------------------------------------
+
+const TELLER_DESK_STORAGE_KEY = 'isms_teller_desk_context';
+
+interface SavedTellerContext {
+  lookupInput: string;
+  accountId: string;
+  balance: AccountBalance;
+  activeOp?: TellerOp;
+}
+
+function loadSavedTellerContext(): SavedTellerContext | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(TELLER_DESK_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SavedTellerContext;
+  } catch {
+    return null;
+  }
+}
+
+function saveTellerContext(context: SavedTellerContext | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (context) {
+      sessionStorage.setItem(TELLER_DESK_STORAGE_KEY, JSON.stringify(context));
+    } else {
+      sessionStorage.removeItem(TELLER_DESK_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Main TellerDeskView
@@ -827,15 +907,59 @@ export function TellerDeskView() {
         type: 'info',
         text: `Account ${bal.accountId} loaded. Ready for transactions.`,
       });
+      saveTellerContext({
+        lookupInput: rawId,
+        accountId: bal.accountId,
+        balance: bal,
+        activeOp,
+      });
     } catch (err) {
       setLookupError(getErrorMessage(err));
       setAccountId('');
       setBalance(null);
       setTxFeed([]);
+      saveTellerContext(null);
     } finally {
       setIsLookingUp(false);
     }
-  }, [lookupInput]);
+  }, [lookupInput, activeOp]);
+
+  // Restore context on mount or from URL search parameter
+  useEffect(() => {
+    let urlLookup: string | null = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      urlLookup = params.get('lookup') || params.get('accountId') || params.get('memberNumber') || params.get('memberId');
+    }
+
+    if (urlLookup && urlLookup.trim()) {
+      setLookupInput(urlLookup.trim());
+      void handleAccountLookup(urlLookup.trim());
+      return;
+    }
+
+    const saved = loadSavedTellerContext();
+    if (saved && saved.accountId && saved.balance) {
+      setLookupInput(saved.lookupInput || '');
+      setAccountId(saved.accountId);
+      setBalance(saved.balance);
+      if (saved.activeOp) {
+        setActiveOp(saved.activeOp);
+      }
+      // Silently refresh balance from server to ensure fresh values
+      void getAccountBalance(saved.accountId)
+        .then((fresh) => {
+          setBalance(fresh);
+          saveTellerContext({
+            lookupInput: saved.lookupInput || '',
+            accountId: saved.accountId,
+            balance: fresh,
+            activeOp: saved.activeOp,
+          });
+        })
+        .catch(() => undefined);
+    }
+  }, [handleAccountLookup]);
 
   const handleRefreshBalance = useCallback(async () => {
     if (!accountId) return;
@@ -843,6 +967,12 @@ export function TellerDeskView() {
     try {
       const fresh = await getAccountBalance(accountId);
       setBalance(fresh);
+      saveTellerContext({
+        lookupInput,
+        accountId,
+        balance: fresh,
+        activeOp,
+      });
     } catch (err) {
       setSessionMsg({
         type: 'error',
@@ -851,7 +981,7 @@ export function TellerDeskView() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [accountId]);
+  }, [accountId, lookupInput, activeOp]);
 
   const handleStartMutation = useCallback(() => setIsMutating(true), []);
   const handleEndMutation = useCallback(() => setIsMutating(false), []);
@@ -870,15 +1000,22 @@ export function TellerDeskView() {
           } catch {
             newAvailable = newBalance;
           }
-          return {
+          const updated: AccountBalance = {
             ...prev,
             balance: newBalance,
             availableBalance: newAvailable,
           };
+          saveTellerContext({
+            lookupInput,
+            accountId,
+            balance: updated,
+            activeOp,
+          });
+          return updated;
         });
       }
     },
-    [],
+    [lookupInput, accountId, activeOp],
   );
 
   const handleTxSuccess = useCallback(
@@ -909,15 +1046,22 @@ export function TellerDeskView() {
         } catch {
           newAvailable = balanceAfter;
         }
-        return {
+        const updated: AccountBalance = {
           ...prev,
           balance: balanceAfter,
           availableBalance: newAvailable,
         };
+        saveTellerContext({
+          lookupInput,
+          accountId,
+          balance: updated,
+          activeOp,
+        });
+        return updated;
       });
       setSessionMsg({ type: 'success', text: 'Transaction posted and reconciled.' });
     },
-    [],
+    [lookupInput, accountId, activeOp],
   );
 
   const handleRollback = useCallback(
@@ -928,8 +1072,14 @@ export function TellerDeskView() {
         ),
       );
       setBalance(snapshot);
+      saveTellerContext({
+        lookupInput,
+        accountId,
+        balance: snapshot,
+        activeOp,
+      });
     },
-    [],
+    [lookupInput, accountId, activeOp],
   );
 
   const handleRepaymentSuccess = useCallback(
@@ -1052,7 +1202,25 @@ export function TellerDeskView() {
     setLookupError(null);
     setSessionMsg(null);
     setTxFeed([]);
+    saveTellerContext(null);
+    if (typeof window !== 'undefined' && window.location.search) {
+      const url = new URL(window.location.href);
+      url.search = '';
+      window.history.replaceState({}, '', url.toString());
+    }
   }, []);
+
+  const handleSelectOp = (op: TellerOp) => {
+    setActiveOp(op);
+    if (accountId && balance) {
+      saveTellerContext({
+        lookupInput,
+        accountId,
+        balance,
+        activeOp: op,
+      });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -1185,7 +1353,7 @@ export function TellerDeskView() {
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:text-midnight dark:hover:text-gold underline"
                 >
                   <ArrowRightLeft className="w-3 h-3" />
-                  <span>Switch</span>
+                  <span>Clear / Reset</span>
                 </button>
               </div>
             </div>
@@ -1232,7 +1400,7 @@ export function TellerDeskView() {
                       key={op.key}
                       type="button"
                       disabled={isMutating}
-                      onClick={() => setActiveOp(op.key)}
+                      onClick={() => handleSelectOp(op.key)}
                       className={cn(
                         'flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-bold transition-all border-b-2 -mb-px disabled:opacity-50',
                         activeOp === op.key

@@ -56,7 +56,8 @@ export default function LoansView() {
       });
       setLoans(res.items || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch loans from server.');
+      const msg = err instanceof Error ? err.message : 'Failed to fetch loans from server.';
+      setError(msg === 'Failed to fetch' ? 'Unable to reach backend server. Please check your network connection or try retrying.' : msg);
       setLoans([]);
     } finally {
       setIsLoading(false);
@@ -78,29 +79,8 @@ export default function LoansView() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-    loanApi
-      .list({
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-      })
-      .then((res) => {
-        if (!mounted) return;
-        setLoans(res.items || []);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (!mounted) return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch loans from server.');
-        setLoans([]);
-      })
-      .finally(() => {
-        if (mounted) setIsLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [statusFilter]);
+    void fetchLoans();
+  }, [fetchLoans]);
 
   const getMemberName = (memberId: string) => {
     const m = members.find((x) => x.id === memberId);

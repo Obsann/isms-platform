@@ -22,11 +22,12 @@ self-registration.
 | Balance | Live savings and share accounts |
 | Statement | Transaction history for your accounts |
 | Loans | Your applications and statuses |
-| Mobile money | **Mock only** — C2B/B2C stays `pending confirmation`. No money moves. |
+| Mobile money | **Chapa hosted checkout** — Pay with Chapa opens checkout.chapa.co. Savings credit after verify. Sandbox phone `0900123456` (OTP `12345`). |
 
 ## What you cannot do here
 
-- Live Telebirr / M-PESA / CBE Birr (documented in `docs/openapi/`, not connected)
+- Live Telebirr / M-PESA / CBE Birr webhooks (documented in `docs/openapi/`, not connected)
+- Wallet B2C withdrawals (use a teller cash withdrawal)
 - Register yourself (staff register members)
 - Approve loans
 

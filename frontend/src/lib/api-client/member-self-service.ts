@@ -109,3 +109,37 @@ export async function findMemberForSession(): Promise<Member | null> {
     throw err;
   }
 }
+
+export type ChapaCheckoutMode = 'live' | 'mock';
+export type ChapaPaymentStatus = 'pending' | 'paid' | 'failed';
+
+export interface ChapaPaymentView {
+  txRef: string;
+  amount: string;
+  currency: 'ETB';
+  status: ChapaPaymentStatus;
+  mode: ChapaCheckoutMode;
+  checkoutUrl: string | null;
+  ledgerTransactionId: string | null;
+}
+
+export function getChapaStatus() {
+  return apiClient.get<{ mode: ChapaCheckoutMode }>('/channel/chapa/status');
+}
+
+export function initializeChapaDeposit(payload: {
+  amount: string;
+  accountId?: string;
+  phone?: string;
+}) {
+  return apiClient.post<ChapaPaymentView & { checkoutUrl: string }>(
+    '/channel/chapa/deposits/initialize',
+    payload,
+  );
+}
+
+export function verifyChapaDeposit(txRef: string) {
+  return apiClient.get<ChapaPaymentView>(
+    `/channel/chapa/deposits/${encodeURIComponent(txRef)}`,
+  );
+}

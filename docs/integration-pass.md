@@ -56,7 +56,7 @@ cd backend && npm run rls:check
 
 ## Known MVP exceptions (not defects)
 
-- Member portal **mobile money** tab uses `frontend/src/lib/momo-mock.ts` — mocked C2B/B2C only (D1).
+- Member portal **Pay with Chapa** redirects to Chapa hosted checkout when `CHAPA_SECRET_KEY` is set on the API. Unsigned return `status` is ignored; verify posts the ledger.
 - Login no longer issues a mock JWT when the API is down.
 
 ## 2026-09-01 closeout note

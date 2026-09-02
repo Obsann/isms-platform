@@ -22,9 +22,11 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useAuthUser } from '@/components/auth/useAuthUser';
 import { StatusBadge } from '@/components/badges/StatusBadge';
+import { useLang } from '@/components/i18n';
 
 export function TellerDashboardView() {
   const user = useAuthUser();
+  const { t } = useLang();
 
   return (
     <div className="space-y-5">
@@ -33,18 +35,18 @@ export function TellerDashboardView() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-gold">
-              Core Operations
+              {t('dash.tellerEyebrow')}
             </span>
             <span className="text-slate-400 dark:text-slate-600">·</span>
             <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-              Station #{user?.tenantId ?? 'default'}
+              {t('dash.tellerStation', { id: user?.tenantId ?? 'default' })}
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight font-serif mt-0.5">
-            Teller Dashboard
+            {t('dash.tellerTitle')}
           </h1>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5">
-            Welcome back{user?.fullName ? `, ${user.fullName}` : ''}. Manage counter operations and member servicing.
+            {t('dash.tellerIntro', { name: user?.fullName ? `, ${user.fullName}` : '' })}
           </p>
         </div>
 

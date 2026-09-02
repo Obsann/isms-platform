@@ -3,13 +3,15 @@
 import { LinkedMemberGate } from '@/components/member-portal/LinkedMemberGate';
 import MemberBalanceView from '@/components/member-portal/MemberBalanceView';
 import { MemberPage } from '@/components/member-portal/MemberPage';
+import { useLang } from '@/components/i18n';
 
 export default function MemberBalancePage() {
+  const { t } = useLang();
   return (
     <MemberPage
-      eyebrow="My accounts"
-      title="Balance"
-      description="Live savings and share balances from the ledger. These figures are not mocked."
+      eyebrow={t('dash.memberAccounts')}
+      title={t('dash.memberBalanceTitle')}
+      description={t('dash.memberBalanceDesc')}
     >
       <LinkedMemberGate>{(member) => <MemberBalanceView member={member} />}</LinkedMemberGate>
     </MemberPage>

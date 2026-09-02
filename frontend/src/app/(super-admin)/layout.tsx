@@ -3,23 +3,24 @@
 import { useRouter } from 'next/navigation';
 import PortalShell, { type NavSection } from '@/components/layout/PortalShell';
 import PortalGuard from '@/components/auth/PortalGuard';
-import { formatRoleLabel, useAuthUser } from '@/components/auth/useAuthUser';
+import { useAuthUser } from '@/components/auth/useAuthUser';
 import { logout } from '@/lib/api-client';
+import { useLang } from '@/components/i18n';
 import { LayoutDashboard, Globe, Settings, User } from 'lucide-react';
 
 const navSections: NavSection[] = [
   {
-    label: 'Platform',
+    label: 'nav.platform',
     items: [
-      { label: 'Overview', href: '/super-admin/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-      { label: 'Tenants', href: '/super-admin/tenants', icon: <Globe className="w-4 h-4" /> },
+      { label: 'nav.overview', href: '/super-admin/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+      { label: 'nav.tenants', href: '/super-admin/tenants', icon: <Globe className="w-4 h-4" /> },
     ],
   },
   {
-    label: 'Account',
+    label: 'nav.account',
     items: [
-      { label: 'Profile', href: '/super-admin/profile', icon: <User className="w-4 h-4" /> },
-      { label: 'Settings', href: '/super-admin/settings', icon: <Settings className="w-4 h-4" /> },
+      { label: 'nav.profile', href: '/super-admin/profile', icon: <User className="w-4 h-4" /> },
+      { label: 'nav.settings', href: '/super-admin/settings', icon: <Settings className="w-4 h-4" /> },
     ],
   },
 ];
@@ -27,14 +28,15 @@ const navSections: NavSection[] = [
 function SuperAdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const authUser = useAuthUser();
+  const { t } = useLang();
   return (
     <PortalShell
-      portalName="Super Admin"
+      portalName="portal.superAdmin"
       portalBadgeColor="super-admin"
       navSections={navSections}
       user={{
-        name: authUser?.fullName ?? 'Super Admin',
-        role: authUser ? formatRoleLabel(authUser.role) : 'Platform Administrator',
+        name: authUser?.fullName ?? t('portal.superAdmin'),
+        role: authUser ? t(`role.${authUser.role}`) : t('portal.superAdmin'),
       }}
       onLogout={() => {
         logout();

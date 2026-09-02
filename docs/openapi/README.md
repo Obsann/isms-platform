@@ -8,7 +8,7 @@ This directory contains the canonical OpenAPI 3.0.3 specification for Mobile Mon
 
 ## 📌 Architecture Notes & Scope Rules
 
-1. **No Live Gateway in MVP Phase**: Mobile money gateway integrations are out of scope for live production execution in this phase. Task 24's Member Self-Service UI consumes this exact schema shape to present simulated C2B/B2C transactions in a `"pending confirmation"` state.
+1. **Chapa C2B is opt-in**: Member savings deposits can go through live Chapa (`POST /api/webhooks/chapa`) when `CHAPA_*` is set on the API. Without keys, initialize returns a mock checkout URL and still will not credit savings until mock-confirm + verify. B2C withdrawals stay teller-side. The Telebirr / M-PESA / CBE Birr shapes below remain the generic contract.
 2. **Web-Only Self-Service (No USSD)**: Per Decision [D1](../../.cursor/rules/decisions.mdc), self-service functions are strictly web-only. USSD channel contracts are excluded.
 3. **Decimal Money Formatting**: Amounts in all webhook payloads are formatted as two-decimal strings (e.g., `"1500.00"` ETB), avoiding binary floating-point rounding errors.
 
@@ -41,7 +41,11 @@ Triggered by the mobile money gateway when a SACCO member deposits funds from th
 
 ---
 
-### 2. `POST /api/webhooks/momo/b2c` — Business-to-Customer (Disbursement / Withdrawal)
+### 2. `POST /api/webhooks/chapa` — Chapa C2B (member savings deposit)
+
+HMAC `x-chapa-signature`. Credits the member's savings through the ledger using `tx_ref` as the posting reference. Never trust the unsigned `status` field.
+
+### 3. `POST /api/webhooks/momo/b2c` — Business-to-Customer (Disbursement / Withdrawal)
 Triggered by the mobile money gateway when a SACCO loan disbursement or wallet withdrawal is processed to a member's mobile wallet.
 
 * **Headers Required**:

@@ -1,12 +1,14 @@
 import {
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NotificationService } from '../channel-integration';
+import { NotificationService } from '../channel-integration/notification.service';
 import { SyncConflictException } from '../common/sync-conflict.exception';
 import { TenantContextService } from '../common';
 import {
@@ -48,6 +50,7 @@ export class SavingsSharesService {
     private readonly configService: ConfigService,
     private readonly memberService: MemberService,
     private readonly ledger: LedgerService,
+    @Inject(forwardRef(() => NotificationService))
     private readonly notifications: NotificationService,
   ) {}
 

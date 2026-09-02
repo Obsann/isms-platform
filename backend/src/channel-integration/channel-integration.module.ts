@@ -1,16 +1,30 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MemberModule } from '../members';
+import { SavingsSharesModule } from '../savings-shares/savings-shares.module';
+import { SecurityAuditModule } from '../security-audit';
+import { ChapaPaymentEntity } from './chapa-payment.entity';
+import { ChapaController, ChapaWebhookController } from './chapa.controller';
+import { ChapaService } from './chapa.service';
 import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './notification.service';
 
 /**
- * Channel Integration — SMTP notifications (Task 25) + mobile-money webhook
- * contracts (Task 26, documented only).
+ * Channel Integration — SMTP notifications (Task 25) + Chapa C2B deposits
+ * (opt-in live gateway; mock checkout when `CHAPA_SECRET_KEY` is unset).
  *
- * SMTP settings are read through ConfigService / `process.env` here only.
- * Mobile money C2B/B2C webhook contracts live in `docs/openapi/`.
+ * Keys are read through ConfigService / `process.env` here only.
+ * Generic Telebirr/M-PESA/CBE Birr webhook contracts remain in `docs/openapi/`.
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [
+    ConfigModule,
+    TypeOrmModule.forFeature([ChapaPaymentEntity]),
+    MemberModule,
+    SecurityAuditModule,
+    forwardRef(() => SavingsSharesModule),
+  ],
+  controllers: [ChapaController, ChapaWebhookController],
   providers: [
     {
       provide: SMTP_TRANSPORT,
@@ -18,7 +32,8 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
       useFactory: createSmtpTransport,
     },
     NotificationService,
+    ChapaService,
   ],
-  exports: [NotificationService],
+  exports: [NotificationService, ChapaService],
 })
 export class ChannelIntegrationModule {}

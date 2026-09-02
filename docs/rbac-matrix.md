@@ -32,6 +32,10 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 |---|---|---|---|---|---|---|
 | GET | `/api/auth/me` | Yes | Yes | Yes | Yes | Yes |
 | GET | `/api/self-service/me` | | | | | Yes |
+| GET | `/api/channel/chapa/status` | | | | | Yes |
+| POST | `/api/channel/chapa/deposits/initialize` | | | | | Yes |
+| GET | `/api/channel/chapa/deposits/:txRef` | | | | | Yes |
+| POST | `/api/channel/chapa/deposits/:txRef/mock-complete` | | | | | Yes |
 | POST | `/api/members` | | Yes | Yes | | |
 | GET | `/api/members` | | Yes | Yes | Yes | |
 | GET | `/api/members/:id` | | Yes | Yes | Yes | |
@@ -90,6 +94,7 @@ Member self-service (`/api/members/:id/balance|statement|loans`, Task 23) allows
 read. Object-level auth matches the JWT staff login email to the member row
 email — JWT `sub` is `staff_accounts.id`, not `members.id`. Members resolve their
 own row with `GET /api/self-service/me` (directory search stays staff-only).
+`POST /api/webhooks/chapa` is `@Public()` and authenticated by HMAC, not a role.
 
 ## Applying `@Roles` on new endpoints
 

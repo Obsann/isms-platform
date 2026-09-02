@@ -121,6 +121,20 @@ export class MemberService {
     return this.mapToContract(member);
   }
 
+  /**
+   * Exact email match in the current tenant (RLS). Used by member self-service
+   * to link a `staff_accounts` login to a `members` row without listing the directory.
+   */
+  async findByEmail(email: string): Promise<Member | null> {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return null;
+    }
+    const repo = this.tenantContext.repo(MemberEntity);
+    const member = await repo.findOne({ where: { email: normalized } });
+    return member ? this.mapToContract(member) : null;
+  }
+
   /** UUID or human member number (e.g. MEM-10001). */
   async findByIdOrNumber(idOrNumber: string): Promise<Member> {
     const trimmed = idOrNumber.trim();

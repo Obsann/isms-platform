@@ -26,7 +26,7 @@ export class AuthController {
    * that caller's own tenant's row.
    */
   @Get('me')
-  @Roles('super-admin', 'tenant-admin', 'teller', 'loan-officer')
+  @Roles('super-admin', 'tenant-admin', 'teller', 'loan-officer', 'member')
   async me(@CurrentUser() user: AuthenticatedUser): Promise<AuthUser> {
     const summary = await this.staffAccountService.findSummaryById(user.staffId);
     if (!summary) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { ApiRequestError, getSessionUser, login, portalHome } from "@/lib/api-client";
@@ -47,9 +48,9 @@ export default function LoginForm() {
   }
 
   return (
-    <main className="relative min-h-screen bg-midnight flex items-center justify-center p-6 overflow-hidden">
+    <main className="relative min-h-screen bg-surface dark:bg-midnight flex items-center justify-center p-6 overflow-hidden">
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.12]"
+        className="pointer-events-none absolute inset-0 opacity-[0.18] dark:opacity-[0.12]"
         style={{
           backgroundImage: "radial-gradient(circle, rgb(216 177 56 / 0.5) 0.8px, transparent 0.9px)",
           backgroundSize: "16px 16px",
@@ -58,15 +59,21 @@ export default function LoginForm() {
       <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
 
       <div className="relative w-full max-w-md">
+        <Link
+          href="/"
+          className="mb-6 flex justify-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/40 hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
+        >
+          ISMS home
+        </Link>
         <div className="flex items-center gap-3 mb-8 justify-center">
           <div className="w-11 h-11 rounded-full bg-gold text-midnight flex items-center justify-center font-display text-[10px] font-bold tracking-wider shadow-[0_0_0_3px_rgba(197,155,39,0.2)]">
             ISMS
           </div>
           <div className="leading-none">
-            <p className="font-display text-sm font-bold text-white tracking-[0.2em] uppercase">
+            <p className="font-display text-sm font-bold text-slate-900 dark:text-white tracking-[0.2em] uppercase">
               ISMS
             </p>
-            <p className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-1">
+            <p className="text-[10px] text-slate-500 dark:text-white/40 tracking-[0.15em] uppercase mt-1">
               Sign in to your portal
             </p>
           </div>
@@ -136,7 +143,7 @@ export default function LoginForm() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 rounded-lg bg-gold text-midnight font-semibold text-sm tracking-wide hover:bg-gold-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
+                className="w-full py-2.5 rounded-lg bg-gold text-midnight font-semibold text-sm tracking-wide hover:bg-gold-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:focus-visible:ring-offset-midnight"
               >
                 {submitting ? "Signing in…" : "Sign in"}
               </button>

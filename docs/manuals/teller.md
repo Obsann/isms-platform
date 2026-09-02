@@ -2,6 +2,7 @@
 
 ## Sign in
 
+- SACCO: **Tsehay Sacco** (seeded). Login code stays `tenant-a`.
 - Tenant code: `tenant-a`
 - Email: `teller@tenant-a.dev`
 - Lands on `/teller/dashboard`, then **Teller Desk** (`/teller/desk`)

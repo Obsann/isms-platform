@@ -24,7 +24,8 @@ npm run dev
 ```
 
 API: `http://localhost:4000/api` · Web: `http://localhost:3000`  
-Seed password for all staff: `DevPassword!123`
+Seed password for all staff: `DevPassword!123`  
+Demo SACCO names: **Tsehay Sacco** (`tenant-a`), **Chereka Sacco** (`tenant-b`). Login still uses the codes.
 
 ## Portal walkthroughs
 

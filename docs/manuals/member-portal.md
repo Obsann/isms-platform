@@ -4,9 +4,9 @@ Web only. There is no USSD in MVP.
 
 ## Sign in
 
-Seed member for Tenant A (after `npm run seed`):
+Seed member for **Tsehay Sacco** (after `npm run seed`):
 
-- Tenant code: `tenant-a`
+- Tenant code: `tenant-a` (login code; display name is Tsehay Sacco)
 - Email: `abebe.bikila@tenant-a.dev`
 - Password: same shared dev password as staff (`DevPassword!123`)
 

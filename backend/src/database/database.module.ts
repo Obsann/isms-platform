@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { buildDataSourceOptions } from './data-source';
+import { resolveRuntimeDataSourceOptions } from './data-source';
 
 /**
  * Owns the database connection for the whole app.
@@ -12,8 +12,8 @@ import { buildDataSourceOptions } from './data-source';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        ...buildDataSourceOptions(),
+      useFactory: async () => ({
+        ...(await resolveRuntimeDataSourceOptions()),
         autoLoadEntities: true,
       }),
     }),

@@ -8,10 +8,12 @@
 #      and redeploy Vercel (NEXT_PUBLIC_* is baked at build time).
 #   3. Fill SMTP_* on the Render service if notification emails should send.
 #
-# RLS: pre-deploy creates isms_app (NOSUPERUSER NOBYPASSRLS), runs migrations as
-# the Render owner, then the API connects as isms_app. Render's owner is not a
-# superuser; FORCE ROW LEVEL SECURITY still applies to it. The remaining gap vs
-# local docker is that we cannot GRANT BYPASSRLS / use a postgres superuser.
+# RLS: pre-deploy tries to create isms_app without touching BYPASSRLS (Render's
+# owner is not a superuser and cannot ALTER that attribute). If CREATE ROLE is
+# denied, release continues as the DATABASE_URL owner. Overlay DB_USERNAME=isms_app
+# only when that role exists. Optional SKIP_APP_ROLE=1 skips provision entirely.
+# ENABLE RLS still isolates isms_app; FORCE RLS is cleared when the owner cannot
+# BYPASSRLS so SECURITY DEFINER login lookups work.
 #
 # Free Postgres expires after 30 days on Render — upgrade the plan for a
 # longer-lived demo.
@@ -57,5 +59,8 @@ services:
         value: isms_app
       - key: DB_PASSWORD
         generateValue: true
+      # Flip to '1' to skip CREATE ROLE entirely (DATABASE_URL owner is the API user).
+      - key: SKIP_APP_ROLE
+        value: '0'
       - key: CORS_ORIGIN
         value: https://isms-platform.vercel.app

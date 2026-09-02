@@ -38,15 +38,30 @@ export class PlatformStaffBootstrapLookup1786300000000 implements MigrationInter
       $fn$
     `);
 
-    await queryRunner.query(
-      `ALTER FUNCTION resolve_platform_staff_by_email(varchar) OWNER TO postgres`,
-    );
+    await queryRunner.query(`
+      DO $owner$
+      BEGIN
+        ALTER FUNCTION resolve_platform_staff_by_email(varchar) OWNER TO postgres;
+      EXCEPTION
+        WHEN undefined_object OR insufficient_privilege THEN
+          NULL;
+      END
+      $owner$;
+    `);
     await queryRunner.query(
       `REVOKE ALL ON FUNCTION resolve_platform_staff_by_email(varchar) FROM PUBLIC`,
     );
-    await queryRunner.query(
-      `GRANT EXECUTE ON FUNCTION resolve_platform_staff_by_email(varchar) TO isms_app`,
-    );
+    await queryRunner.query(`
+      DO $grant$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'isms_app') THEN
+          EXECUTE 'GRANT EXECUTE ON FUNCTION resolve_platform_staff_by_email(varchar) TO isms_app';
+        ELSE
+          GRANT EXECUTE ON FUNCTION resolve_platform_staff_by_email(varchar) TO CURRENT_USER;
+        END IF;
+      END
+      $grant$;
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

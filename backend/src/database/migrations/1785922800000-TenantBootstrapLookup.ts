@@ -31,15 +31,35 @@ export class TenantBootstrapLookup1785922800000 implements MigrationInterface {
       $fn$
     `);
 
-    // Ownership determines whose privileges SECURITY DEFINER runs with — the
-    // migration connects as `postgres`, which is exactly the role that needs to own
-    // this function for the RLS bypass to work as intended.
-    await queryRunner.query(`ALTER FUNCTION resolve_tenant_by_code(varchar) OWNER TO postgres`);
+    // Ownership determines whose privileges SECURITY DEFINER runs with. Local
+    // docker connects as `postgres`. Render's owner is not that role and cannot
+    // reassign ownership — keep the creating role in that case.
+    await queryRunner.query(`
+      DO $owner$
+      BEGIN
+        ALTER FUNCTION resolve_tenant_by_code(varchar) OWNER TO postgres;
+      EXCEPTION
+        WHEN undefined_object OR insufficient_privilege THEN
+          NULL;
+      END
+      $owner$;
+    `);
 
     // Only EXECUTE, and only on this one narrow function — not BYPASSRLS, not
-    // SELECT on the table itself.
+    // SELECT on the table itself. `isms_app` may be missing on managed Postgres
+    // that cannot CREATE ROLE; GRANT to the current (owner) role instead.
     await queryRunner.query(`REVOKE ALL ON FUNCTION resolve_tenant_by_code(varchar) FROM PUBLIC`);
-    await queryRunner.query(`GRANT EXECUTE ON FUNCTION resolve_tenant_by_code(varchar) TO isms_app`);
+    await queryRunner.query(`
+      DO $grant$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'isms_app') THEN
+          EXECUTE 'GRANT EXECUTE ON FUNCTION resolve_tenant_by_code(varchar) TO isms_app';
+        ELSE
+          GRANT EXECUTE ON FUNCTION resolve_tenant_by_code(varchar) TO CURRENT_USER;
+        END IF;
+      END
+      $grant$;
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

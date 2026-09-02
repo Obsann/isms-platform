@@ -2,19 +2,19 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiRequestError } from '@/lib/api-client';
-import { getMemberBalance, getMemberLoans } from '@/lib/api-client/member-self-service';
+import {
+  getMemberBalance,
+  getMemberLoans,
+  listPendingMomoMocks,
+  stageMomoMock,
+} from '@/lib/api-client/member-self-service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { CurrencyDisplay } from '@/components/currency/CurrencyDisplay';
 import { FormFieldGroup } from '@/components/forms/FormFieldGroup';
 import { StatusBadge } from '@/components/badges/StatusBadge';
 import { isValidAmountDecimal } from '@/lib/money';
 import {
-  buildB2CPayload,
-  buildC2BPayload,
   MOMO_PROVIDER_LABELS,
-  readMockedMomoRequests,
-  saveMockedMomoRequest,
-  seedDemoMomoMocks,
   type MomoProvider,
   type MockedMomoRequest,
 } from '@/lib/momo-mock';
@@ -86,12 +86,25 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [mocks, setMocks] = useState<MockedMomoRequest[]>([]);
+  const [loadingMocks, setLoadingMocks] = useState(true);
 
   const msisdn = member.phone || '';
 
   useEffect(() => {
-    setMocks(seedDemoMomoMocks(member));
     let cancelled = false;
+    setLoadingMocks(true);
+    listPendingMomoMocks()
+      .then((rows) => {
+        if (!cancelled) setMocks(rows);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load pending mobile-money mocks.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMocks(false);
+      });
+
     Promise.all([getMemberBalance(member.id), getMemberLoans(member.id)])
       .then(([balance, loans]) => {
         if (cancelled) return;
@@ -108,7 +121,7 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
     return () => {
       cancelled = true;
     };
-  }, [member]);
+  }, [member.id]);
 
   const latest = mocks[0];
   const pendingCopy = useMemo(
@@ -116,7 +129,7 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
     [],
   );
 
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
 
@@ -134,27 +147,19 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
       return;
     }
 
-    const id = crypto.randomUUID();
-    if (direction === 'c2b') {
-      const payload = buildC2BPayload({
+    try {
+      const staged = await stageMomoMock({
+        direction,
         provider,
-        memberId: member.id,
-        accountNumber,
-        msisdn,
         amount: parsed,
+        accountNumber: direction === 'c2b' ? accountNumber : undefined,
+        loanId: direction === 'b2c' && loanId ? loanId : undefined,
       });
-      setMocks(saveMockedMomoRequest({ id, direction: 'c2b', label: 'Wallet deposit (C2B)', payload }));
-    } else {
-      const payload = buildB2CPayload({
-        provider,
-        memberId: member.id,
-        loanId,
-        msisdn,
-        amount: parsed,
-      });
-      setMocks(saveMockedMomoRequest({ id, direction: 'b2c', label: 'Wallet disbursement (B2C)', payload }));
+      setMocks((current) => [staged, ...current.filter((row) => row.id !== staged.id)]);
+      setAmount('');
+    } catch (err: unknown) {
+      setError(err instanceof ApiRequestError ? err.message : 'Could not stage the mock request.');
     }
-    setAmount('');
   }
 
   return (
@@ -162,8 +167,8 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
       <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4">
         <p className="text-sm font-bold text-amber-950 dark:text-amber-200">Mock flow — pending confirmation</p>
         <p className="mt-1 text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
-          Live mobile money is out of scope. This screen only builds the documented C2B/B2C webhook
-          shape and leaves it as <strong>pending confirmation</strong>. It never marks a deposit or
+          Live mobile money is out of scope. This screen stages the documented C2B/B2C webhook
+          shape in the database as <strong>pending confirmation</strong>. It never marks a deposit or
           disbursement successful, and it never posts to the ledger.
         </p>
         {ledgerAvailable !== null && (
@@ -231,7 +236,13 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
         </CardContent>
       </Card>
 
-      {latest && (
+      {loadingMocks && (
+        <p className="text-sm text-slate-600 dark:text-slate-400" role="status">
+          Loading pending mobile-money mocks…
+        </p>
+      )}
+
+      {!loadingMocks && latest && (
         <Card>
           <CardHeader>
             <CardTitle>{latest.label}</CardTitle>
@@ -244,7 +255,7 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
         </Card>
       )}
 
-      {mocks.length > 1 && (
+      {!loadingMocks && mocks.length > 1 && (
         <div className="space-y-2">
           <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Earlier mock requests</h2>
           {mocks.slice(1).map((item) => (

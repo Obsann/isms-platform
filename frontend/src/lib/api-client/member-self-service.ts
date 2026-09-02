@@ -3,6 +3,7 @@
  * Balance, statement, and loans are real API data — never mocked.
  */
 
+import type { MockedMomoRequest, StageMomoMockInput } from '@/lib/momo-mock';
 import type { Account, IsoDateTime, Member, MemberId, Transaction } from '@/types';
 import { apiClient, getSessionUser } from './index';
 
@@ -100,4 +101,12 @@ export async function findMemberForSession(): Promise<Member | null> {
   const member = await apiClient.get<Member>('/member-self/me');
   writeCachedMember(user.email, member);
   return member;
+}
+
+export function listPendingMomoMocks() {
+  return apiClient.get<MockedMomoRequest[]>('/member-self/momo/pending');
+}
+
+export function stageMomoMock(body: StageMomoMockInput) {
+  return apiClient.post<MockedMomoRequest>('/member-self/momo/stage', body);
 }

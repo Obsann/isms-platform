@@ -252,6 +252,7 @@ async function seed(): Promise<void> {
     console.log('\nSeeding Members & Savings Accounts...');
     let firstMemberId: string | null = null;
     const tenantAId = tenantIds.get('tenant-a')!;
+    const memberIdsByNumber = new Map<string, { memberId: string; tenantId: string }>();
 
     for (const member of BASE_MEMBERS) {
       const tenantId = tenantIds.get(member.tenantCode)!;
@@ -291,6 +292,8 @@ async function seed(): Promise<void> {
         firstMemberId = memberId;
       }
 
+      memberIdsByNumber.set(member.memberNumber, { memberId, tenantId });
+
       if (member.accountNumber && member.initialSavingsBalance) {
         await dataSource.query(
           `
@@ -307,6 +310,50 @@ async function seed(): Promise<void> {
       }
 
       console.log(`  member ${member.memberNumber}: id="${memberId}", name="${member.firstName} ${member.lastName}", tenant="${member.tenantCode}"`);
+    }
+
+    // 3b. Seed demo mobile-money pending mocks (Task 24 — member portal)
+    console.log('\nSeeding demo mobile-money pending mocks...');
+    const DEMO_MOMO_STAGED = [
+      {
+        memberNumber: 'MEM-10001',
+        providerReference: 'MOCK-C2B-DEMO-ABEBE',
+        provider: 'telebirr',
+        amount: '500.00',
+        accountNumber: 'SAV-10001',
+        msisdn: '+251911123456',
+      },
+      {
+        memberNumber: 'MEM-20001',
+        providerReference: 'MOCK-C2B-DEMO-ALMAZ',
+        provider: 'cbe_birr',
+        amount: '2500.00',
+        accountNumber: 'SAV-20001',
+        msisdn: '+251944456789',
+      },
+    ] as const;
+
+    for (const demo of DEMO_MOMO_STAGED) {
+      const row = memberIdsByNumber.get(demo.memberNumber);
+      if (!row) continue;
+      await dataSource.query(
+        `
+          INSERT INTO "mobile_money_staged_requests"
+            ("tenant_id", "member_id", "direction", "provider", "provider_reference", "account_number", "loan_id", "msisdn", "amount", "currency", "status", "failure_reason", "occurred_at")
+          VALUES ($1, $2, 'c2b', $3, $4, $5, NULL, $6, $7, 'ETB', 'PENDING', NULL, '2026-08-15T10:30:00.000Z')
+          ON CONFLICT ("tenant_id", "provider_reference") DO NOTHING
+        `,
+        [
+          row.tenantId,
+          row.memberId,
+          demo.provider,
+          demo.providerReference,
+          demo.accountNumber,
+          demo.msisdn,
+          demo.amount,
+        ],
+      );
+      console.log(`  momo pending ${demo.providerReference}: member="${demo.memberNumber}", amount="${demo.amount}"`);
     }
 
     // 4. Seed Sample Loan

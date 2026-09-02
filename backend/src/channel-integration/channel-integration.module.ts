@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MobileMoneyMockService } from './mobile-money-mock.service';
+import { MobileMoneyStagedRequestEntity } from './mobile-money-staged-request.entity';
 import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './notification.service';
 
 /**
@@ -10,7 +13,7 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
  * Mobile money C2B/B2C webhook contracts live in `docs/openapi/`.
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, TypeOrmModule.forFeature([MobileMoneyStagedRequestEntity])],
   providers: [
     {
       provide: SMTP_TRANSPORT,
@@ -18,7 +21,8 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
       useFactory: createSmtpTransport,
     },
     NotificationService,
+    MobileMoneyMockService,
   ],
-  exports: [NotificationService],
+  exports: [NotificationService, MobileMoneyMockService],
 })
 export class ChannelIntegrationModule {}

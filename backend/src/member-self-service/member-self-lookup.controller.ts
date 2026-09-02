@@ -14,6 +14,6 @@ export class MemberSelfLookupController {
   @Get('me')
   @Roles('member')
   findLinkedMember(@CurrentUser() user: AuthenticatedUser): Promise<Member> {
-    return this.memberSelfService.findLinkedMemberForSession(user);
+    return this.memberSelfService.findLinkedMember(user);
   }
 }

@@ -59,6 +59,9 @@ Check 'tenant-admin CAN read the audit log'     (Call $admin       'GET' '/audit
 # Members
 Check 'member CANNOT search members'            (Call $member      'GET'  '/members' $null).Status 403
 Check 'teller CAN search members'               (Call $teller      'GET'  '/members' $null).Status 200
+Check 'member CAN read self-service me'         (Call $member      'GET'  '/self-service/me' $null).Status 200
+Check 'teller CANNOT read self-service me'      (Call $teller      'GET'  '/self-service/me' $null).Status 403
+Check 'member CAN read auth me'                 (Call $member      'GET'  '/auth/me' $null).Status 200
 Check 'loan-officer CANNOT create a member'     (Call $loanOfficer 'POST' '/members' '{"firstName":"X"}').Status 403
 Check 'teller CANNOT delete a member'           (Call $teller      'DELETE' '/members/11111111-1111-1111-1111-111111111111' $null).Status 403
 Check 'tenant-admin CAN delete a member (route allowed)' (Call $admin 'DELETE' '/members/11111111-1111-1111-1111-111111111111' $null).Status 404

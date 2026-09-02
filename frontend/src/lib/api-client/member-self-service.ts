@@ -3,9 +3,8 @@
  * Balance, statement, and loans are real API data — never mocked.
  */
 
-import type { MockedMomoRequest, StageMomoMockInput } from '@/lib/momo-mock';
 import type { Account, IsoDateTime, Member, MemberId, Transaction } from '@/types';
-import { apiClient, getSessionUser } from './index';
+import { ApiRequestError, apiClient, getSessionUser } from './index';
 
 export interface MemberBalanceView {
   memberId: MemberId;
@@ -71,8 +70,9 @@ export function getMemberLoans(memberId: string) {
 }
 
 /**
- * Staff JWT `id` is not the members table id. Match the signed-in email to a
- * member record in this tenant so the portal can call Task 23 routes.
+ * Staff JWT `id` is not the members table id. `GET /members?search=` is staff-only
+ * (members 403). Resolve via `GET /self-service/me`, which matches login email to
+ * the caller's own member row.
  */
 const LINKED_MEMBER_KEY = 'isms_linked_member';
 
@@ -98,15 +98,48 @@ export async function findMemberForSession(): Promise<Member | null> {
   if (!user?.email) return null;
   const cached = readCachedMember(user.email);
   if (cached) return cached;
-  const member = await apiClient.get<Member>('/member-self/me');
-  writeCachedMember(user.email, member);
-  return member;
+  try {
+    const member = await apiClient.get<Member>('/self-service/me');
+    writeCachedMember(user.email, member);
+    return member;
+  } catch (err: unknown) {
+    if (err instanceof ApiRequestError && err.statusCode === 404) {
+      return null;
+    }
+    throw err;
+  }
 }
 
-export function listPendingMomoMocks() {
-  return apiClient.get<MockedMomoRequest[]>('/member-self/momo/pending');
+export type ChapaCheckoutMode = 'live' | 'mock';
+export type ChapaPaymentStatus = 'pending' | 'paid' | 'failed';
+
+export interface ChapaPaymentView {
+  txRef: string;
+  amount: string;
+  currency: 'ETB';
+  status: ChapaPaymentStatus;
+  mode: ChapaCheckoutMode;
+  checkoutUrl: string | null;
+  ledgerTransactionId: string | null;
 }
 
-export function stageMomoMock(body: StageMomoMockInput) {
-  return apiClient.post<MockedMomoRequest>('/member-self/momo/stage', body);
+export function getChapaStatus() {
+  return apiClient.get<{ mode: ChapaCheckoutMode }>('/channel/chapa/status');
+}
+
+export function initializeChapaDeposit(payload: {
+  amount: string;
+  accountId?: string;
+  phone?: string;
+}) {
+  return apiClient.post<ChapaPaymentView & { checkoutUrl: string }>(
+    '/channel/chapa/deposits/initialize',
+    payload,
+  );
+}
+
+export function verifyChapaDeposit(txRef: string) {
+  return apiClient.get<ChapaPaymentView>(
+    `/channel/chapa/deposits/${encodeURIComponent(txRef)}`,
+  );
 }

@@ -264,6 +264,32 @@ export function getMember(id: string) {
   return apiClient.get<Member>(`/members/${id}`);
 }
 
+export interface MemberAccountInfo {
+  id: string;
+  tenantId: string;
+  memberId: string;
+  accountNumber: string;
+  type: 'savings' | 'shares';
+  status: 'active' | 'suspended' | 'closed';
+  balance: string;
+  heldAmount: string;
+  availableBalance: string;
+  currency: string;
+  openedAt: string | null;
+}
+
+export interface MemberBalanceInfo {
+  memberId: string;
+  memberNumber: string;
+  fullName: string;
+  accounts: MemberAccountInfo[];
+  asOf: string;
+}
+
+export function getMemberBalance(id: string) {
+  return apiClient.get<MemberBalanceInfo>(`/members/${encodeURIComponent(id)}/balance`);
+}
+
 export function createMember(payload: CreateMemberPayload) {
   return apiClient.post<Member>('/members', payload);
 }

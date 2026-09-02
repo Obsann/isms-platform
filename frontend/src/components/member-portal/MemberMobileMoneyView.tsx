@@ -1,30 +1,25 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { ApiRequestError } from '@/lib/api-client';
 import {
+  getChapaStatus,
   getMemberBalance,
-  getMemberLoans,
-  listPendingMomoMocks,
-  stageMomoMock,
+  initializeChapaDeposit,
+  verifyChapaDeposit,
+  type ChapaCheckoutMode,
+  type ChapaPaymentView,
 } from '@/lib/api-client/member-self-service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { CurrencyDisplay } from '@/components/currency/CurrencyDisplay';
 import { FormFieldGroup } from '@/components/forms/FormFieldGroup';
 import { StatusBadge } from '@/components/badges/StatusBadge';
+import { useApp } from '@/contexts/AppContext';
 import { isValidAmountDecimal } from '@/lib/money';
-import {
-  MOMO_PROVIDER_LABELS,
-  type MomoProvider,
-  type MockedMomoRequest,
-} from '@/lib/momo-mock';
 import type { Amount, Member } from '@/types';
 
-const PROVIDERS: { id: MomoProvider; label: string }[] = [
-  { id: 'telebirr', label: 'Telebirr' },
-  { id: 'mpesa', label: 'M-PESA Ethiopia' },
-  { id: 'cbe_birr', label: 'CBE Birr' },
-];
+/** Chapa sandbox success numbers — https://developer.chapa.co/test/testing-mobile */
+const CHAPA_TEST_PHONE = '0900123456';
 
 function toAmount(raw: string): Amount | null {
   const trimmed = raw.trim();
@@ -33,194 +28,217 @@ function toAmount(raw: string): Amount | null {
   return `${whole}.${fraction.padEnd(2, '0')}`;
 }
 
-function MomoRequestDetails({ item }: { item: MockedMomoRequest }) {
-  const providerLabel = MOMO_PROVIDER_LABELS[item.payload.provider];
-  const occurredAt = new Date(item.payload.occurredAt).toLocaleString();
+function readReturnTxRef(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const txRef = params.get('tx_ref')?.trim() || params.get('trx_ref')?.trim();
+  return txRef || null;
+}
 
-  return (
-    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
-      <div>
-        <dt className="font-bold uppercase tracking-wider text-slate-500">Provider</dt>
-        <dd className="mt-0.5 font-medium">{providerLabel}</dd>
-      </div>
-      <div>
-        <dt className="font-bold uppercase tracking-wider text-slate-500">Amount</dt>
-        <dd className="mt-0.5">
-          <CurrencyDisplay amount={item.payload.amount} size="sm" />
-        </dd>
-      </div>
-      <div>
-        <dt className="font-bold uppercase tracking-wider text-slate-500">Wallet</dt>
-        <dd className="mt-0.5 font-mono">{item.payload.msisdn}</dd>
-      </div>
-      <div>
-        <dt className="font-bold uppercase tracking-wider text-slate-500">Reference</dt>
-        <dd className="mt-0.5 font-mono">{item.payload.providerReference}</dd>
-      </div>
-      {item.direction === 'c2b' && (
-        <div className="sm:col-span-2">
-          <dt className="font-bold uppercase tracking-wider text-slate-500">Savings account</dt>
-          <dd className="mt-0.5 font-mono">{item.payload.accountNumber}</dd>
-        </div>
-      )}
-      {item.direction === 'b2c' && item.payload.loanId && (
-        <div className="sm:col-span-2">
-          <dt className="font-bold uppercase tracking-wider text-slate-500">Loan</dt>
-          <dd className="mt-0.5 font-mono">{item.payload.loanId}</dd>
-        </div>
-      )}
-      <div className="sm:col-span-2">
-        <dt className="font-bold uppercase tracking-wider text-slate-500">Staged at</dt>
-        <dd className="mt-0.5 font-medium">{occurredAt}</dd>
-      </div>
-    </dl>
-  );
+function statusBadge(status: ChapaPaymentView['status']) {
+  if (status === 'paid') return { status: 'completed' as const, label: 'Paid — savings credited' };
+  if (status === 'failed') return { status: 'failed' as const, label: 'Failed' };
+  return { status: 'pending' as const, label: 'Waiting for Chapa' };
+}
+
+function isHostedCheckout(url: string | null | undefined, mode: ChapaCheckoutMode): boolean {
+  if (!url || mode !== 'live') return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'checkout.chapa.co' || host.endsWith('.chapa.co');
+  } catch {
+    return false;
+  }
 }
 
 export default function MemberMobileMoneyView({ member }: { member: Member }) {
+  const { showToast } = useApp();
+  const [mode, setMode] = useState<ChapaCheckoutMode | null>(null);
   const [ledgerAvailable, setLedgerAvailable] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [loanId, setLoanId] = useState<string | null>(null);
-  const [direction, setDirection] = useState<'c2b' | 'b2c'>('c2b');
-  const [provider, setProvider] = useState<MomoProvider>('telebirr');
   const [amount, setAmount] = useState('');
+  const [phone, setPhone] = useState(CHAPA_TEST_PHONE);
   const [error, setError] = useState<string | null>(null);
-  const [mocks, setMocks] = useState<MockedMomoRequest[]>([]);
-  const [loadingMocks, setLoadingMocks] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [checkout, setCheckout] = useState<ChapaPaymentView | null>(null);
 
-  const msisdn = member.phone || '';
+  const live = mode === 'live';
+
+  const syncCheckout = useCallback(
+    async (txRef: string, opts?: { announce?: boolean }) => {
+      const result = await verifyChapaDeposit(txRef);
+      setCheckout(result);
+      if (opts?.announce && result.status === 'paid') {
+        showToast('Deposit posted', `${result.amount} ETB was credited to your savings.`, 'success');
+      } else if (opts?.announce && result.status === 'failed') {
+        showToast('Payment failed', 'Chapa did not confirm this checkout.', 'error');
+      }
+      if (result.status === 'paid') {
+        const balance = await getMemberBalance(member.id);
+        const savings =
+          balance.accounts.find((account) => account.type === 'savings') ?? balance.accounts[0];
+        setLedgerAvailable(savings?.availableBalance ?? '0.00');
+      }
+      return result;
+    },
+    [member.id, showToast],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingMocks(true);
-    listPendingMomoMocks()
-      .then((rows) => {
-        if (!cancelled) setMocks(rows);
-      })
-      .catch((err: unknown) => {
+    Promise.all([getChapaStatus(), getMemberBalance(member.id)])
+      .then(([status, balance]) => {
         if (cancelled) return;
-        setError(err instanceof ApiRequestError ? err.message : 'Could not load pending mobile-money mocks.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingMocks(false);
-      });
-
-    Promise.all([getMemberBalance(member.id), getMemberLoans(member.id)])
-      .then(([balance, loans]) => {
-        if (cancelled) return;
-        const savings = balance.accounts.find((account) => account.type === 'savings') ?? balance.accounts[0];
+        setMode(status.mode);
+        const savings =
+          balance.accounts.find((account) => account.type === 'savings') ?? balance.accounts[0];
+        setAccountId(savings?.id ?? '');
         setAccountNumber(savings?.accountNumber ?? '');
         setLedgerAvailable(savings?.availableBalance ?? '0.00');
-        const loan = loans.loans.find((row) => row.disbursedAmount) ?? loans.loans[0];
-        setLoanId(loan?.loanId ?? null);
+        if (status.mode !== 'live') {
+          setError(
+            'Chapa is not configured on the API. Paste CHAPA_SECRET_KEY into backend/.env and restart the API.',
+          );
+        }
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof ApiRequestError ? err.message : 'Could not load account details for the mock.');
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load Chapa deposit.');
       });
     return () => {
       cancelled = true;
     };
   }, [member.id]);
 
-  const latest = mocks[0];
-  const pendingCopy = useMemo(
-    () => 'Pending confirmation — mock only. No money moved and the ledger was not posted.',
-    [],
-  );
+  useEffect(() => {
+    const txRef = readReturnTxRef();
+    if (!txRef) return;
+    window.history.replaceState({}, '', window.location.pathname);
+    let cancelled = false;
+    setBusy(true);
+    syncCheckout(txRef, { announce: true })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof ApiRequestError ? err.message : 'Could not verify this checkout.';
+        setError(message);
+        showToast('Verification failed', message, 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast, syncCheckout]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+
+    if (!live) {
+      setError(
+        'Chapa is not configured on the API. Paste CHAPA_SECRET_KEY into backend/.env and restart the API.',
+      );
+      return;
+    }
 
     const parsed = toAmount(amount);
     if (!parsed) {
       setError('Enter a valid amount such as 1500.00.');
       return;
     }
-    if (!msisdn) {
-      setError('Your member record has no phone number, so a mock wallet request cannot be built.');
+    if (!accountId) {
+      setError('You need a savings account before a Chapa deposit can start.');
       return;
     }
-    if (direction === 'c2b' && !accountNumber) {
-      setError('You need a savings account number before a mock C2B deposit can be staged.');
+    if (!phone.trim()) {
+      setError('Enter a Chapa checkout phone such as 0900123456.');
       return;
     }
 
+    setBusy(true);
     try {
-      const staged = await stageMomoMock({
-        direction,
-        provider,
+      const started = await initializeChapaDeposit({
         amount: parsed,
-        accountNumber: direction === 'c2b' ? accountNumber : undefined,
-        loanId: direction === 'b2c' && loanId ? loanId : undefined,
+        accountId,
+        phone: phone.trim(),
       });
-      setMocks((current) => [staged, ...current.filter((row) => row.id !== staged.id)]);
-      setAmount('');
+      if (!isHostedCheckout(started.checkoutUrl, started.mode)) {
+        setError(
+          'Chapa did not return a hosted checkout URL. Confirm CHAPA_SECRET_KEY is a real CHASECK_TEST or live key, then restart the API.',
+        );
+        return;
+      }
+      window.location.assign(started.checkoutUrl);
     } catch (err: unknown) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not stage the mock request.');
+      const message = err instanceof ApiRequestError ? err.message : 'Could not start Chapa checkout.';
+      setError(message);
+      showToast('Checkout failed', message, 'error');
+      setBusy(false);
     }
   }
 
+  async function onRefresh() {
+    if (!checkout) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await syncCheckout(checkout.txRef, { announce: true });
+    } catch (err: unknown) {
+      const message = err instanceof ApiRequestError ? err.message : 'Could not verify this checkout.';
+      setError(message);
+      showToast('Verification failed', message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const badge = checkout ? statusBadge(checkout.status) : null;
+
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4">
-        <p className="text-sm font-bold text-amber-950 dark:text-amber-200">Mock flow — pending confirmation</p>
-        <p className="mt-1 text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
-          Live mobile money is out of scope. This screen stages the documented C2B/B2C webhook
-          shape in the database as <strong>pending confirmation</strong>. It never marks a deposit or
-          disbursement successful, and it never posts to the ledger.
+      <div className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 p-4">
+        <p className="text-sm font-bold text-emerald-950 dark:text-emerald-200">Pay with Chapa</p>
+        <p className="mt-1 text-xs leading-relaxed text-emerald-900 dark:text-emerald-300">
+          You will be sent to Chapa hosted checkout. This screen credits savings only after Chapa
+          verify succeeds. Sandbox test phones:{' '}
+          <span className="font-mono">0900123456</span> (OTP <span className="font-mono">12345</span>
+          ). M-PESA test: <span className="font-mono">0700123456</span>.
         </p>
         {ledgerAvailable !== null && (
-          <p className="mt-2 text-xs font-medium text-amber-950 dark:text-amber-200">
-            Live available savings (unchanged by this mock):{' '}
-            <CurrencyDisplay amount={ledgerAvailable} size="sm" />
+          <p className="mt-2 text-xs font-medium text-emerald-950 dark:text-emerald-200">
+            Available savings: <CurrencyDisplay amount={ledgerAvailable} size="sm" />
+            {accountNumber ? ` · ${accountNumber}` : ''}
           </p>
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Stage a mock request</CardTitle>
+          <CardTitle>Deposit to savings</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-3">
-            <FormFieldGroup label="Flow" htmlFor="momo-direction">
-              <select
-                id="momo-direction"
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as 'c2b' | 'b2c')}
-              >
-                <option value="c2b">C2B — deposit from wallet to savings</option>
-                <option value="b2c">B2C — disbursement to wallet</option>
-              </select>
-            </FormFieldGroup>
-            <FormFieldGroup label="Provider" htmlFor="momo-provider">
-              <select
-                id="momo-provider"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as MomoProvider)}
-              >
-                {PROVIDERS.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </FormFieldGroup>
-            <FormFieldGroup label="Amount (ETB)" htmlFor="momo-amount" required>
+            <FormFieldGroup label="Amount (ETB)" htmlFor="chapa-amount" required>
               <input
-                id="momo-amount"
+                id="chapa-amount"
                 inputMode="decimal"
                 placeholder="1500.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                disabled={busy}
               />
             </FormFieldGroup>
-            <p className="text-[11px] text-slate-500">
-              Wallet {msisdn || 'missing'} · Savings {accountNumber || 'none'}
-              {direction === 'b2c' && loanId ? ` · Loan ${loanId}` : ''}
-            </p>
+            <FormFieldGroup label="Chapa phone" htmlFor="chapa-phone" required>
+              <input
+                id="chapa-phone"
+                inputMode="tel"
+                placeholder="0900123456"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                disabled={busy}
+              />
+            </FormFieldGroup>
             {error && (
               <p className="text-sm font-semibold text-rose-600" role="alert">
                 {error}
@@ -228,55 +246,45 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
             )}
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-midnight text-gold dark:bg-gold dark:text-midnight text-xs font-bold"
+              disabled={busy || !live}
+              className="px-4 py-2 rounded-lg bg-midnight text-gold dark:bg-gold dark:text-midnight text-xs font-bold disabled:opacity-60"
             >
-              Stage pending request
+              {busy ? 'Opening Chapa…' : 'Pay with Chapa'}
             </button>
           </form>
         </CardContent>
       </Card>
 
-      {loadingMocks && (
-        <p className="text-sm text-slate-600 dark:text-slate-400" role="status">
-          Loading pending mobile-money mocks…
-        </p>
-      )}
-
-      {!loadingMocks && latest && (
+      {checkout && badge && (
         <Card>
           <CardHeader>
-            <CardTitle>{latest.label}</CardTitle>
-            <StatusBadge status="pending" label="Pending confirmation" size="sm" />
+            <CardTitle>Payment</CardTitle>
+            <StatusBadge status={badge.status} label={badge.label} size="sm" />
           </CardHeader>
-          <CardContent className="space-y-3 text-xs">
-            <p className="font-medium text-amber-800 dark:text-amber-300">{pendingCopy}</p>
-            <MomoRequestDetails item={latest} />
+          <CardContent className="space-y-2 text-xs">
+            <p>
+              Amount <CurrencyDisplay amount={checkout.amount} size="sm" /> · ref {checkout.txRef}
+            </p>
+            {checkout.status === 'pending' && (
+              <p className="font-medium text-amber-800 dark:text-amber-300">
+                Not credited yet. Use Verify after you finish on Chapa.
+              </p>
+            )}
+            {checkout.status === 'paid' && (
+              <p className="font-medium text-emerald-800 dark:text-emerald-300">
+                Savings credited through the ledger.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => void onRefresh()}
+              disabled={busy}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold disabled:opacity-60"
+            >
+              Verify status
+            </button>
           </CardContent>
         </Card>
-      )}
-
-      {!loadingMocks && mocks.length > 1 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Earlier mock requests</h2>
-          {mocks.slice(1).map((item) => (
-            <div
-              key={item.id}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-xs"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{item.label}</p>
-                  <p className="mt-1 text-slate-600 dark:text-slate-400">
-                    {MOMO_PROVIDER_LABELS[item.payload.provider]} ·{' '}
-                    <CurrencyDisplay amount={item.payload.amount} size="sm" />
-                  </p>
-                  <p className="mt-1 font-mono text-slate-500">{item.payload.providerReference}</p>
-                </div>
-                <StatusBadge status="pending" label="Pending confirmation" size="sm" />
-              </div>
-            </div>
-          ))}
-        </div>
       )}
     </div>
   );

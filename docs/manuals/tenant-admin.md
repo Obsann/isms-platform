@@ -2,7 +2,8 @@
 
 ## Sign in
 
-- Tenant code: `tenant-a` (or the code Super Admin provisioned)
+- SACCO: **Tsehay Sacco** (seeded). The other demo tenant is **Chereka Sacco**.
+- Tenant code: `tenant-a` (or the code Super Admin provisioned). Login still uses `tenant-a` / `tenant-b`, not the display name.
 - Email: `admin@tenant-a.dev` on the seed
 - Lands on `/tenant-admin/dashboard`
 

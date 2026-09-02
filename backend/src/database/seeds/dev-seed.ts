@@ -37,8 +37,8 @@ interface SeedMember {
 const DEV_PASSWORD = 'DevPassword!123';
 
 const SEED_TENANTS: SeedTenant[] = [
-  { code: 'tenant-a', name: 'Tenant A SACCO (dev seed)' },
-  { code: 'tenant-b', name: 'Tenant B SACCO (dev seed)' },
+  { code: 'tenant-a', name: 'Tsehay Sacco' },
+  { code: 'tenant-b', name: 'Chereka Sacco' },
 ];
 
 const BASE_MEMBERS: SeedMember[] = [
@@ -171,7 +171,7 @@ async function seed(): Promise<void> {
         [tenant.name, tenant.code],
       );
       tenantIds.set(tenant.code, tenantId);
-      console.log(`Seeded tenant "${tenant.code}" (${tenantId})`);
+      console.log(`Seeded tenant "${tenant.name}" code="${tenant.code}" (${tenantId})`);
     }
 
     // 2. Seed Staff Accounts
@@ -207,20 +207,19 @@ async function seed(): Promise<void> {
       );
     }
 
-    const seedMemberLogins: SeedStaff[] = [
-      {
-        email: 'abebe.bikila@tenant-a.dev',
-        fullName: 'Abebe Kebede Bikila',
-        role: 'member',
-        tenantCode: 'tenant-a',
-      },
-      {
-        email: 'almaz.desta@tenant-b.dev',
-        fullName: 'Almaz Desta Tesfaye',
-        role: 'member',
-        tenantCode: 'tenant-b',
-      },
-    ];
+    // One staff login per seeded member, same email, role member — portal lookup
+    // matches staff_accounts.email to members.email. Derived from BASE_MEMBERS so
+    // the two can never drift.
+    const seedMemberLogins: SeedStaff[] = BASE_MEMBERS.filter(
+      (member): member is SeedMember & { email: string } => Boolean(member.email),
+    ).map((member) => ({
+      email: member.email,
+      fullName: [member.firstName, member.middleName, member.lastName]
+        .filter((part): part is string => Boolean(part))
+        .join(' '),
+      role: 'member' as const,
+      tenantCode: member.tenantCode,
+    }));
     staff.push(...seedMemberLogins);
 
     for (const account of staff) {

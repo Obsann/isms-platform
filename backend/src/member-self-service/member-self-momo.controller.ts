@@ -19,7 +19,7 @@ export class MemberSelfMomoController {
   @Get('pending')
   @Roles('member')
   async listPending(@CurrentUser() user: AuthenticatedUser): Promise<StagedMomoRequestView[]> {
-    const member = await this.memberSelfService.findLinkedMemberForSession(user);
+    const member = await this.memberSelfService.findLinkedMember(user);
     return this.mobileMoneyMock.listPendingForMember(member.id);
   }
 
@@ -29,7 +29,7 @@ export class MemberSelfMomoController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: StageMomoMockDto,
   ): Promise<StagedMomoRequestView> {
-    const member = await this.memberSelfService.findLinkedMemberForSession(user);
+    const member = await this.memberSelfService.findLinkedMember(user);
     const staged = await this.mobileMoneyMock.stageForMember(member, dto);
     return staged;
   }

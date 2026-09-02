@@ -198,9 +198,11 @@ chart-of-accounts table.
   more. Platform super-admin login uses the same pattern:
   `resolve_platform_staff_by_email` (migration `PlatformStaffBootstrapLookup`).
 - `npm run seed` creates two dev tenants plus seeded staff (see
-  `src/database/seeds/dev-seed.ts` and decisions D5): one platform `super-admin`,
+  `src/database/seeds/dev-seed.ts` and decisions D5): **Tsehay Sacco** (`tenant-a`)
+  and **Chereka Sacco** (`tenant-b`); one platform `super-admin`,
   and per tenant `tenant-admin`, `teller`, and `loan-officer` (same known password).
-  Useful for login, portal routing (Task 4), and cross-tenant isolation checks.
+  Login still uses the codes. Useful for login, portal routing (Task 4), and
+  cross-tenant isolation checks.
 
 ## RBAC & audit log (Task 22)
 

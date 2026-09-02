@@ -36,30 +36,28 @@ export class MemberSelfServiceService {
     if (user.role !== 'member') {
       return;
     }
-    const linked = await this.findLinkedMemberForSession(user);
+    const linked = await this.findLinkedMember(user);
     if (linked.id !== requestedMemberId) {
       throw new ForbiddenException('Members can only access their own record');
     }
   }
 
   /**
-   * `GET /api/member-self/me` — resolve the members row for a member-portal login.
-   * Staff JWT `sub` is `staff_accounts.id`, not `members.id`; match on email instead.
+   * Resolve the caller's `members` row from the staff login email.
+   * JWT `sub` is `staff_accounts.id`, not `members.id`.
    */
-  async findLinkedMemberForSession(user: AuthenticatedUser): Promise<Member> {
+  async findLinkedMember(user: AuthenticatedUser): Promise<Member> {
     if (user.role !== 'member') {
       throw new ForbiddenException('Only member portal accounts can use this endpoint');
     }
     const staff = await this.staffAccounts.findSummaryById(user.staffId);
-    const email = staff?.email?.trim().toLowerCase() ?? '';
+    const email = staff?.email?.trim() ?? '';
     if (!email) {
-      throw new NotFoundException('No member record linked to this login');
+      throw new NotFoundException('No member record for this login');
     }
-    const result = await this.memberService.search({ search: email, limit: 5 });
-    const member =
-      result.items.find((row) => (row.email ?? '').trim().toLowerCase() === email) ?? null;
+    const member = await this.memberService.findByEmail(email);
     if (!member) {
-      throw new NotFoundException('No member record linked to this login');
+      throw new NotFoundException('No member record for this login');
     }
     return member;
   }

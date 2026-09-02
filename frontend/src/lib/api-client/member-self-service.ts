@@ -3,7 +3,7 @@
  * Balance, statement, and loans are real API data — never mocked.
  */
 
-import type { Account, IsoDateTime, Member, MemberId, PaginatedResult, Transaction } from '@/types';
+import type { Account, IsoDateTime, Member, MemberId, Transaction } from '@/types';
 import { apiClient, getSessionUser } from './index';
 
 export interface MemberBalanceView {
@@ -97,10 +97,7 @@ export async function findMemberForSession(): Promise<Member | null> {
   if (!user?.email) return null;
   const cached = readCachedMember(user.email);
   if (cached) return cached;
-  const query = new URLSearchParams({ search: user.email, limit: '5' });
-  const result = await apiClient.get<PaginatedResult<Member>>(`/members?${query.toString()}`);
-  const email = user.email.trim().toLowerCase();
-  const member = result.items.find((row) => (row.email ?? '').trim().toLowerCase() === email) ?? null;
-  if (member) writeCachedMember(user.email, member);
+  const member = await apiClient.get<Member>('/member-self/me');
+  writeCachedMember(user.email, member);
   return member;
 }

@@ -38,6 +38,7 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | DELETE | `/api/members/:id` | | Yes | | | |
 | POST | `/api/members/import/stage` | | Yes | Yes | | |
 | POST | `/api/members/import/commit/:stagingId` | | Yes | Yes | | |
+| GET | `/api/member-self/me` | | | | | Yes |
 | GET | `/api/members/:id/balance` | | Yes | Yes | Yes | Yes |
 | GET | `/api/members/:id/statement` | | Yes | Yes | Yes | Yes |
 | GET | `/api/members/:id/loans` | | Yes | Yes | Yes | Yes |

@@ -11,8 +11,10 @@ import { isValidAmountDecimal } from '@/lib/money';
 import {
   buildB2CPayload,
   buildC2BPayload,
+  MOMO_PROVIDER_LABELS,
   readMockedMomoRequests,
   saveMockedMomoRequest,
+  seedDemoMomoMocks,
   type MomoProvider,
   type MockedMomoRequest,
 } from '@/lib/momo-mock';
@@ -31,6 +33,50 @@ function toAmount(raw: string): Amount | null {
   return `${whole}.${fraction.padEnd(2, '0')}`;
 }
 
+function MomoRequestDetails({ item }: { item: MockedMomoRequest }) {
+  const providerLabel = MOMO_PROVIDER_LABELS[item.payload.provider];
+  const occurredAt = new Date(item.payload.occurredAt).toLocaleString();
+
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+      <div>
+        <dt className="font-bold uppercase tracking-wider text-slate-500">Provider</dt>
+        <dd className="mt-0.5 font-medium">{providerLabel}</dd>
+      </div>
+      <div>
+        <dt className="font-bold uppercase tracking-wider text-slate-500">Amount</dt>
+        <dd className="mt-0.5">
+          <CurrencyDisplay amount={item.payload.amount} size="sm" />
+        </dd>
+      </div>
+      <div>
+        <dt className="font-bold uppercase tracking-wider text-slate-500">Wallet</dt>
+        <dd className="mt-0.5 font-mono">{item.payload.msisdn}</dd>
+      </div>
+      <div>
+        <dt className="font-bold uppercase tracking-wider text-slate-500">Reference</dt>
+        <dd className="mt-0.5 font-mono">{item.payload.providerReference}</dd>
+      </div>
+      {item.direction === 'c2b' && (
+        <div className="sm:col-span-2">
+          <dt className="font-bold uppercase tracking-wider text-slate-500">Savings account</dt>
+          <dd className="mt-0.5 font-mono">{item.payload.accountNumber}</dd>
+        </div>
+      )}
+      {item.direction === 'b2c' && item.payload.loanId && (
+        <div className="sm:col-span-2">
+          <dt className="font-bold uppercase tracking-wider text-slate-500">Loan</dt>
+          <dd className="mt-0.5 font-mono">{item.payload.loanId}</dd>
+        </div>
+      )}
+      <div className="sm:col-span-2">
+        <dt className="font-bold uppercase tracking-wider text-slate-500">Staged at</dt>
+        <dd className="mt-0.5 font-medium">{occurredAt}</dd>
+      </div>
+    </dl>
+  );
+}
+
 export default function MemberMobileMoneyView({ member }: { member: Member }) {
   const [ledgerAvailable, setLedgerAvailable] = useState<string | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
@@ -44,7 +90,7 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
   const msisdn = member.phone || '';
 
   useEffect(() => {
-    setMocks(readMockedMomoRequests());
+    setMocks(seedDemoMomoMocks(member));
     let cancelled = false;
     Promise.all([getMemberBalance(member.id), getMemberLoans(member.id)])
       .then(([balance, loans]) => {
@@ -62,7 +108,7 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
     return () => {
       cancelled = true;
     };
-  }, [member.id]);
+  }, [member]);
 
   const latest = mocks[0];
   const pendingCopy = useMemo(
@@ -191,18 +237,9 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
             <CardTitle>{latest.label}</CardTitle>
             <StatusBadge status="pending" label="Pending confirmation" size="sm" />
           </CardHeader>
-          <CardContent className="space-y-2 text-xs">
+          <CardContent className="space-y-3 text-xs">
             <p className="font-medium text-amber-800 dark:text-amber-300">{pendingCopy}</p>
-            <p>
-              Provider ref <span className="font-mono">{latest.payload.providerReference}</span>
-            </p>
-            <p>
-              Amount <CurrencyDisplay amount={latest.payload.amount} size="sm" />
-            </p>
-            <p>Status in payload: {latest.payload.status}</p>
-            <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-950 text-slate-100 p-3 text-[11px] leading-relaxed">
-              {JSON.stringify(latest.payload, null, 2)}
-            </pre>
+            <MomoRequestDetails item={latest} />
           </CardContent>
         </Card>
       )}
@@ -213,13 +250,19 @@ export default function MemberMobileMoneyView({ member }: { member: Member }) {
           {mocks.slice(1).map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-xs"
+              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-xs"
             >
-              <div>
-                <p className="font-semibold">{item.label}</p>
-                <p className="font-mono text-slate-500">{item.payload.providerReference}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{item.label}</p>
+                  <p className="mt-1 text-slate-600 dark:text-slate-400">
+                    {MOMO_PROVIDER_LABELS[item.payload.provider]} ·{' '}
+                    <CurrencyDisplay amount={item.payload.amount} size="sm" />
+                  </p>
+                  <p className="mt-1 font-mono text-slate-500">{item.payload.providerReference}</p>
+                </div>
+                <StatusBadge status="pending" label="Pending confirmation" size="sm" />
               </div>
-              <StatusBadge status="pending" label="Pending confirmation" size="sm" />
             </div>
           ))}
         </div>

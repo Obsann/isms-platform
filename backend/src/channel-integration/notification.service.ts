@@ -133,7 +133,7 @@ export function createSmtpTransport(config: ConfigService): Transporter | null {
   }
 
   const port = Number(config.get<string>('SMTP_PORT', '587'));
-  const secure = config.get<string>('SMTP_SECURE', 'false') === 'true';
+  const secure = config.get<string>('SMTP_SECURE', String(port === 465)) === 'true';
   const user = config.get<string>('SMTP_USER')?.trim();
   const pass = config.get<string>('SMTP_PASSWORD') ?? '';
 

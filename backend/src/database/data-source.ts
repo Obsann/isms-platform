@@ -122,6 +122,7 @@ export const buildAdminDataSourceOptions = (
   return buildDataSourceOptions({
     ...env,
     DB_USERNAME: env.DB_ADMIN_USERNAME ?? 'postgres',
+    ...(env.DB_ADMIN_PASSWORD ? { DB_PASSWORD: env.DB_ADMIN_PASSWORD } : {}),
   });
 };
 
@@ -184,11 +185,8 @@ export const resolveRuntimeDataSourceOptions = async (
  * The TypeORM CLI requires exactly one exported `DataSource` in this file — don't add
  * a second one, and don't re-export it as default alongside this.
  *
- * `TYPEORM_USE_ADMIN=1` selects the owner role so `migration:run` is not attempted
- * as `isms_app`.
+ * This export is CLI-only (`migration:run` / generate / revert). The Nest API uses
+ * `resolveRuntimeDataSourceOptions()` and can stay on `isms_app`. Creating tables as
+ * `isms_app` fails with "permission denied for schema public".
  */
-export const AppDataSource = new DataSource(
-  toBoolean(process.env.TYPEORM_USE_ADMIN)
-    ? buildAdminDataSourceOptions()
-    : buildDataSourceOptions(),
-);
+export const AppDataSource = new DataSource(buildAdminDataSourceOptions());

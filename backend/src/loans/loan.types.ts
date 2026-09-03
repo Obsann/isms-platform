@@ -34,6 +34,8 @@ export interface DisbursementInput {
   /** Savings account the funds are credited to. */
   destinationAccountId: AccountId;
   amount: Amount;
+  initiatedByStaffId?: StaffId;
+  otp?: string;
 }
 
 export interface RepaymentInput {

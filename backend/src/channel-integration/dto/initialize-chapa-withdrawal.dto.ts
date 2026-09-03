@@ -1,6 +1,6 @@
-import { IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
 
-export class WithdrawDto {
+export class InitializeChapaWithdrawalDto {
   @IsString()
   @IsNotEmpty()
   @Matches(/^\d+(\.\d{1,2})?$/, {
@@ -10,13 +10,17 @@ export class WithdrawDto {
 
   @IsString()
   @IsOptional()
-  @Length(1, 128)
-  reference?: string;
+  @Length(1, 64)
+  accountId?: string;
 
   @IsString()
-  @IsOptional()
-  @Length(1, 255)
-  narration?: string;
+  @IsNotEmpty()
+  @Length(1, 20)
+  phone!: string;
+
+  @IsString()
+  @IsIn(['telebirr', 'mpesa'])
+  channel!: 'telebirr' | 'mpesa';
 
   @IsString()
   @IsOptional()

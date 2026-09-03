@@ -56,7 +56,7 @@ cd backend && npm run rls:check
 
 ## Known MVP exceptions (not defects)
 
-- Member portal **Pay with Chapa** redirects to Chapa hosted checkout when `CHAPA_SECRET_KEY` is set on the API. Unsigned return `status` is ignored; verify posts the ledger.
+- Member portal **Chapa wallet** redirects to hosted checkout for deposits, and holds then pays out to Telebirr / M-PESA for withdrawals, when `CHAPA_SECRET_KEY` is set on the API. Unsigned return `status` is ignored; verify posts the ledger.
 - Login no longer issues a mock JWT when the API is down.
 
 ## 2026-09-01 closeout note

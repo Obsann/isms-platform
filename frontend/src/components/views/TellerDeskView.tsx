@@ -33,6 +33,8 @@ import { FormFieldGroup } from '@/components/forms/FormFieldGroup';
 import { StatusBadge } from '@/components/badges/StatusBadge';
 import { formatAmount } from '@/components/format';
 import { isValidAmountDecimal, addAmounts, subtractAmounts, amountGreaterThan } from '@/lib/money';
+import OtpRequestField from '@/components/auth/OtpRequestField';
+import { HIGH_VALUE_OTP_THRESHOLD, requiresHighValueOtp } from '@/lib/otp';
 import { ApiRequestError } from '@/lib/api-client';
 import {
   getAccountBalance,
@@ -342,11 +344,13 @@ function WithdrawalForm({
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
   const [narration, setNarration] = useState('');
+  const [otp, setOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const amountId = useId();
   const refId = useId();
   const narrId = useId();
+  const needsOtp = requiresHighValueOtp(amount.trim());
 
   const available = currentBalance.availableBalance;
 
@@ -369,7 +373,8 @@ function WithdrawalForm({
     isValidAmountDecimal(amount) &&
     !amountError &&
     reference.trim().length <= 128 &&
-    narration.trim().length <= 255;
+    narration.trim().length <= 255 &&
+    (!needsOtp || /^\d{6}$/.test(otp));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,6 +384,10 @@ function WithdrawalForm({
     const tempId = generateTempId();
     const snapshot: AccountBalance = { ...currentBalance };
     const trimmedAmount = amount.trim();
+    if (needsOtp && isBrowserOffline()) {
+      setError(`Withdrawals of ${HIGH_VALUE_OTP_THRESHOLD} ETB or more need an email code and an online connection.`);
+      return;
+    }
 
     const optimisticTx: PendingTx = {
       id: tempId,
@@ -406,6 +415,7 @@ function WithdrawalForm({
         amount: trimmedAmount,
         userReference: reference.trim() || undefined,
         userNarration: narration.trim() || undefined,
+        otp: needsOtp ? otp : undefined,
       });
 
       if (result.mode === 'queued') {
@@ -413,6 +423,7 @@ function WithdrawalForm({
         setAmount('');
         setReference('');
         setNarration('');
+        setOtp('');
         return;
       }
 
@@ -421,6 +432,7 @@ function WithdrawalForm({
       setAmount('');
       setReference('');
       setNarration('');
+      setOtp('');
     } catch (err) {
       setError(getErrorMessage(err));
       onRollback(tempId, snapshot);
@@ -486,6 +498,22 @@ function WithdrawalForm({
           />
         </FormFieldGroup>
       </div>
+
+      {needsOtp && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 p-3 space-y-2">
+          <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-200">
+            Large withdrawal ({HIGH_VALUE_OTP_THRESHOLD} ETB or more) — email verification required.
+          </p>
+          <OtpRequestField
+            purpose="large-withdrawal"
+            amount={amount.trim()}
+            accountId={accountId}
+            value={otp}
+            onChange={setOtp}
+            disabled={isSubmitting || isMutating}
+          />
+        </div>
+      )}
 
       <button
         type="submit"

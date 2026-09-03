@@ -87,8 +87,12 @@ export const loanApi = {
   },
 
   /** Disburse an approved loan to a member's savings account. */
-  disburse(id: string, destinationAccountId: string, amount: string): Promise<LoanRepaymentRow> {
-    return apiClient.post<LoanRepaymentRow>(`/loans/${id}/disburse`, { destinationAccountId, amount });
+  disburse(id: string, destinationAccountId: string, amount: string, otp?: string): Promise<LoanRepaymentRow> {
+    return apiClient.post<LoanRepaymentRow>(`/loans/${id}/disburse`, {
+      destinationAccountId,
+      amount,
+      otp,
+    });
   },
 
   /** Record a repayment against a disbursed loan. */

@@ -112,14 +112,18 @@ export async function findMemberForSession(): Promise<Member | null> {
 
 export type ChapaCheckoutMode = 'live' | 'mock';
 export type ChapaPaymentStatus = 'pending' | 'paid' | 'failed';
+export type ChapaPaymentKind = 'deposit' | 'withdrawal';
+export type ChapaPayoutChannel = 'telebirr' | 'mpesa';
 
 export interface ChapaPaymentView {
   txRef: string;
   amount: string;
   currency: 'ETB';
   status: ChapaPaymentStatus;
+  kind: ChapaPaymentKind;
   mode: ChapaCheckoutMode;
   checkoutUrl: string | null;
+  payoutChannel: ChapaPayoutChannel | null;
   ledgerTransactionId: string | null;
 }
 
@@ -141,5 +145,28 @@ export function initializeChapaDeposit(payload: {
 export function verifyChapaDeposit(txRef: string) {
   return apiClient.get<ChapaPaymentView>(
     `/channel/chapa/deposits/${encodeURIComponent(txRef)}`,
+  );
+}
+
+export function initializeChapaWithdrawal(payload: {
+  amount: string;
+  accountId?: string;
+  phone: string;
+  channel: ChapaPayoutChannel;
+  otp?: string;
+}) {
+  return apiClient.post<ChapaPaymentView>('/channel/chapa/withdrawals/initialize', payload);
+}
+
+export function verifyChapaWithdrawal(txRef: string) {
+  return apiClient.get<ChapaPaymentView>(
+    `/channel/chapa/withdrawals/${encodeURIComponent(txRef)}`,
+  );
+}
+
+export function confirmMockChapaWithdrawal(txRef: string) {
+  return apiClient.post<ChapaPaymentView>(
+    `/channel/chapa/withdrawals/${encodeURIComponent(txRef)}/mock-complete`,
+    {},
   );
 }

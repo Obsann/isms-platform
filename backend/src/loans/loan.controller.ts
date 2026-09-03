@@ -114,11 +114,14 @@ export class LoanController {
   disburse(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DisburseLoanDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<LoanRepaymentRow> {
     return this.loanService.disburse({
       loanId: id,
       destinationAccountId: dto.destinationAccountId,
       amount: dto.amount,
+      initiatedByStaffId: user.staffId,
+      otp: dto.otp,
     });
   }
 

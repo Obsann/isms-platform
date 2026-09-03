@@ -12,9 +12,9 @@ import { MobileMoneyStagedRequestEntity } from './mobile-money-staged-request.en
 import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './notification.service';
 
 /**
- * Channel Integration — SMTP notifications (Task 25), Chapa C2B deposits
- * (opt-in live gateway; mock checkout when `CHAPA_SECRET_KEY` is unset), and
- * staged mobile-money webhook shapes for dev/docs (Task 24/26).
+ * Channel Integration — SMTP notifications (Task 25), Chapa C2B deposits and
+ * B2C withdrawals (opt-in live gateway; mock when `CHAPA_SECRET_KEY` is unset),
+ * and staged mobile-money webhook shapes for dev/docs (Task 24/26).
  *
  * Keys are read through ConfigService / `process.env` here only.
  */
@@ -22,7 +22,7 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([ChapaPaymentEntity, MobileMoneyStagedRequestEntity]),
-    MemberModule,
+    forwardRef(() => MemberModule),
     SecurityAuditModule,
     forwardRef(() => SavingsSharesModule),
   ],

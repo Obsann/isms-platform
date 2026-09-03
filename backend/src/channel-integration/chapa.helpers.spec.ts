@@ -3,6 +3,8 @@ import { UnauthorizedException } from '@nestjs/common';
 import {
   assertChapaWebhookSignature,
   buildChapaTxRef,
+  etbGreaterThan,
+  extractChapaTxRef,
   hmacSha256Hex,
   mapChapaCustomerEmail,
   normalizeEthiopianPhone,
@@ -77,6 +79,25 @@ describe('chapa helpers', () => {
           'isms-11111111-1111-4111-8111-111111111111-22222222-2222-4222-8222-222222222222',
         ),
       ).toBeNull();
+    });
+  });
+
+  describe('extractChapaTxRef', () => {
+    it('prefers an ISMS reference on transfer webhooks', () => {
+      expect(
+        extractChapaTxRef({
+          reference: 'isms-11111111111141118111111111111111a1b2c3d4',
+          tx_ref: 'chapa-internal-id',
+        }),
+      ).toBe('isms-11111111111141118111111111111111a1b2c3d4');
+    });
+  });
+
+  describe('etbGreaterThan', () => {
+    it('compares two-decimal ETB strings', () => {
+      expect(etbGreaterThan('100.00', '50.00')).toBe(true);
+      expect(etbGreaterThan('50.00', '100.00')).toBe(false);
+      expect(etbGreaterThan('50.00', '50.00')).toBe(false);
     });
   });
 

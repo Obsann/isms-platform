@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ChannelIntegrationModule } from '../channel-integration';
 import { SecurityAuditModule } from '../security-audit';
 import { TenantsModule } from '../tenants';
 import { AuthController } from './auth.controller';
@@ -18,6 +19,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     TenantsModule,
     SecurityAuditModule,
+    ChannelIntegrationModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -64,6 +64,7 @@ export class SavingsSharesController {
       reference: dto.reference,
       narration: dto.narration,
       postedByStaffId: req.user?.staffId,
+      otp: dto.otp,
     });
   }
 

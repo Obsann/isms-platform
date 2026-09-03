@@ -147,7 +147,11 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
         setSuccessMsg(`Member ${updated.fullName} (${updated.memberNumber}) updated.`);
       } else {
         const created = await createMember(payload);
-        setSuccessMsg(`Member ${created.fullName} (${created.memberNumber}) successfully registered.`);
+        setSuccessMsg(
+          created.email
+            ? `Member ${created.fullName} (${created.memberNumber}) registered. A login email with a temporary password was sent to ${created.email}.`
+            : `Member ${created.fullName} (${created.memberNumber}) successfully registered.`,
+        );
       }
       closeForm();
       fetchMembers();

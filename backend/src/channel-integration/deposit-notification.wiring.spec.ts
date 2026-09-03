@@ -54,6 +54,7 @@ describe('deposit → notification wiring (Task 25)', () => {
       memberService as never,
       ledger as never,
       notifications as never,
+      { requireForHighValue: jest.fn() } as never,
     );
   });
 

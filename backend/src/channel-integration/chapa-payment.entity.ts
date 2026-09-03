@@ -2,10 +2,13 @@ import { Column, Entity, Index } from 'typeorm';
 import { TenantScopedEntity } from '../common/entities/tenant-scoped.entity';
 
 export type ChapaPaymentStatus = 'pending' | 'paid' | 'failed';
+export type ChapaPaymentKind = 'deposit' | 'withdrawal';
+export type ChapaPayoutChannel = 'telebirr' | 'mpesa';
 
 @Entity('chapa_payments')
 @Index('idx_chapa_payments_tenant_id', ['tenantId'])
 @Index('idx_chapa_payments_tenant_member', ['tenantId', 'memberId'])
+@Index('idx_chapa_payments_tenant_kind', ['tenantId', 'kind'])
 @Index('uq_chapa_payments_tx_ref', ['txRef'], { unique: true })
 export class ChapaPaymentEntity extends TenantScopedEntity {
   @Column({ name: 'member_id', type: 'uuid' })
@@ -23,8 +26,17 @@ export class ChapaPaymentEntity extends TenantScopedEntity {
   @Column({ type: 'char', length: 3, default: 'ETB' })
   currency!: string;
 
+  @Column({ type: 'varchar', length: 16, default: 'deposit' })
+  kind!: ChapaPaymentKind;
+
   @Column({ type: 'varchar', length: 16, default: 'pending' })
   status!: ChapaPaymentStatus;
+
+  @Column({ name: 'payout_channel', type: 'varchar', length: 16, nullable: true })
+  payoutChannel!: ChapaPayoutChannel | null;
+
+  @Column({ name: 'bank_code', type: 'varchar', length: 16, nullable: true })
+  bankCode!: string | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone!: string | null;
@@ -48,4 +60,8 @@ export class ChapaPaymentEntity extends TenantScopedEntity {
 
   @Column({ name: 'ledger_transaction_id', type: 'uuid', nullable: true })
   ledgerTransactionId!: string | null;
+
+  /** Savings hold that reserves the withdrawal until Chapa transfer verify. */
+  @Column({ name: 'hold_id', type: 'uuid', nullable: true })
+  holdId!: string | null;
 }

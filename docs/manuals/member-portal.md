@@ -25,7 +25,7 @@ self-registration.
 | Balance | Live savings and share accounts |
 | Statement | Transaction history for your accounts |
 | Loans | Your applications and statuses |
-| Mobile money | **Chapa hosted checkout** — Pay with Chapa opens checkout.chapa.co. Savings credit after verify. Sandbox phone `0900123456` (OTP `12345`). |
+| Mobile money | **Chapa** — hosted checkout deposits and Telebirr / M-PESA withdrawals. Savings move after verify. Sandbox phone `0900123456` (OTP `12345`). |
 
 Optional dev-only staged C2B/B2C webhook shapes (never ledger-posted) remain in
 `mobile_money_staged_requests` after seed — see `POST /api/member-self/momo/stage`
@@ -33,8 +33,7 @@ in OpenAPI. The member portal UI uses Chapa, not the staging form.
 
 ## What you cannot do here
 
-- Live Telebirr / M-PESA / CBE Birr webhooks (documented in `docs/openapi/`, not connected)
-- Wallet B2C withdrawals (use a teller cash withdrawal)
+- Live Telebirr / M-PESA / CBE Birr webhooks outside Chapa (documented in `docs/openapi/`, not connected)
 - Register yourself (staff register members)
 - Approve loans
 

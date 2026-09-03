@@ -32,7 +32,7 @@ const LINKS = [
   {
     href: '/member/mobile-money',
     label: 'Mobile money',
-    detail: 'Pay with Chapa into your savings.',
+    detail: 'Deposit or withdraw savings through Chapa.',
     icon: Smartphone,
   },
 ] as const;

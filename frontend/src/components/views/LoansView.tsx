@@ -36,6 +36,8 @@ import { loanApi, type LoanRow, type GuarantorPledge } from '@/lib/loanApi';
 import { getMembers, getMemberBalance } from '@/lib/api-client';
 import { createSavingsAccount, listAccountsByMember } from '@/lib/api-client/teller';
 import type { Member } from '@/types';
+import OtpRequestField from '@/components/auth/OtpRequestField';
+import { HIGH_VALUE_OTP_THRESHOLD, requiresHighValueOtp } from '@/lib/otp';
 
 const HIGH_VALUE_THRESHOLD = 50000;
 
@@ -69,6 +71,7 @@ export default function LoansView() {
   const [repaymentAmount, setRepaymentAmount] = useState<number>(5000);
   const [repaymentRef, setRepaymentRef] = useState('PAY-');
   const [destinationAccountId, setDestinationAccountId] = useState('');
+  const [disburseOtp, setDisburseOtp] = useState('');
 
   // Guarantor pledge state for selected loan
   const [loanGuarantors, setLoanGuarantors] = useState<GuarantorPledge[]>([]);
@@ -87,7 +90,8 @@ export default function LoansView() {
       });
       setLoans(res.items || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch loans from server.');
+      const msg = err instanceof Error ? err.message : 'Failed to fetch loans from server.';
+      setError(msg === 'Failed to fetch' ? 'Unable to reach backend server. Please check your network connection or try retrying.' : msg);
       setLoans([]);
     } finally {
       setIsLoading(false);
@@ -109,29 +113,8 @@ export default function LoansView() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-    loanApi
-      .list({
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-      })
-      .then((res) => {
-        if (!mounted) return;
-        setLoans(res.items || []);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (!mounted) return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch loans from server.');
-        setLoans([]);
-      })
-      .finally(() => {
-        if (mounted) setIsLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [statusFilter]);
+    void fetchLoans();
+  }, [fetchLoans]);
 
   const getMemberName = (memberId: string) => {
     const m = members.find((x) => x.id === memberId);
@@ -275,6 +258,7 @@ export default function LoansView() {
   const openDisburseModal = async (loan: LoanRow) => {
     setSelectedLoan(loan);
     setDestinationAccountId('');
+    setDisburseOtp('');
     setActiveModal('disburse');
     try {
       const accounts = await listAccountsByMember(loan.memberId);
@@ -301,11 +285,17 @@ export default function LoansView() {
       showToast('Disbursement Failed', 'A savings account is required before disbursement.', 'error');
       return;
     }
+    const disburseAmount = selectedLoan.approvedAmount || selectedLoan.requestedAmount;
+    if (requiresHighValueOtp(disburseAmount) && !/^\d{6}$/.test(disburseOtp)) {
+      showToast('Verification required', `Disbursements of ${HIGH_VALUE_OTP_THRESHOLD} ETB or more need an email code.`, 'error');
+      return;
+    }
     try {
       await loanApi.disburse(
         selectedLoan.id,
         destinationAccountId,
-        selectedLoan.approvedAmount || selectedLoan.requestedAmount,
+        disburseAmount,
+        requiresHighValueOtp(disburseAmount) ? disburseOtp : undefined,
       );
       showToast(
         'Loan Disbursed',
@@ -315,6 +305,7 @@ export default function LoansView() {
       setActiveModal(null);
       setSelectedLoan(null);
       setDestinationAccountId('');
+      setDisburseOtp('');
       await fetchLoans();
     } catch (err) {
       showToast('Disbursement Failed', err instanceof Error ? err.message : 'Disbursement failed.', 'error');
@@ -877,6 +868,21 @@ export default function LoansView() {
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none font-mono"
               />
             </FormFieldGroup>
+
+            {requiresHighValueOtp(selectedLoan.approvedAmount || selectedLoan.requestedAmount) && (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 p-3">
+                <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-200 mb-2">
+                  Large disbursement ({HIGH_VALUE_OTP_THRESHOLD} ETB or more) — email verification required.
+                </p>
+                <OtpRequestField
+                  purpose="loan-disbursement"
+                  amount={selectedLoan.approvedAmount || selectedLoan.requestedAmount}
+                  loanId={selectedLoan.id}
+                  value={disburseOtp}
+                  onChange={setDisburseOtp}
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold">

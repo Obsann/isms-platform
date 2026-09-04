@@ -17,4 +17,9 @@ export class WithdrawDto {
   @IsOptional()
   @Length(1, 255)
   narration?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{6}$/, { message: 'otp must be a 6-digit code' })
+  otp?: string;
 }

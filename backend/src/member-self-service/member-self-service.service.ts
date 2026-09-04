@@ -1,10 +1,10 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedUser } from '../common';
 import { LoanService } from '../loans';
 import { MemberService } from '../members';
 import { SavingsSharesService } from '../savings-shares';
 import { StaffAccountService } from '../security-audit';
-import type { MemberId } from '../types';
+import type { Member, MemberId } from '../types';
 import type { MemberStatementQueryDto } from './dto/member-statement-query.dto';
 import type {
   MemberBalanceView,
@@ -36,13 +36,30 @@ export class MemberSelfServiceService {
     if (user.role !== 'member') {
       return;
     }
-    const staff = await this.staffAccounts.findSummaryById(user.staffId);
-    const member = await this.memberService.findById(requestedMemberId);
-    const staffEmail = staff?.email?.trim().toLowerCase() ?? '';
-    const memberEmail = member.email?.trim().toLowerCase() ?? '';
-    if (!staffEmail || !memberEmail || staffEmail !== memberEmail) {
+    const linked = await this.findLinkedMember(user);
+    if (linked.id !== requestedMemberId) {
       throw new ForbiddenException('Members can only access their own record');
     }
+  }
+
+  /**
+   * Resolve the caller's `members` row from the staff login email.
+   * JWT `sub` is `staff_accounts.id`, not `members.id`.
+   */
+  async findLinkedMember(user: AuthenticatedUser): Promise<Member> {
+    if (user.role !== 'member') {
+      throw new ForbiddenException('Only member portal accounts can use this endpoint');
+    }
+    const staff = await this.staffAccounts.findSummaryById(user.staffId);
+    const email = staff?.email?.trim() ?? '';
+    if (!email) {
+      throw new NotFoundException('No member record for this login');
+    }
+    const member = await this.memberService.findByEmail(email);
+    if (!member) {
+      throw new NotFoundException('No member record for this login');
+    }
+    return member;
   }
 
   // ----------------------------------------------------------------- getBalance

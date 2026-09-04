@@ -15,6 +15,9 @@ import {
   AlertCircle,
   Loader2,
   X,
+  Receipt,
+  UserX,
+  UserCheck,
 } from 'lucide-react';
 import {
   ApiRequestError,
@@ -26,6 +29,8 @@ import {
   type UpdateMemberPayload,
 } from '@/lib/api-client';
 import { StatusBadge } from '@/components/badges/StatusBadge';
+import { TablePagination } from '@/components/ui/TablePagination';
+import { useAuthUser } from '@/components/auth/useAuthUser';
 import type { Member, PaginatedResult } from '@/types';
 import MemberFormModal from './MemberFormModal';
 import { MEMBER_EMAIL_PATTERN, PHONE_PATTERN } from '@/lib/member-field-rules';
@@ -45,7 +50,6 @@ function errorMessage(err: unknown): string {
 
 function buildUpdatePayload(payload: CreateMemberPayload, original: Member): UpdateMemberPayload {
   const next: UpdateMemberPayload = {};
-  if (payload.memberNumber !== original.memberNumber) next.memberNumber = payload.memberNumber;
   if (payload.firstName !== original.firstName) next.firstName = payload.firstName;
   if ((payload.middleName ?? '') !== (original.middleName ?? '')) next.middleName = payload.middleName;
   if (payload.lastName !== original.lastName) next.lastName = payload.lastName;
@@ -65,6 +69,7 @@ function buildUpdatePayload(payload: CreateMemberPayload, original: Member): Upd
 }
 
 export default function MemberManagementView({ portalType }: MemberManagementViewProps) {
+  const user = useAuthUser();
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,14 +81,21 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Member | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [pendingActionMember, setPendingActionMember] = useState<Member | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = (await getMembers({ search: searchTerm, limit: 50 })) as
+      const res = (await getMembers({
+        search: searchTerm,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      })) as
         | PaginatedResult<Member>
         | { data?: Member[]; items?: Member[]; total?: number }
         | Member[];
@@ -105,6 +117,10 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
     } finally {
       setIsLoading(false);
     }
+  }, [searchTerm, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
   }, [searchTerm]);
 
   useEffect(() => {
@@ -132,7 +148,11 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
         setSuccessMsg(`Member ${updated.fullName} (${updated.memberNumber}) updated.`);
       } else {
         const created = await createMember(payload);
-        setSuccessMsg(`Member ${created.fullName} (${created.memberNumber}) successfully registered.`);
+        setSuccessMsg(
+          created.email
+            ? `Member ${created.fullName} (${created.memberNumber}) registered. A login email with a temporary password was sent to ${created.email}.`
+            : `Member ${created.fullName} (${created.memberNumber}) successfully registered.`,
+        );
       }
       closeForm();
       fetchMembers();
@@ -144,24 +164,81 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
   };
 
   const handleDelete = async () => {
-    if (!pendingDelete) return;
-    setIsDeleting(true);
+    if (!pendingActionMember) return;
+    setIsActionLoading(true);
+    setActionError(null);
     setError(null);
     try {
-      await deleteMember(pendingDelete.id);
-      setSuccessMsg(`Member ${pendingDelete.fullName} (${pendingDelete.memberNumber}) deleted.`);
-      setPendingDelete(null);
+      await deleteMember(pendingActionMember.id);
+      setSuccessMsg(`Member ${pendingActionMember.fullName} (${pendingActionMember.memberNumber}) deleted.`);
+      setMembers((prev) => prev.filter((m) => m.id !== pendingActionMember.id));
+      setTotal((count) => Math.max(0, count - 1));
+      setPendingActionMember(null);
       setSelectedMember(null);
       fetchMembers();
     } catch (err) {
-      setError(errorMessage(err));
-      setPendingDelete(null);
+      setActionError(errorMessage(err));
     } finally {
-      setIsDeleting(false);
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleSetMemberStatus = async (status: 'active' | 'inactive') => {
+    if (!pendingActionMember) return;
+    setIsActionLoading(true);
+    setActionError(null);
+    setError(null);
+    try {
+      const updated = await updateMember(pendingActionMember.id, { status });
+      const label = status === 'active' ? 'active' : 'inactive';
+      setSuccessMsg(`Member ${updated.fullName} (${updated.memberNumber}) is now ${label}.`);
+      setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setPendingActionMember(null);
+      if (selectedMember?.id === updated.id) {
+        setSelectedMember(updated);
+      }
+      fetchMembers();
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const openMemberActionDialog = (member: Member) => {
+    setActionError(null);
+    setPendingActionMember(member);
+  };
+
+  const closeMemberActionDialog = () => {
+    setPendingActionMember(null);
+    setActionError(null);
+  };
+
+  const quickSetStatus = async (member: Member, status: 'active' | 'inactive') => {
+    setActionError(null);
+    setError(null);
+    setIsActionLoading(true);
+    try {
+      const updated = await updateMember(member.id, { status });
+      const label = status === 'active' ? 'active' : 'inactive';
+      setSuccessMsg(`Member ${updated.fullName} (${updated.memberNumber}) is now ${label}.`);
+      setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      if (selectedMember?.id === updated.id) {
+        setSelectedMember(updated);
+      }
+      fetchMembers();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
   const importHref = `/${portalType}/members/import`;
+  /** Loan officers share the tenant-admin portal but cannot register/update/delete members. */
+  const canManageMembers = user?.role === 'teller' || user?.role === 'tenant-admin';
+  const canPermanentlyDelete = user?.role === 'tenant-admin';
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-12">
@@ -178,31 +255,43 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
             Member Directory &amp; Registration
           </h1>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5">
-            Register members, search profiles, and bulk-import legacy member records. This tenant cannot see another SACCO&apos;s members.
+            {canManageMembers
+              ? "Register members, search profiles, and bulk-import legacy member records. This tenant cannot see another SACCO's members."
+              : 'Search and view member profiles. Registration is limited to tenant admin and teller accounts.'}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href={importHref}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-gold/60 transition-all cursor-pointer shadow-sm"
-          >
-            <Upload className="w-3.5 h-3.5 text-amber-800 dark:text-gold" />
-            <span>Import Legacy CSV</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setFormError(null);
-              setEditingMember(null);
-              setFormMode('create');
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light transition-all cursor-pointer shadow-sm"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Register Member</span>
-          </button>
-        </div>
+        {canManageMembers && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={importHref}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-gold/60 transition-all cursor-pointer shadow-sm"
+            >
+              <Upload className="w-3.5 h-3.5 text-amber-800 dark:text-gold" />
+              <span>Import Legacy CSV</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setEditingMember(null);
+                setFormMode('create');
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light transition-all cursor-pointer shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Register Member</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {!canManageMembers && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-950 dark:text-amber-100 text-xs font-medium">
+          You are signed in as <strong>{user?.role ?? 'unknown'}</strong>. Member registration requires{' '}
+          <strong>tenant-admin</strong> (<span className="font-mono">admin@tenant-a.dev</span>) or{' '}
+          <strong>teller</strong> (<span className="font-mono">teller@tenant-a.dev</span>).
+        </div>
+      )}
 
       {successMsg && (
         <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs font-medium shadow-sm">
@@ -255,7 +344,9 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
             <Users className="w-4 h-4 text-amber-800 dark:text-gold" />
             <span>Members List ({total})</span>
           </h2>
-          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Showing {(members || []).length} records</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+            Page {page} · {members.length} on screen
+          </span>
         </div>
 
         {isLoading ? (
@@ -304,6 +395,15 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
+                        {portalType === 'teller' && (
+                          <Link
+                            href={`/teller/desk?lookup=${encodeURIComponent(m.memberNumber)}`}
+                            title="Open in Teller Desk"
+                            className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-gold border border-amber-200 dark:border-amber-900/50"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
                         <button
                           type="button"
                           title="View"
@@ -312,26 +412,34 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                         >
                           <Eye className="w-3.5 h-3.5 text-amber-800 dark:text-gold" />
                         </button>
-                        <button
-                          type="button"
-                          title="Edit"
-                          onClick={() => {
-                            setFormError(null);
-                            setEditingMember(m);
-                            setFormMode('edit');
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Delete"
-                          onClick={() => setPendingDelete(m)}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                        </button>
+                        {canManageMembers && (
+                          <>
+                            <button
+                              type="button"
+                              title="Edit"
+                              onClick={() => {
+                                setFormError(null);
+                                setEditingMember(m);
+                                setFormMode('edit');
+                              }}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                            </button>
+                            <button
+                              type="button"
+                              title={canPermanentlyDelete ? 'Deactivate, reactivate, or delete' : 'Set inactive or active'}
+                              onClick={() => openMemberActionDialog(m)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700"
+                            >
+                              {canPermanentlyDelete ? (
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                              ) : (
+                                <UserX className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                              )}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -339,6 +447,19 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
               </tbody>
             </table>
           </div>
+        )}
+        {!isLoading && total > 0 && (
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={total}
+            itemLabel="members"
+            onPageChange={setPage}
+            onPageSizeChange={(nextSize) => {
+              setPageSize(nextSize);
+              setPage(1);
+            }}
+          />
         )}
       </div>
 
@@ -395,17 +516,60 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
               </div>
             </div>
             <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMember(null);
-                  setEditingMember(selectedMember);
-                  setFormMode('edit');
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1.5"
-              >
-                <Pencil className="w-3.5 h-3.5" /> Edit
-              </button>
+              {portalType === 'teller' && (
+                <Link
+                  href={`/teller/desk?lookup=${encodeURIComponent(selectedMember.memberNumber)}`}
+                  onClick={() => setSelectedMember(null)}
+                  className="px-4 py-2 bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light text-xs font-bold rounded-xl shadow-sm inline-flex items-center gap-1.5"
+                >
+                  <Receipt className="w-3.5 h-3.5" /> Transact in Desk
+                </Link>
+              )}
+              {canManageMembers && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMember(null);
+                    setEditingMember(selectedMember);
+                    setFormMode('edit');
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1.5"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+              )}
+              {canManageMembers &&
+                (selectedMember.status === 'inactive' ? (
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() => quickSetStatus(selectedMember, 'active')}
+                    className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-xl border border-emerald-200 dark:border-emerald-900/50 inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" /> Set active
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() => quickSetStatus(selectedMember, 'inactive')}
+                    className="px-4 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-xl border border-amber-200 dark:border-amber-900/50 inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <UserX className="w-3.5 h-3.5" /> Set inactive
+                  </button>
+                ))}
+              {canPermanentlyDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMember(null);
+                    openMemberActionDialog(selectedMember);
+                  }}
+                  className="px-4 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-bold rounded-xl border border-rose-200 dark:border-rose-900/50 inline-flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete…
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedMember(null)}
@@ -418,29 +582,84 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
         </div>
       )}
 
-      {pendingDelete && (
+      {pendingActionMember && (
         <div className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Delete member?</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              This will permanently remove <strong>{pendingDelete.fullName}</strong> ({pendingDelete.memberNumber}). If they have savings or loans, deletion is blocked and you should set status to Inactive instead.
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              {canPermanentlyDelete ? 'Member status or removal' : 'Change member status'}
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              {canPermanentlyDelete ? (
+                <>
+                  Choose what to do with <strong>{pendingActionMember.fullName}</strong> (
+                  {pendingActionMember.memberNumber}). <strong>Set inactive</strong> keeps the profile on file but blocks
+                  transactions. <strong>Delete permanently</strong> removes the member and all related savings, loans, and
+                  transaction history — this cannot be undone.
+                </>
+              ) : (
+                <>
+                  Set <strong>{pendingActionMember.fullName}</strong> ({pendingActionMember.memberNumber}) to inactive
+                  or active. Tellers cannot permanently delete members — ask tenant admin if a row must be removed.
+                </>
+              )}
             </p>
-            <div className="flex gap-2 justify-end">
+            {actionError && (
+              <p className="text-xs font-semibold text-rose-600" role="alert">
+                {actionError}
+              </p>
+            )}
+            <div className="flex flex-col gap-2">
+              {pendingActionMember.status === 'inactive' ? (
+                <button
+                  type="button"
+                  disabled={isActionLoading}
+                  onClick={() => handleSetMemberStatus('active')}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                >
+                  {isActionLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <UserCheck className="w-3.5 h-3.5" />
+                  )}
+                  Set active
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isActionLoading}
+                  onClick={() => handleSetMemberStatus('inactive')}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                >
+                  {isActionLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <UserX className="w-3.5 h-3.5" />
+                  )}
+                  Set inactive
+                </button>
+              )}
+              {canPermanentlyDelete && (
+                <button
+                  type="button"
+                  disabled={isActionLoading}
+                  onClick={handleDelete}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                >
+                  {isActionLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  Delete permanently
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => setPendingDelete(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700"
+                disabled={isActionLoading}
+                onClick={closeMemberActionDialog}
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleDelete}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
-              >
-                {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                Delete
               </button>
             </div>
           </div>

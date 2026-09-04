@@ -1,12 +1,15 @@
 import {
+  ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NotificationService } from '../channel-integration';
+import { NotificationService } from '../channel-integration/notification.service';
 import { SyncConflictException } from '../common/sync-conflict.exception';
 import { TenantContextService } from '../common';
 import {
@@ -17,6 +20,7 @@ import {
   toCents,
 } from '../ledger';
 import { MemberService } from '../members';
+import { OtpService } from '../security-audit';
 import type { Account, AccountId, Amount, MemberId, Transaction } from '../types';
 import { AccountEntity } from './account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -48,7 +52,9 @@ export class SavingsSharesService {
     private readonly configService: ConfigService,
     private readonly memberService: MemberService,
     private readonly ledger: LedgerService,
+    @Inject(forwardRef(() => NotificationService))
     private readonly notifications: NotificationService,
+    private readonly otp: OtpService,
   ) {}
 
   /** Create a new savings or share account for a member. */
@@ -136,6 +142,16 @@ export class SavingsSharesService {
       return replay;
     }
 
+    if (!input.skipHighValueOtp) {
+      await this.otp.requireForHighValue({
+        staffId: input.postedByStaffId,
+        purpose: 'large-withdrawal',
+        code: input.otp,
+        amount: input.amount,
+        accountId: input.accountId,
+      });
+    }
+
     const txn = await this.ledger.postWithdrawal({
       accountId: account.id,
       amount: input.amount,
@@ -146,6 +162,26 @@ export class SavingsSharesService {
     });
     await this.queueAccountNotification(account.memberId, 'withdrawal-posted', txn, account.accountNumber);
     return txn;
+  }
+
+  /**
+   * Release a reserved hold then post the matching withdrawal. Used by Chapa B2C
+   * so available-balance checks see the held funds again in the same request
+   * transaction. Idempotent on `reference` — a retry releases a leftover hold.
+   */
+  async withdrawAgainstHold(input: WithdrawalInput & { holdId: string }): Promise<Transaction> {
+    const replay = await this.resolveIdempotentSavingsTransaction(input.reference, {
+      accountId: input.accountId,
+      type: 'withdrawal',
+      amount: input.amount,
+    });
+    if (replay) {
+      await this.releaseHoldIfActive(input.holdId);
+      return replay;
+    }
+
+    await this.ledger.releaseHold(input.holdId);
+    return this.withdraw({ ...input, skipHighValueOtp: true });
   }
 
   /** Purchase shares for a member. */
@@ -215,6 +251,17 @@ export class SavingsSharesService {
   /** Release a previously placed collateral hold. */
   async releaseHold(holdId: string): Promise<FundsHold> {
     return this.ledger.releaseHold(holdId);
+  }
+
+  private async releaseHoldIfActive(holdId: string): Promise<void> {
+    try {
+      await this.ledger.releaseHold(holdId);
+    } catch (err) {
+      if (err instanceof ConflictException || err instanceof NotFoundException) {
+        return;
+      }
+      throw err;
+    }
   }
 
   /** Calculate loan eligibility ceiling based on member's savings balance multiplier. */

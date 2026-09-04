@@ -20,6 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { FormFieldGroup } from '@/components/forms/FormFieldGroup';
 import { apiClient, getSessionUser } from '@/lib/api-client';
 import type { AuthUser } from '@/types';
+import { useLang } from '@/components/i18n';
+import OtpRequestField from '@/components/auth/OtpRequestField';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -36,19 +38,21 @@ interface PasswordForm {
   current: string;
   next: string;
   confirm: string;
+  otp: string;
 }
 
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-export default function ProfilePage({ eyebrow = 'Account', platformLevel = false }: ProfilePageProps) {
+export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platformLevel = false }: ProfilePageProps) {
+  const { t } = useLang();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Password change form
-  const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '' });
+  const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '', otp: '' });
   const [pwVisible, setPwVisible] = useState({ current: false, next: false, confirm: false });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwSuccess, setPwSuccess] = useState(false);
@@ -67,7 +71,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
         if (session) {
           setUser(session);
         } else {
-          setError('Could not load profile. Please sign in again.');
+          setError(t('profile.loadError'));
         }
       } finally {
         setLoading(false);
@@ -99,15 +103,28 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
       setPwError('New password and confirmation do not match.');
       return;
     }
+    if (!/^\d{6}$/.test(pwForm.otp)) {
+      setPwError('Enter the 6-digit email verification code.');
+      return;
+    }
 
     setPwSaving(true);
     try {
-      // Backend doesn't have a password change endpoint yet — simulate success
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await apiClient.post('/auth/change-password', {
+        currentPassword: pwForm.current,
+        newPassword: pwForm.next,
+        otp: pwForm.otp,
+      });
       setPwSuccess(true);
-      setPwForm({ current: '', next: '', confirm: '' });
-    } catch {
-      setPwError('Failed to update password. Please try again.');
+      setPwForm({ current: '', next: '', confirm: '', otp: '' });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Failed to update password. Please check current password and try again.';
+      setPwError(msg);
     } finally {
       setPwSaving(false);
     }
@@ -137,7 +154,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-gold animate-spin" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading profile…</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('profile.loading')}</p>
         </div>
       </div>
     );
@@ -150,7 +167,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
         <Card className="max-w-md w-full">
           <CardContent className="text-center py-10">
             <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{error}</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{error ?? t('profile.loadError')}</p>
           </CardContent>
         </Card>
       </div>
@@ -161,10 +178,10 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">{eyebrow}</p>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">My Profile</h1>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">{t(eyebrow)}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t('profile.title')}</h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          View your account information and manage security settings.
+          {t('profile.subtitle')}
         </p>
       </div>
 
@@ -173,7 +190,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
           <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
-            Platform-Level Account · Operates outside per-tenant RLS scoping
+            {t('profile.platformBadge')}
           </p>
         </div>
       )}
@@ -306,7 +323,9 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
                   <Key className="w-4 h-4 text-gold" />
                   Change Password
                 </CardTitle>
-                <CardDescription>Update your account password for security</CardDescription>
+                <CardDescription>
+                  Update your password. A one-time code is emailed to your login address first.
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -381,6 +400,13 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
                   </FormFieldGroup>
                 </div>
 
+                <OtpRequestField
+                  purpose="password-change"
+                  value={pwForm.otp}
+                  onChange={(otp) => handlePwChange('otp', otp)}
+                  disabled={pwSaving}
+                />
+
                 {/* Password validation feedback */}
                 {pwForm.next.length > 0 && (
                   <div className="flex flex-wrap gap-3 text-[11px]">
@@ -423,21 +449,23 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
                   </div>
                 )}
 
-                <div className="mb-6 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2.5">
-                  <span className="text-amber-500 text-lg leading-none">⚠</span>
-                  <div className="text-xs text-amber-800">
-                    <strong>Password updates currently disabled.</strong> The authentication backend is being migrated to a new identity provider. Password changes will be re-enabled in a future update.
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-end pt-2">
                   <button
-                    type="button"
-                    disabled
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gold text-midnight font-semibold text-sm tracking-wide disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    type="submit"
+                    disabled={pwSaving}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light font-bold text-xs sm:text-sm tracking-wide shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                   >
-                    <Save className="w-4 h-4" />
-                    Update Password (Coming Soon)
+                    {pwSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Updating Password...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Update Password
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -490,7 +518,7 @@ export default function ProfilePage({ eyebrow = 'Account', platformLevel = false
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">2FA</p>
-                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Not configured</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Email OTP on sensitive actions</p>
                   </div>
                 </div>
               </div>

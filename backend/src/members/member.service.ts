@@ -1,7 +1,27 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { Not, QueryFailedError } from 'typeorm';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+  forwardRef,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcryptjs';
+import { randomBytes, randomUUID } from 'crypto';
+import { In, Not, QueryFailedError, type Repository } from 'typeorm';
+import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common/tenant-context/tenant-context.service';
+import { StaffAccountService } from '../security-audit';
+import { TenantsService } from '../tenants';
+import { LedgerEntryEntity } from '../ledger/ledger-entry.entity';
+import { LoanGuarantorEntity } from '../loans/entities/loan-guarantor.entity';
+import { LoanRepaymentEntity } from '../loans/entities/loan-repayment.entity';
+import { LoanEntity } from '../loans/entities/loan.entity';
+import { AccountEntity } from '../savings-shares/account.entity';
+import { FundsHoldEntity } from '../savings-shares/funds-hold.entity';
+import { SavingsTransactionEntity } from '../savings-shares/savings-transaction.entity';
 import {
   normalizeEmail,
   normalizeMemberNumber,
@@ -38,6 +58,19 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function isUndefinedTable(err: unknown): boolean {
+  if (!(err instanceof QueryFailedError)) {
+    return false;
+  }
+  const driver = err as QueryFailedError & { driverError?: { code?: string } };
+  return driver.driverError?.code === '42P01';
+}
+
+function generateTemporaryPassword(): string {
+  const token = randomBytes(8).toString('base64url').replace(/[-_]/g, 'x').slice(0, 8);
+  return `Isms-${token}9!`;
+}
+
 function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let current = '';
@@ -68,9 +101,17 @@ function parseCsvLine(line: string): string[] {
  */
 @Injectable()
 export class MemberService {
+  private readonly logger = new Logger(MemberService.name);
   private readonly stagingCache = new Map<string, Partial<MemberEntity>[]>();
 
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly staffAccounts: StaffAccountService,
+    private readonly tenants: TenantsService,
+    @Inject(forwardRef(() => NotificationService))
+    private readonly notifications: NotificationService,
+    private readonly config: ConfigService,
+  ) {}
 
   /** `POST /api/members` */
   async create(input: CreateMemberDto): Promise<Member> {
@@ -80,10 +121,12 @@ export class MemberService {
       throw new UnauthorizedException('No tenant context found');
     }
 
-    const memberNumber = normalizeMemberNumber(input.memberNumber);
     const nationalId = normalizeNationalId(input.idType, input.nationalId);
     const phone = normalizePhone(input.phone);
     const email = normalizeEmail(input.email);
+    const memberNumber = input.memberNumber
+      ? normalizeMemberNumber(input.memberNumber)
+      : await this.allocateNextMemberNumber(repo);
 
     await this.assertUniqueFields(repo, { memberNumber, nationalId, phone, email });
 
@@ -104,11 +147,63 @@ export class MemberService {
 
     try {
       const saved = await repo.save(member);
-      return this.mapToContract(saved);
+      const created = this.mapToContract(saved);
+      await this.tryProvisionPortalLoginAndEmail(created);
+      return created;
     } catch (err) {
+      // Concurrent create may race on auto-number; retry once with a fresh allocation.
+      if (!input.memberNumber && this.isUniqueMemberNumberViolation(err)) {
+        member.memberNumber = await this.allocateNextMemberNumber(repo);
+        try {
+          const saved = await repo.save(member);
+          const created = this.mapToContract(saved);
+          await this.tryProvisionPortalLoginAndEmail(created);
+          return created;
+        } catch (retryErr) {
+          this.rethrowUniqueViolation(retryErr);
+          throw retryErr;
+        }
+      }
       this.rethrowUniqueViolation(err);
       throw err;
     }
+  }
+
+  /**
+   * Next unique `MEM-#####` in the current tenant (RLS). Starts at `MEM-10001`
+   * when the tenant has no numeric member numbers yet.
+   */
+  private async allocateNextMemberNumber(repo: Repository<MemberEntity>): Promise<string> {
+    const rows = await repo
+      .createQueryBuilder('member')
+      .select('member.memberNumber', 'memberNumber')
+      .where(`member.member_number ~ '^MEM-[0-9]+$'`)
+      .getRawMany<{ memberNumber: string }>();
+
+    let maxSuffix = 10000;
+    for (const row of rows) {
+      const match = /^MEM-(\d+)$/i.exec(row.memberNumber);
+      if (!match) continue;
+      const value = Number.parseInt(match[1], 10);
+      if (Number.isFinite(value) && value > maxSuffix) {
+        maxSuffix = value;
+      }
+    }
+
+    const next = maxSuffix + 1;
+    const suffix = next <= 99999 ? String(next).padStart(5, '0') : String(next);
+    return `MEM-${suffix}`;
+  }
+
+  private isUniqueMemberNumberViolation(err: unknown): boolean {
+    if (!(err instanceof QueryFailedError)) {
+      return false;
+    }
+    const driver = err as QueryFailedError & { driverError?: { code?: string; constraint?: string } };
+    return (
+      driver.driverError?.code === '23505' &&
+      (driver.driverError.constraint ?? '').includes('member_number')
+    );
   }
 
   /** `GET /api/members/{id}` */
@@ -119,6 +214,20 @@ export class MemberService {
       throw new NotFoundException(`Member with ID "${memberId}" not found`);
     }
     return this.mapToContract(member);
+  }
+
+  /**
+   * Exact email match in the current tenant (RLS). Used by member self-service
+   * to link a `staff_accounts` login to a `members` row without listing the directory.
+   */
+  async findByEmail(email: string): Promise<Member | null> {
+    const normalized = normalizeEmail(email);
+    if (!normalized) {
+      return null;
+    }
+    const repo = this.tenantContext.repo(MemberEntity);
+    const member = await repo.findOne({ where: { email: normalized } });
+    return member ? this.mapToContract(member) : null;
   }
 
   /** UUID or human member number (e.g. MEM-10001). */
@@ -234,7 +343,7 @@ export class MemberService {
     }
   }
 
-  /** `DELETE /api/members/{id}` — hard delete when no related rows; otherwise 409. */
+  /** `DELETE /api/members/{id}` — tenant-admin hard delete; cascades related tenant rows. */
   async remove(memberId: MemberId): Promise<void> {
     const repo = this.tenantContext.repo(MemberEntity);
     const member = await repo.findOne({ where: { id: memberId } });
@@ -242,13 +351,62 @@ export class MemberService {
       throw new NotFoundException(`Member with ID "${memberId}" not found`);
     }
 
+    await this.cascadeDeleteMemberRecords(memberId);
+    if (member.email) {
+      await this.staffAccounts.removeMemberLogin(member.email);
+    }
+    await repo.remove(member);
+  }
+
+  /**
+   * Removes dependent rows that block `members` FK constraints. Tenant-admin only
+   * (route RBAC); tellers use status changes instead.
+   */
+  private async cascadeDeleteMemberRecords(memberId: MemberId): Promise<void> {
+    const manager = this.tenantContext.getManager();
+
+    const accounts = await manager.getRepository(AccountEntity).find({
+      where: { memberId },
+      select: { id: true },
+    });
+    const accountIds = accounts.map((account) => account.id);
+
+    await manager.getRepository(LoanGuarantorEntity).delete({ guarantorMemberId: memberId });
+    if (accountIds.length > 0) {
+      await manager.getRepository(LoanGuarantorEntity).delete({ pledgedAccountId: In(accountIds) });
+    }
+
+    const loans = await manager.getRepository(LoanEntity).find({
+      where: { memberId },
+      select: { id: true },
+    });
+    const loanIds = loans.map((loan) => loan.id);
+
+    if (loanIds.length > 0) {
+      await manager.getRepository(LoanRepaymentEntity).delete({ loanId: In(loanIds) });
+      await manager.getRepository(LoanGuarantorEntity).delete({ loanId: In(loanIds) });
+      await manager.getRepository(LoanEntity).delete({ id: In(loanIds) });
+    }
+
+    if (accountIds.length > 0) {
+      await manager.getRepository(LedgerEntryEntity).delete({ accountId: In(accountIds) });
+      await manager.getRepository(SavingsTransactionEntity).delete({ accountId: In(accountIds) });
+      await manager.getRepository(FundsHoldEntity).delete({ accountId: In(accountIds) });
+      await manager.getRepository(AccountEntity).delete({ id: In(accountIds) });
+    }
+
+    await this.deleteIfRelationExists('mobile_money_staged_requests', 'member_id', memberId);
+    await this.deleteIfRelationExists('chapa_payments', 'member_id', memberId);
+  }
+
+  /** Channel tables land in later migrations — a missing relation must not 500 delete. */
+  private async deleteIfRelationExists(table: string, column: string, id: string): Promise<void> {
     try {
-      await repo.remove(member);
+      await this.tenantContext.getManager().query(`DELETE FROM "${table}" WHERE "${column}" = $1`, [id]);
     } catch (err) {
-      if (this.isFkViolation(err)) {
-        throw new ConflictException(
-          'This member has savings accounts, loans, or other records. Set status to Inactive instead of deleting.',
-        );
+      if (isUndefinedTable(err)) {
+        this.logger.warn(`Skip cascade delete on missing table "${table}"`);
+        return;
       }
       throw err;
     }
@@ -539,11 +697,76 @@ export class MemberService {
     const saved = await repo.save(validEntities);
     this.stagingCache.delete(stagingId);
 
+    for (const entity of saved) {
+      await this.tryProvisionPortalLoginAndEmail(this.mapToContract(entity));
+    }
+
     return {
       stagingId,
       committed: saved.length,
       skipped: 0,
     };
+  }
+
+  /**
+   * Creates a `member` staff login (same email) and emails the temporary password.
+   * SMTP failure must not undo the registration.
+   */
+  private async tryProvisionPortalLoginAndEmail(member: Member): Promise<void> {
+    try {
+      await this.provisionPortalLoginAndEmail(member);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Portal login / welcome email failed for ${member.email}: ${message}`);
+    }
+  }
+
+  private async provisionPortalLoginAndEmail(member: Member): Promise<void> {
+    if (!member.email) {
+      return;
+    }
+
+    const password = generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(password, 10);
+    const created = await this.staffAccounts.provisionMemberLogin({
+      email: member.email,
+      fullName: member.fullName,
+      passwordHash,
+    });
+    if (!created) {
+      this.logger.warn(`Skipped portal login for ${member.email} — a staff account already uses that email`);
+      return;
+    }
+
+    const tenantId = this.tenantContext.getTenantId();
+    const tenant = tenantId ? await this.tenants.get(tenantId) : null;
+    const frontend = (this.config.get<string>('FRONTEND_URL') ?? this.config.get<string>('CORS_ORIGIN') ?? '')
+      .trim()
+      .replace(/\/$/, '');
+
+    const payload = {
+      template: 'member-welcome' as const,
+      to: member.email,
+      data: {
+        memberName: member.fullName,
+        email: member.email,
+        password,
+        tenantCode: tenant?.code ?? '',
+        saccoName: tenant?.name ?? 'your SACCO',
+        loginUrl: frontend ? `${frontend}/login` : '',
+      },
+    };
+
+    if (!this.notifications.isConfigured()) {
+      if (this.config.get<string>('NODE_ENV') !== 'production') {
+        this.logger.warn(
+          `Welcome email not sent (SMTP unset). Member portal login: tenantCode="${payload.data.tenantCode}", email="${member.email}", password="${password}"`,
+        );
+      }
+      return;
+    }
+
+    this.notifications.enqueue(payload);
   }
 
   private async assertUniqueFields(
@@ -623,14 +846,6 @@ export class MemberService {
       throw new ConflictException('This email is already registered in this SACCO');
     }
     throw new ConflictException('A member with these details is already registered in this SACCO');
-  }
-
-  private isFkViolation(err: unknown): boolean {
-    if (!(err instanceof QueryFailedError)) {
-      return false;
-    }
-    const driver = err as QueryFailedError & { driverError?: { code?: string } };
-    return driver.driverError?.code === '23503';
   }
 
   /** Maps a database MemberEntity to the public API Member contract. */

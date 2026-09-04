@@ -5,20 +5,21 @@ import { Bell, Globe, Moon, Shield, Save, Loader2, CheckCircle2 } from 'lucide-r
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useAuthUser } from '@/components/auth/useAuthUser';
+import { useLang } from '@/components/i18n';
 
 interface SettingsPageProps {
   eyebrow?: string;
 }
 
-export default function SettingsPage({ eyebrow = 'Account Configuration' }: SettingsPageProps) {
+export default function SettingsPage({ eyebrow = 'settings.eyebrowAccount' }: SettingsPageProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const user = useAuthUser();
+  const { t } = useLang();
 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
   // Form State
-  const [language, setLanguage] = useState('en-US');
   const [timezone, setTimezone] = useState('Africa/Addis_Ababa');
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
@@ -40,10 +41,10 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
     <div className="space-y-6 max-w-4xl">
       {/* Page Header */}
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">{eyebrow}</p>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">System Settings</h1>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mb-1">{t(eyebrow)}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t('settings.title')}</h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          Manage your personal preferences, notifications, and application settings.
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -54,15 +55,15 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Moon className="w-4 h-4 text-gold" />
-              Appearance
+              {t('settings.appearance')}
             </CardTitle>
-            <CardDescription>Customize how the platform looks</CardDescription>
+            <CardDescription>{t('settings.appearanceDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Dark Mode</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Switch between light and dark themes</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('settings.darkMode')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('settings.darkModeDesc')}</p>
               </div>
               <button
                 type="button"
@@ -86,28 +87,23 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-sky-500" />
-              Regional & Language
+              {t('settings.regional')}
             </CardTitle>
-            <CardDescription>Set your language and timezone preferences</CardDescription>
+            <CardDescription>{t('settings.regionalDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Language
+                {t('settings.language')}
               </label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 focus:border-gold focus:ring-2 focus:ring-gold/20 outline-none transition-all"
-              >
-                <option value="en-US">English (US)</option>
-                <option value="am-ET">Amharic (Ethiopia)</option>
-              </select>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                {t('settings.languageHint')}
+              </p>
             </div>
             
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Timezone
+                {t('settings.timezone')}
               </label>
               <select
                 value={timezone}
@@ -126,15 +122,15 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-amber-500" />
-              Notifications
+              {t('settings.notifications')}
             </CardTitle>
-            <CardDescription>Choose how you want to be alerted</CardDescription>
+            <CardDescription>{t('settings.notificationsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Email Alerts</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Receive critical system alerts via email</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('settings.emailAlerts')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('settings.emailAlertsDesc')}</p>
               </div>
               <button
                 type="button"
@@ -149,8 +145,8 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
 
             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">SMS Notifications</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Get text messages for important events</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('settings.smsAlerts')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('settings.smsAlertsDesc')}</p>
               </div>
               <button
                 type="button"
@@ -165,8 +161,8 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
 
             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Monthly Reports</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Receive automated monthly portfolio summaries</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('settings.monthlyReports')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('settings.monthlyReportsDesc')}</p>
               </div>
               <button
                 type="button"
@@ -186,25 +182,25 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-emerald-500" />
-              Security & Audit
+              {t('settings.security')}
             </CardTitle>
-            <CardDescription>View your active session and role context</CardDescription>
+            <CardDescription>{t('settings.securityDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">Active Session Details</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('settings.sessionDetails')}</p>
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-slate-500 block mb-0.5">User ID</span>
+                  <span className="text-slate-500 block mb-0.5">{t('settings.userId')}</span>
                   <span className="font-mono text-slate-700 dark:text-slate-300 break-all">{user?.id || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block mb-0.5">Role</span>
+                  <span className="text-slate-500 block mb-0.5">{t('settings.role')}</span>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">{user?.role || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block mb-0.5">Tenant Scope</span>
-                  <span className="font-mono text-slate-700 dark:text-slate-300 break-all">{user?.tenantId || 'Platform (Global)'}</span>
+                  <span className="text-slate-500 block mb-0.5">{t('settings.tenantScope')}</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300 break-all">{user?.tenantId || t('settings.platformGlobal')}</span>
                 </div>
               </div>
             </div>
@@ -214,13 +210,13 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
         {/* Save Action */}
         <div className="flex items-center justify-between pt-4">
           <p className="text-xs text-slate-500">
-            Some settings may require a page reload to take full effect.
+            {t('settings.reloadNote')}
           </p>
           <div className="flex items-center gap-4">
             {success && (
               <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
                 <CheckCircle2 className="w-4 h-4" />
-                Local preferences applied
+                {t('settings.applied')}
               </span>
             )}
             <button
@@ -231,12 +227,12 @@ export default function SettingsPage({ eyebrow = 'Account Configuration' }: Sett
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  {t('settings.saving')}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save Preferences
+                  {t('settings.save')}
                 </>
               )}
             </button>

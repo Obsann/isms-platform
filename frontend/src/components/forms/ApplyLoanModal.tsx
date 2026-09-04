@@ -27,6 +27,10 @@ interface ApplyLoanModalProps {
   onClose: () => void;
   onSubmit: (data: ApplyLoanFormData) => Promise<void> | void;
   members: Member[];
+  /** When set, borrower is fixed (member self-service — no picker). */
+  lockedMemberId?: string;
+  /** Staff desk can attach guarantors; member self-service cannot (API staff-only). */
+  allowGuarantors?: boolean;
 }
 
 const SAVINGS_MULTIPLIER = 3;
@@ -52,7 +56,18 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: A
   const [pledgedAmount, setPledgedAmount] = useState<number>(5000);
   const [guarantorBalances, setGuarantorBalances] = useState<Record<string, number>>({});
 
-  const currentMemberId = selectedMemberId || members[0]?.id || '';
+  const currentMemberId = lockedMemberId || selectedMemberId || members[0]?.id || '';
+  const lockedMember = lockedMemberId
+    ? members.find((m) => m.id === lockedMemberId) ?? null
+    : null;
+  const showGuarantors = allowGuarantors && !lockedMemberId;
+
+  // Keep locked borrower in sync when the modal opens for self-service.
+  useEffect(() => {
+    if (isOpen && lockedMemberId) {
+      setSelectedMemberId(lockedMemberId);
+    }
+  }, [isOpen, lockedMemberId]);
 
   // Fetch borrower savings balance whenever selected member changes
   useEffect(() => {
@@ -252,21 +267,33 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: A
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Member Selection */}
-          <FormFieldGroup label="Borrower Member">
-            <select
-              value={currentMemberId}
-              onChange={(e) => setSelectedMemberId(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.fullName} ({m.memberNumber})
-                </option>
-              ))}
-            </select>
-          </FormFieldGroup>
+          {/* Member Selection (staff) or locked borrower (member portal) */}
+          {lockedMember ? (
+            <FormFieldGroup label="Borrower">
+              <p className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm font-medium">
+                {lockedMember.fullName}{' '}
+                <span className="font-mono text-amber-800 dark:text-gold">({lockedMember.memberNumber})</span>
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                You are applying for yourself. A loan officer or tenant admin will review and approve.
+              </p>
+            </FormFieldGroup>
+          ) : (
+            <FormFieldGroup label="Borrower Member">
+              <select
+                value={currentMemberId}
+                onChange={(e) => setSelectedMemberId(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+              >
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.fullName} ({m.memberNumber})
+                  </option>
+                ))}
+              </select>
+            </FormFieldGroup>
+          )}
 
           {/* Real-time Eligibility & Policy Card */}
           <div className="p-4 rounded-xl border bg-gradient-to-br from-slate-50 to-indigo-50/40 dark:from-slate-900/60 dark:to-indigo-950/20 border-indigo-200/80 dark:border-indigo-800/50 space-y-3">
@@ -563,6 +590,7 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: A
               </div>
             </div>
           </div>
+          )}
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">

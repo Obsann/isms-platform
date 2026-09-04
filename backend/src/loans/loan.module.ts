@@ -4,6 +4,7 @@ import { ChannelIntegrationModule } from '../channel-integration';
 import { LedgerModule } from '../ledger';
 import { MemberModule } from '../members';
 import { SavingsSharesModule } from '../savings-shares';
+import { SecurityAuditModule } from '../security-audit';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
 import { LoanEntity } from './entities/loan.entity';
@@ -26,6 +27,7 @@ import { LoanService } from './loan.service';
     LedgerModule,
     MemberModule,
     ChannelIntegrationModule,
+    SecurityAuditModule,
   ],
   controllers: [LoanController],
   providers: [LoanService],

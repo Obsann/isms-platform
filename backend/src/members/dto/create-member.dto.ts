@@ -27,13 +27,15 @@ const emptyToUndefined = ({ value }: { value: unknown }) =>
   value === '' || value === null ? undefined : value;
 
 export class CreateMemberDto {
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  /** Optional — when omitted, the API assigns the next unique `MEM-#####` for the tenant. */
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === '' || value === null || value === undefined) return undefined;
+    return typeof value === 'string' ? value.trim().toUpperCase() : value;
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(MEMBER_NUMBER_PATTERN, { message: MEMBER_NUMBER_MESSAGE })
-  memberNumber!: string;
+  memberNumber?: string;
 
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()

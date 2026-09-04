@@ -1,7 +1,12 @@
 import type { Amount, MemberId } from '../types';
 
 /** Email templates standing in for the SMS/WhatsApp gateway this phase. */
-export type NotificationTemplate = 'deposit-posted' | 'withdrawal-posted' | 'loan-approved' | 'otp';
+export type NotificationTemplate =
+  | 'deposit-posted'
+  | 'withdrawal-posted'
+  | 'loan-approved'
+  | 'otp'
+  | 'member-welcome';
 
 export interface SendNotificationInput {
   template: NotificationTemplate;
@@ -15,6 +20,7 @@ export interface SendNotificationInput {
    *   balanceAfter, accountNumber, reference?
    * - `loan-approved`: memberName, loanNumber, amount, currency, termMonths?
    * - `otp`: code, expirySeconds, purpose?
+   * - `member-welcome`: memberName, email, password, tenantCode, saccoName, loginUrl?
    */
   data: Record<string, string | number>;
 }
@@ -26,10 +32,11 @@ export interface NotificationResult {
 }
 
 /**
- * Mobile money C2B (member deposit) callback shape.
+ * Generic mobile money C2B (member deposit) callback shape.
  *
- * Documented in `docs/openapi/`. The member portal mocks C2B/B2C as
- * "pending confirmation" only — nothing here talks to a live gateway.
+ * Documented in `docs/openapi/` for Telebirr / M-PESA / CBE Birr.
+ * Live member deposits go through Chapa (`ChapaService`) and still post
+ * savings via `SavingsSharesService.deposit`.
  */
 export interface MobileMoneyC2BWebhook {
   providerReference: string;

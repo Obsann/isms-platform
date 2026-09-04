@@ -3,13 +3,15 @@
 import { LinkedMemberGate } from '@/components/member-portal/LinkedMemberGate';
 import MemberMobileMoneyView from '@/components/member-portal/MemberMobileMoneyView';
 import { MemberPage } from '@/components/member-portal/MemberPage';
+import { useLang } from '@/components/i18n';
 
 export default function MemberMobileMoneyPage() {
+  const { t } = useLang();
   return (
     <MemberPage
-      eyebrow="Channels"
-      title="Mobile money"
-      description="Mock Telebirr, M-PESA, and CBE Birr requests. They stay pending confirmation and never post as a success."
+      eyebrow={t('dash.memberChannels')}
+      title={t('dash.memberMomoTitle')}
+      description={t('dash.memberMomoDesc')}
     >
       <LinkedMemberGate>{(member) => <MemberMobileMoneyView member={member} />}</LinkedMemberGate>
     </MemberPage>

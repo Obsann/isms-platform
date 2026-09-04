@@ -15,6 +15,10 @@ export interface WithdrawalInput {
   reference?: string;
   narration?: string;
   postedByStaffId?: StaffId | null;
+  /** Required when amount ≥ HIGH_VALUE_OTP_THRESHOLD. */
+  otp?: string;
+  /** Chapa already consumed the code at initialize. */
+  skipHighValueOtp?: boolean;
 }
 
 export interface SharePurchaseInput {

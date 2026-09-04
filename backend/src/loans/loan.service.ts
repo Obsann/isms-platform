@@ -13,6 +13,7 @@ import { TenantContextService } from '../common';
 import { SyncConflictException } from '../common/sync-conflict.exception';
 import { LedgerService, fromCents, toCents } from '../ledger';
 import { MemberService } from '../members';
+import { OtpService } from '../security-audit';
 import { SavingsSharesService } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
@@ -62,6 +63,7 @@ export class LoanService {
     private readonly memberService: MemberService,
     private readonly notifications: NotificationService,
     private readonly configService: ConfigService,
+    private readonly otp: OtpService,
   ) {}
 
   // ------------------------------------------------------------------ apply
@@ -219,6 +221,14 @@ export class LoanService {
       );
     }
 
+    await this.otp.requireForHighValue({
+      staffId: input.initiatedByStaffId,
+      purpose: 'loan-disbursement',
+      code: input.otp,
+      amount: input.amount,
+      loanId: input.loanId,
+    });
+
     loan.status = 'disbursed';
     loan.disbursedAmount = input.amount;
     loan.disbursedToAccountId = input.destinationAccountId;
@@ -354,7 +364,13 @@ export class LoanService {
       return this.findById(trimmed);
     }
     const repo = this.ctx.repo(LoanEntity);
-    const loan = await repo.findOne({ where: { loanNumber: trimmed } });
+    let loan = await repo.findOne({ where: { loanNumber: trimmed } });
+    if (!loan) {
+      loan = await repo
+        .createQueryBuilder('loan')
+        .where('loan.loanNumber ILIKE :num', { num: trimmed })
+        .getOne();
+    }
     if (!loan) {
       throw new NotFoundException(`Loan "${trimmed}" not found`);
     }

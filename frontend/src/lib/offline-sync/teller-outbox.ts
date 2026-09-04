@@ -20,6 +20,7 @@ import {
   isNetworkFailure,
 } from './network';
 import type { QueuedTellerOperation, TellerOpKind } from './types';
+import { requiresHighValueOtp } from '@/lib/otp';
 
 export interface TellerSubmitInput {
   kind: TellerOpKind;
@@ -29,6 +30,7 @@ export interface TellerSubmitInput {
   amount: string;
   userReference?: string;
   userNarration?: string;
+  otp?: string;
 }
 
 export type TellerSubmitResult =
@@ -40,6 +42,9 @@ export async function submitTellerOperation(input: TellerSubmitInput): Promise<T
   const narration = defaultNarration(input.kind, input.userNarration, input.userReference);
 
   if (isBrowserOffline()) {
+    if (input.kind === 'withdrawal' && requiresHighValueOtp(input.amount)) {
+      throw new Error('Large withdrawals need an email code and an online connection.');
+    }
     const queueItem = await enqueueOperation(input, idempotencyKey, narration);
     return { mode: 'queued', queueItem };
   }
@@ -73,6 +78,7 @@ async function executeOnline(
         amount: input.amount,
         reference: idempotencyKey,
         narration,
+        otp: input.otp,
       });
       return { mode: 'online', withdrawal };
     case 'loan-repayment':
@@ -100,6 +106,7 @@ async function enqueueOperation(
     loanId: input.loanId,
     amount: input.amount,
     narration,
+    otp: input.otp,
     status: 'queued',
     createdAt: new Date().toISOString(),
   };
@@ -187,6 +194,7 @@ async function syncOneItem(item: QueuedTellerOperation): Promise<void> {
         amount: item.amount,
         userReference: item.idempotencyKey,
         userNarration: item.narration,
+        otp: item.otp,
       },
       item.idempotencyKey,
       item.narration ?? defaultNarration(item.kind),

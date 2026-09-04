@@ -70,7 +70,10 @@ src/
 | `(teller)` | `/teller/...` | Jerry + Abenezer |
 | `(member)` | `/member/...` | Liya |
 
-Sign in at `/login`. Seeded accounts (password `DevPassword!123`):
+Sign in at `/login`. Seeded accounts (password `DevPassword!123`).
+
+Demo SACCO **names** are Tsehay Sacco (`tenant-a`) and Chereka Sacco (`tenant-b`).
+Login still uses those codes (and `platform` for Super Admin), not the display names.
 
 | tenantCode | email | lands on |
 |---|---|---|

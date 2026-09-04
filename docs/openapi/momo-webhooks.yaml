@@ -193,8 +193,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /webhooks/chapa:
+    post:
+      summary: Chapa C2B webhook (member savings deposit)
+      operationId: processChapaWebhook
+      description: |
+        Live Chapa callback for member savings deposits. HMAC-SHA256 over the raw
+        body using `CHAPA_WEBHOOK_SECRET` (`x-chapa-signature`). Unsigned `status`
+        in the payload is never trusted — the API re-verifies with Chapa (or the
+        mock-confirmed flag when keys are unset) and credits savings only through
+        the ledger posting function, using `tx_ref` as the idempotency reference.
+      parameters:
+        - in: header
+          name: x-chapa-signature
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 hex digest of the raw JSON body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChapaC2BPayload'
+            example:
+              tx_ref: "isms-00000000000000000000000000000001aabbccdd"
+              status: "success"
+              amount: "1500.00"
+              currency: "ETB"
+              reference: "JP123456"
+      responses:
+        '200':
+          description: Webhook received. Ledger posting is idempotent on tx_ref.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAcknowledgment'
+        '401':
+          description: HMAC signature verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: tx_ref already posted for a different amount.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
+    ChapaC2BPayload:
+      type: object
+      required:
+        - tx_ref
+      properties:
+        tx_ref:
+          type: string
+          description: ISMS checkout reference (`isms-{32hex-tenantId}{8hex-nonce}`, 45 chars). Also the ledger deposit idempotency key.
+        status:
+          type: string
+          description: Chapa event status. Informational only — the API verifies before posting.
+        amount:
+          type: string
+          example: "1500.00"
+        currency:
+          type: string
+          enum: [ETB]
+        reference:
+          type: string
+          description: Chapa's own payment reference id.
+
     MobileMoneyC2BPayload:
       type: object
       required:

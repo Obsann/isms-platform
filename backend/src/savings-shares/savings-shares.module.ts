@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ChannelIntegrationModule } from '../channel-integration';
+import { ChannelIntegrationModule } from '../channel-integration/channel-integration.module';
 import { LedgerModule } from '../ledger';
 import { MemberModule } from '../members';
+import { SecurityAuditModule } from '../security-audit';
 import { AccountEntity } from './account.entity';
 import { FundsHoldEntity } from './funds-hold.entity';
 import { SavingsSharesController } from './savings-shares.controller';
@@ -21,7 +22,8 @@ import { SavingsTransactionEntity } from './savings-transaction.entity';
     ConfigModule,
     MemberModule,
     LedgerModule,
-    ChannelIntegrationModule,
+    SecurityAuditModule,
+    forwardRef(() => ChannelIntegrationModule),
     TypeOrmModule.forFeature([AccountEntity, SavingsTransactionEntity, FundsHoldEntity]),
   ],
   controllers: [SavingsSharesController],

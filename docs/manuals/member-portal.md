@@ -4,13 +4,17 @@ Web only. There is no USSD in MVP.
 
 ## Sign in
 
-Seed member for Tenant A (after `npm run seed`):
+Seed member for **Tsehay Sacco** (after `npm run seed`):
 
-- Tenant code: `tenant-a`
+- Tenant code: `tenant-a` (login code; display name is Tsehay Sacco)
 - Email: `abebe.bikila@tenant-a.dev`
 - Password: same shared dev password as staff (`DevPassword!123`)
 
-The portal resolves your member record by email, then calls `/api/members/{your-id}/…`.
+Tenant B demo member: `almaz.desta@tenant-b.dev` / `tenant-b`.
+
+The portal resolves your member record via `GET /api/self-service/me` (login
+email must match the member profile email). `GET /api/member-self/me` is an
+alias for the same lookup. Then the UI calls `/api/members/{your-id}/…`.
 You cannot read another member's id (403). Staff register members; there is no
 self-registration.
 
@@ -20,12 +24,16 @@ self-registration.
 |---|---|
 | Balance | Live savings and share accounts |
 | Statement | Transaction history for your accounts |
-| Loans | Your applications and statuses |
-| Mobile money | **Mock only** — C2B/B2C stays `pending confirmation`. No money moves. |
+| Loans | Your applications and statuses — **Apply for loan** uses `POST /api/loans`; staff approve later |
+| Mobile money | **Chapa** — hosted checkout deposits and Telebirr / M-PESA withdrawals. Savings move after verify. Sandbox phone `0900123456` (OTP `12345`). |
+
+Optional dev-only staged C2B/B2C webhook shapes (never ledger-posted) remain in
+`mobile_money_staged_requests` after seed — see `POST /api/member-self/momo/stage`
+in OpenAPI. The member portal UI uses Chapa, not the staging form.
 
 ## What you cannot do here
 
-- Live Telebirr / M-PESA / CBE Birr (documented in `docs/openapi/`, not connected)
+- Live Telebirr / M-PESA / CBE Birr webhooks outside Chapa (documented in `docs/openapi/`, not connected)
 - Register yourself (staff register members)
 - Approve loans
 

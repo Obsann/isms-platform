@@ -2,6 +2,7 @@
 
 ## Sign in
 
+- SACCO: **Tsehay Sacco** (seeded). Login code stays `tenant-a`.
 - Tenant code: `tenant-a`
 - Email: `teller@tenant-a.dev`
 - Lands on `/teller/dashboard`, then **Teller Desk** (`/teller/desk`)
@@ -26,6 +27,14 @@ cannot be withdrawn.
 On the desk, record a repayment against a disbursed loan. This posts through the
 ledger (principal). Use a unique reference; the same reference with a different
 amount is a **sync conflict** (HTTP 409).
+
+## Member directory (`/teller/members`)
+
+Register, search, edit, and change member status in your tenant.
+
+- Use the **status** icon (not trash) to **Set inactive** or **Set active**.
+- Inactive members stay on the list; use **Set active** later to restore them.
+- **Permanent delete** is tenant-admin only.
 
 ## Offline
 

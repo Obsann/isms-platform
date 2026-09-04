@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditLogController } from './audit-log.controller';
 import { AuditLogEntity } from './audit-log.entity';
 import { AuditLogService } from './audit-log.service';
+import { OtpChallengeEntity } from './otp-challenge.entity';
+import { OtpService } from './otp.service';
 import { RolePermissionEntity } from './role-permission.entity';
 import { StaffAccountEntity } from './staff-account.entity';
 import { StaffAccountService } from './staff-account.service';
@@ -17,9 +19,11 @@ import { StaffAccountService } from './staff-account.service';
  * class so `AppModule` can register it after `TenantContextInterceptor`.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([StaffAccountEntity, RolePermissionEntity, AuditLogEntity])],
+  imports: [
+    TypeOrmModule.forFeature([StaffAccountEntity, RolePermissionEntity, AuditLogEntity, OtpChallengeEntity]),
+  ],
   controllers: [AuditLogController],
-  providers: [AuditLogService, StaffAccountService],
-  exports: [AuditLogService, StaffAccountService],
+  providers: [AuditLogService, StaffAccountService, OtpService],
+  exports: [AuditLogService, StaffAccountService, OtpService],
 })
 export class SecurityAuditModule {}

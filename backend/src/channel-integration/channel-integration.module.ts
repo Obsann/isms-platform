@@ -1,16 +1,32 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MemberModule } from '../members';
+import { SavingsSharesModule } from '../savings-shares/savings-shares.module';
+import { SecurityAuditModule } from '../security-audit';
+import { ChapaPaymentEntity } from './chapa-payment.entity';
+import { ChapaController, ChapaWebhookController } from './chapa.controller';
+import { ChapaService } from './chapa.service';
+import { MobileMoneyMockService } from './mobile-money-mock.service';
+import { MobileMoneyStagedRequestEntity } from './mobile-money-staged-request.entity';
 import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './notification.service';
 
 /**
- * Channel Integration — SMTP notifications (Task 25) + mobile-money webhook
- * contracts (Task 26, documented only).
+ * Channel Integration — SMTP notifications (Task 25), Chapa C2B deposits and
+ * B2C withdrawals (opt-in live gateway; mock when `CHAPA_SECRET_KEY` is unset),
+ * and staged mobile-money webhook shapes for dev/docs (Task 24/26).
  *
- * SMTP settings are read through ConfigService / `process.env` here only.
- * Mobile money C2B/B2C webhook contracts live in `docs/openapi/`.
+ * Keys are read through ConfigService / `process.env` here only.
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [
+    ConfigModule,
+    TypeOrmModule.forFeature([ChapaPaymentEntity, MobileMoneyStagedRequestEntity]),
+    forwardRef(() => MemberModule),
+    SecurityAuditModule,
+    forwardRef(() => SavingsSharesModule),
+  ],
+  controllers: [ChapaController, ChapaWebhookController],
   providers: [
     {
       provide: SMTP_TRANSPORT,
@@ -18,7 +34,9 @@ import { createSmtpTransport, NotificationService, SMTP_TRANSPORT } from './noti
       useFactory: createSmtpTransport,
     },
     NotificationService,
+    ChapaService,
+    MobileMoneyMockService,
   ],
-  exports: [NotificationService],
+  exports: [NotificationService, ChapaService, MobileMoneyMockService],
 })
 export class ChannelIntegrationModule {}

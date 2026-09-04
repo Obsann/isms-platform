@@ -18,7 +18,7 @@ Fayda-verifier roles ([`.cursor/rules/decisions.mdc`](../.cursor/rules/decisions
 | Manager | `tenant-admin` | tenant-admin | per tenant |
 | Teller | `teller` | teller | per tenant |
 | Loan Officer | `loan-officer` | tenant-admin | per tenant |
-| (member self-service) | `member` | member | not seeded — Liya Tasks 23–24 |
+| (member self-service) | `member` | member | per tenant, same email as the `members` row |
 | Auditor | — | — | **not a system role in MVP**; tenant-admin views the tenant audit log |
 
 `roles_permissions` remains a schema stub for post-MVP per-tenant overrides. MVP
@@ -30,7 +30,17 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 
 | Method | Path | super-admin | tenant-admin | teller | loan-officer | member |
 |---|---|---|---|---|---|---|
-| GET | `/api/auth/me` | Yes | Yes | Yes | Yes | |
+| POST | `/api/auth/otp/request` | Yes | Yes | Yes | Yes | Yes |
+| POST | `/api/auth/change-password` | Yes | Yes | Yes | Yes | Yes |
+| GET | `/api/auth/me` | Yes | Yes | Yes | Yes | Yes |
+| GET | `/api/self-service/me` | | | | | Yes |
+| GET | `/api/channel/chapa/status` | | | | | Yes |
+| POST | `/api/channel/chapa/deposits/initialize` | | | | | Yes |
+| GET | `/api/channel/chapa/deposits/:txRef` | | | | | Yes |
+| POST | `/api/channel/chapa/deposits/:txRef/mock-complete` | | | | | Yes |
+| POST | `/api/channel/chapa/withdrawals/initialize` | | | | | Yes |
+| GET | `/api/channel/chapa/withdrawals/:txRef` | | | | | Yes |
+| POST | `/api/channel/chapa/withdrawals/:txRef/mock-complete` | | | | | Yes |
 | POST | `/api/members` | | Yes | Yes | | |
 | GET | `/api/members` | | Yes | Yes | Yes | |
 | GET | `/api/members/:id` | | Yes | Yes | Yes | |
@@ -38,6 +48,9 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | DELETE | `/api/members/:id` | | Yes | | | |
 | POST | `/api/members/import/stage` | | Yes | Yes | | |
 | POST | `/api/members/import/commit/:stagingId` | | Yes | Yes | | |
+| GET | `/api/member-self/me` | | | | | Yes |
+| GET | `/api/member-self/momo/pending` | | | | | Yes |
+| POST | `/api/member-self/momo/stage` | | | | | Yes |
 | GET | `/api/members/:id/balance` | | Yes | Yes | Yes | Yes |
 | GET | `/api/members/:id/statement` | | Yes | Yes | Yes | Yes |
 | GET | `/api/members/:id/loans` | | Yes | Yes | Yes | Yes |
@@ -46,7 +59,7 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | POST | `/api/accounts/:id/deposits` | | Yes | Yes | | |
 | POST | `/api/accounts/:id/withdrawals` | | Yes | Yes | | |
 | POST | `/api/accounts/:id/share-purchases` | | Yes | Yes | | |
-| POST | `/api/loans` | | Yes | Yes | Yes | |
+| POST | `/api/loans` | | Yes | Yes | Yes | Yes |
 | GET | `/api/loans` | | Yes | Yes | Yes | |
 | GET | `/api/loans/member/:memberId` | | Yes | Yes | Yes | |
 | GET | `/api/loans/:id` | | Yes | Yes | Yes | |
@@ -86,10 +99,11 @@ provisioning record.
 
 Member self-service (`/api/members/:id/balance|statement|loans`, Task 23) allows
 `member` plus staff, since a teller answering a counter question needs the same
-read. **Open gap for Liya:** the role check does not verify that `:id` is the
-caller's own member record, so one member can currently read another's balance by
-changing the id. That is object-level authorization, not RBAC, and needs a check
-against the linked member on the JWT.
+read. Object-level auth matches the JWT staff login email to the member row
+email — JWT `sub` is `staff_accounts.id`, not `members.id`. Members resolve their
+own row with `GET /api/self-service/me` (directory search stays staff-only).
+`POST /api/webhooks/chapa` and `POST /api/webhooks/chapa/transfer-approval` are `@Public()` and authenticated by HMAC, not a role.
+`POST /api/auth/forgot-password` and `POST /api/auth/reset-password` are `@Public()` (no JWT). Forgot-password always returns the same acknowledgement so it does not reveal whether an email exists.
 
 ## Applying `@Roles` on new endpoints
 

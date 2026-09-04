@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles, type AuthenticatedUser } from '../common';
+import { MemberService } from '../members';
+import { StaffAccountService } from '../security-audit';
 import type { PaginatedResult } from '../types';
 import { AddGuarantorPledgeDto } from './dto/add-guarantor-pledge.dto';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
@@ -32,12 +34,27 @@ import type { EligibilityDecision, GuarantorPledge, LoanRepaymentRow, LoanRow } 
  */
 @Controller('loans')
 export class LoanController {
-  constructor(private readonly loanService: LoanService) {}
+  constructor(
+    private readonly loanService: LoanService,
+    private readonly memberService: MemberService,
+    private readonly staffAccounts: StaffAccountService,
+  ) {}
 
   /** Submit a new loan application. Returns the created loan in `pending` status. */
   @Post()
   @Roles('teller', 'loan-officer', 'tenant-admin', 'member')
-  apply(@Body() dto: ApplyLoanDto): Promise<LoanRow> {
+  async apply(
+    @Body() dto: ApplyLoanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LoanRow> {
+    if (user.role === 'member') {
+      const staff = await this.staffAccounts.findSummaryById(user.staffId);
+      const email = staff?.email?.trim() ?? '';
+      const linked = email ? await this.memberService.findByEmail(email) : null;
+      if (!linked || linked.id !== dto.memberId) {
+        throw new ForbiddenException('Members can only apply for their own loan');
+      }
+    }
     return this.loanService.apply({
       memberId: dto.memberId,
       requestedAmount: dto.requestedAmount,
@@ -60,11 +77,11 @@ export class LoanController {
     return this.loanService.findByMemberId(memberId);
   }
 
-  /** Fetch a single loan by its id. 404 if not found or belongs to another tenant (RLS). */
+  /** Fetch a single loan by its id or human loan number. 404 if not found or belongs to another tenant (RLS). */
   @Get(':id')
   @Roles('teller', 'loan-officer', 'tenant-admin', 'member')
-  findById(@Param('id', ParseUUIDPipe) id: string): Promise<LoanRow> {
-    return this.loanService.findById(id);
+  findById(@Param('id') id: string): Promise<LoanRow> {
+    return this.loanService.findByIdOrNumber(id);
   }
 
   /**
@@ -114,11 +131,14 @@ export class LoanController {
   disburse(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DisburseLoanDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<LoanRepaymentRow> {
     return this.loanService.disburse({
       loanId: id,
       destinationAccountId: dto.destinationAccountId,
       amount: dto.amount,
+      initiatedByStaffId: user.staffId,
+      otp: dto.otp,
     });
   }
 

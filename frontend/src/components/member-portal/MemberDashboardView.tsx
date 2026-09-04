@@ -32,7 +32,7 @@ const LINKS = [
   {
     href: '/member/mobile-money',
     label: 'Mobile money',
-    detail: 'Mock C2B/B2C only — pending confirmation, never a success.',
+    detail: 'Deposit or withdraw savings through Chapa.',
     icon: Smartphone,
   },
 ] as const;

@@ -8,9 +8,13 @@ import { ApiRequestError, getSessionUser, login, portalHome } from "@/lib/api-cl
 import { PLATFORM_TENANT_CODE } from "@/types";
 import FormFieldGroup from "@/components/forms/FormFieldGroup";
 import { Card, CardContent } from "@/components/ui/Card";
+import ThemeToggleButton from "@/components/theme/ThemeToggleButton";
+import { useLang } from "@/components/i18n";
 
 export default function LoginForm() {
   const router = useRouter();
+  const { t } = useLang();
+  const [resetNotice, setResetNotice] = useState(false);
   const [tenantCode, setTenantCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +27,7 @@ export default function LoginForm() {
     if (user) {
       router.replace(portalHome(user.role));
     }
+    setResetNotice(new URLSearchParams(window.location.search).get("reset") === "1");
   }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -40,7 +45,7 @@ export default function LoginForm() {
       const message =
         err instanceof ApiRequestError
           ? err.message
-          : "Could not sign in. Check your details and try again.";
+          : t("login.failed");
       setError(message);
     } finally {
       setSubmitting(false);
@@ -59,23 +64,28 @@ export default function LoginForm() {
       <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
 
       <div className="relative w-full max-w-md">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-sm font-medium text-slate-500 dark:text-white/50 hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:focus-visible:ring-offset-midnight"
-        >
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-          Back to home
-        </Link>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-sm font-medium text-slate-500 dark:text-white/50 hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:focus-visible:ring-offset-midnight"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            {t("login.back")}
+          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggleButton />
+          </div>
+        </div>
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-11 h-11 rounded-full bg-gold text-midnight flex items-center justify-center font-display text-[10px] font-bold tracking-wider shadow-[0_0_0_3px_rgba(197,155,39,0.2)]">
+          <div className="w-11 h-11 rounded-full bg-gold text-midnight flex items-center justify-center font-display text-[10px] font-bold tracking-wider shadow-[0_0_0_3px_rgba(197,155,39,0.2)] notranslate">
             ISMS
           </div>
           <div className="leading-none">
-            <p className="font-display text-sm font-bold text-slate-900 dark:text-white tracking-[0.2em] uppercase">
+            <p className="font-display text-sm font-bold text-slate-900 dark:text-white tracking-[0.2em] uppercase notranslate">
               ISMS
             </p>
             <p className="text-[10px] text-slate-500 dark:text-white/40 tracking-[0.15em] uppercase mt-1">
-              Sign in to your portal
+              {t("login.subtitle")}
             </p>
           </div>
         </div>
@@ -84,10 +94,10 @@ export default function LoginForm() {
           <CardContent>
             <form onSubmit={onSubmit} className="flex flex-col gap-5">
               <FormFieldGroup
-                label="Tenant code"
+                label={t("login.tenantCode")}
                 htmlFor="tenantCode"
                 required
-                helperText={`SACCO code (tenant-a or tenant-b after seed). Super Admin uses “${PLATFORM_TENANT_CODE}”.`}
+                helperText={t("login.tenantHelper", { code: PLATFORM_TENANT_CODE })}
               >
                 <input
                   id="tenantCode"
@@ -99,7 +109,7 @@ export default function LoginForm() {
                 />
               </FormFieldGroup>
 
-              <FormFieldGroup label="Email" htmlFor="email" required>
+              <FormFieldGroup label={t("login.email")} htmlFor="email" required>
                 <input
                   id="email"
                   name="email"
@@ -111,7 +121,7 @@ export default function LoginForm() {
                 />
               </FormFieldGroup>
 
-              <FormFieldGroup label="Password" htmlFor="password" required>
+              <FormFieldGroup label={t("login.password")} htmlFor="password" required>
                 <div className="relative">
                   <input
                     id="password"
@@ -126,7 +136,7 @@ export default function LoginForm() {
                   <button
                     type="button"
                     onClick={() => setPasswordVisible((visible) => !visible)}
-                    aria-label={passwordVisible ? "Hide password" : "Show password"}
+                    aria-label={passwordVisible ? t("login.hidePassword") : t("login.showPassword")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-500 dark:text-white/50 hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
                   >
                     {passwordVisible ? (
@@ -137,6 +147,21 @@ export default function LoginForm() {
                   </button>
                 </div>
               </FormFieldGroup>
+
+              <div className="flex justify-end -mt-2">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-slate-500 hover:text-gold"
+                >
+                  {t("login.forgotPassword")}
+                </Link>
+              </div>
+
+              {resetNotice && (
+                <p className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-400" role="status">
+                  {t("login.resetSuccess")}
+                </p>
+              )}
 
               {error && (
                 <p className="text-[13px] font-semibold text-rose-600" role="alert">
@@ -149,7 +174,7 @@ export default function LoginForm() {
                 disabled={submitting}
                 className="w-full py-2.5 rounded-lg bg-gold text-midnight font-semibold text-sm tracking-wide hover:bg-gold-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface dark:focus-visible:ring-offset-midnight"
               >
-                {submitting ? "Signing in…" : "Sign in"}
+                {submitting ? t("login.signingIn") : t("login.signIn")}
               </button>
             </form>
           </CardContent>

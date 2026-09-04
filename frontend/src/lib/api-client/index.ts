@@ -217,7 +217,8 @@ export const apiClient = {
 import type { Member, PaginatedResult } from '@/types';
 
 export interface CreateMemberPayload {
-  memberNumber: string;
+  /** Optional — omitted on register; server assigns the next unique MEM-#####. */
+  memberNumber?: string;
   firstName: string;
   middleName?: string;
   lastName: string;

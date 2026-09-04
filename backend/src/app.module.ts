@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -42,7 +43,11 @@ import { TenantsModule } from './tenants';
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, cache: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      envFilePath: join(__dirname, '..', '.env'),
+    }),
     DatabaseModule,
     TenantContextModule,
     AuthModule,

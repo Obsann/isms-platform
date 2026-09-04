@@ -67,6 +67,64 @@ export class StaffAccountService {
     return staff ? toSummary(staff) : null;
   }
 
+  /** Used by password change flow inside tenant context */
+  async findCredentialById(staffId: StaffId): Promise<StaffCredential | null> {
+    const staff = await this.tenantContext.repo(StaffAccountEntity).findOne({ where: { id: staffId } });
+    return staff ? toCredential(staff) : null;
+  }
+
+  /**
+   * Portal login for a newly registered member. Same email as the `members` row.
+   * Does not overwrite an existing staff row (teller / already provisioned).
+   * Returns true when a new login was created.
+   */
+  async provisionMemberLogin(input: {
+    email: string;
+    fullName: string;
+    passwordHash: string;
+  }): Promise<boolean> {
+    const tenantId = this.tenantContext.getTenantId();
+    if (!tenantId) {
+      return false;
+    }
+    const repo = this.tenantContext.repo(StaffAccountEntity);
+    const existing = await repo.findOne({ where: { tenantId, email: input.email } });
+    if (existing) {
+      return false;
+    }
+    await repo.save(
+      repo.create({
+        tenantId,
+        email: input.email,
+        fullName: input.fullName,
+        role: 'member',
+        isActive: true,
+        passwordHash: input.passwordHash,
+      }),
+    );
+    return true;
+  }
+
+  /** Drops the portal login created at registration. Leaves teller/admin rows alone. */
+  async removeMemberLogin(email: string): Promise<void> {
+    const tenantId = this.tenantContext.getTenantId();
+    if (!tenantId || !email) {
+      return;
+    }
+    await this.tenantContext.repo(StaffAccountEntity).delete({
+      tenantId,
+      email,
+      role: 'member',
+    });
+  }
+
+  /** Updates staff password hash inside tenant context */
+  async updatePassword(staffId: StaffId, newPasswordHash: string): Promise<void> {
+    await this.tenantContext
+      .repo(StaffAccountEntity)
+      .update({ id: staffId }, { passwordHash: newPasswordHash });
+  }
+
   async touchLastLogin(staffId: StaffId): Promise<void> {
     await this.tenantContext
       .repo(StaffAccountEntity)

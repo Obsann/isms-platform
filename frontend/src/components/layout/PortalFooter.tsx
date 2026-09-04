@@ -1,14 +1,17 @@
+'use client';
+
 import Link from 'next/link';
 import { Mail, Phone } from 'lucide-react';
 import BrandMark from '@/components/layout/BrandMark';
 import { portalRootFromPath } from '@/lib/portal-paths';
+import { useLang } from '@/components/i18n';
 
 function BulletLink({ href, label }: { href: string; label: string }) {
   return (
     <li>
       <Link
         href={href}
-        className="group flex items-center gap-2 text-[13px] text-slate-300 hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
+        className="group flex items-center gap-2 text-[13px] text-slate-600 hover:text-gold dark:text-slate-300 dark:hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
       >
         <span className="text-[8px] text-gold leading-none transition-transform group-hover:translate-x-0.5" aria-hidden="true">
           ▶
@@ -21,7 +24,7 @@ function BulletLink({ href, label }: { href: string; label: string }) {
 
 function BulletText({ label }: { label: string }) {
   return (
-    <li className="flex items-center gap-2 text-[13px] text-slate-300">
+    <li className="flex items-center gap-2 text-[13px] text-slate-600 dark:text-slate-300">
       <span className="text-[8px] text-gold leading-none" aria-hidden="true">▶</span>
       {label}
     </li>
@@ -35,7 +38,7 @@ function SocialIcon({ href, label, children }: { href: string; label: string; ch
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="w-8 h-8 rounded-lg border border-white/10 bg-midnight-light/40 text-slate-300 hover:text-gold hover:border-gold/40 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:text-gold focus-visible:border-gold/40"
+      className="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:text-gold hover:border-gold/40 dark:border-white/10 dark:bg-midnight-light/40 dark:text-slate-300 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:text-gold focus-visible:border-gold/40"
     >
       {children}
     </a>
@@ -70,17 +73,18 @@ function TelegramGlyph() {
 
 export default function PortalFooter({ pathname }: { pathname: string }) {
   const portalRoot = portalRootFromPath(pathname);
+  const { t } = useLang();
 
   return (
-    <footer className="relative bg-midnight text-slate-300">
+    <footer className="relative bg-white text-slate-600 dark:bg-midnight dark:text-slate-300">
       <div className="absolute -top-px left-0 right-0 h-8 overflow-hidden bg-surface" aria-hidden="true">
-        <svg className="absolute bottom-0 w-full h-8 text-midnight" viewBox="0 0 1440 32" preserveAspectRatio="none">
+        <svg className="absolute bottom-0 w-full h-8 text-white dark:text-midnight" viewBox="0 0 1440 32" preserveAspectRatio="none">
           <path fill="currentColor" d="M0,32 C360,0 1080,0 1440,32 L1440,32 L0,32 Z" />
         </svg>
       </div>
 
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.08]"
+        className="pointer-events-none absolute inset-0 opacity-[0.08] dark:opacity-[0.08]"
         style={{
           backgroundImage: 'radial-gradient(circle, rgb(216 177 56 / 0.55) 0.8px, transparent 0.9px)',
           backgroundSize: '16px 16px',
@@ -92,72 +96,72 @@ export default function PortalFooter({ pathname }: { pathname: string }) {
           <div className="flex items-center gap-3 mb-3">
             <BrandMark size="sm" />
             <div className="leading-none">
-              <p className="font-display text-[13px] font-bold text-white tracking-[0.14em] uppercase">ISMS</p>
-              <p className="text-[9px] text-white/40 tracking-[0.16em] uppercase mt-1">Savings & Credit</p>
+              <p className="font-display text-[13px] font-bold text-midnight dark:text-white tracking-[0.14em] uppercase">ISMS</p>
+              <p className="text-[9px] text-slate-400 dark:text-white/40 tracking-[0.16em] uppercase mt-1">{t('brandTagline')}</p>
             </div>
           </div>
-          <p className="text-[12px] text-slate-400 leading-relaxed max-w-xs">
-            One ledger-backed system for SACCO savings, shares, and loans.
+          <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs">
+            {t('footer.tagline')}
           </p>
           <div className="mt-4 flex items-center gap-2">
-            <SocialIcon href="https://facebook.com" label="ISMS on Facebook">
+            <SocialIcon href="https://facebook.com" label={t('footer.facebook')}>
               <FacebookGlyph />
             </SocialIcon>
-            <SocialIcon href="https://instagram.com" label="ISMS on Instagram">
+            <SocialIcon href="https://instagram.com" label={t('footer.instagram')}>
               <InstagramGlyph />
             </SocialIcon>
-            <SocialIcon href="https://telegram.org" label="ISMS on Telegram">
+            <SocialIcon href="https://telegram.org" label={t('footer.telegram')}>
               <TelegramGlyph />
             </SocialIcon>
           </div>
         </div>
 
         <div>
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold mb-3">Quick Links</h2>
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold-dark dark:text-gold mb-3">{t('footer.quickLinks')}</h2>
           {portalRoot ? (
             <ul className="flex flex-col gap-2">
-              <BulletLink href={`${portalRoot}/dashboard`} label="Dashboard" />
+              <BulletLink href={`${portalRoot}/dashboard`} label={t('footer.dashboard')} />
               {(portalRoot === '/tenant-admin' || portalRoot === '/teller') && (
-                <BulletLink href={`${portalRoot}/members`} label="Members" />
+                <BulletLink href={`${portalRoot}/members`} label={t('footer.members')} />
               )}
               {portalRoot === '/super-admin' && (
-                <BulletLink href="/super-admin/tenants" label="Tenants" />
+                <BulletLink href="/super-admin/tenants" label={t('footer.tenants')} />
               )}
-              <BulletLink href={`${portalRoot}/profile`} label="Profile" />
-              <BulletLink href={`${portalRoot}/settings`} label="Settings" />
+              <BulletLink href={`${portalRoot}/profile`} label={t('footer.profile')} />
+              <BulletLink href={`${portalRoot}/settings`} label={t('footer.settings')} />
             </ul>
           ) : (
             <ul className="flex flex-col gap-2">
-              <BulletLink href="/login" label="Sign in" />
-              <BulletText label="Dashboard" />
-              <BulletText label="Profile" />
-              <BulletText label="Settings" />
+              <BulletLink href="/login" label={t('footer.signIn')} />
+              <BulletText label={t('footer.dashboard')} />
+              <BulletText label={t('footer.profile')} />
+              <BulletText label={t('footer.settings')} />
             </ul>
           )}
         </div>
 
         <div>
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold mb-3">Services</h2>
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-gold-dark dark:text-gold mb-3">{t('footer.services')}</h2>
           <ul className="flex flex-col gap-2">
-            <BulletText label="Savings accounts" />
-            <BulletText label="Share capital" />
-            <BulletText label="Loans & credit" />
+            <BulletText label={t('footer.savings')} />
+            <BulletText label={t('footer.shares')} />
+            <BulletText label={t('footer.loans')} />
           </ul>
         </div>
       </div>
 
-      <div className="relative border-t border-white/10 px-6 md:px-10 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] text-slate-500">
+      <div className="relative border-t border-slate-200 dark:border-white/10 px-6 md:px-10 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] text-slate-500">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <a
             href="mailto:info@isms.et"
-            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-gold dark:text-slate-400 dark:hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
           >
             <Mail className="w-3.5 h-3.5" aria-hidden="true" />
             info@isms.et
           </a>
           <a
             href="tel:+251111223344"
-            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-gold dark:text-slate-400 dark:hover:text-gold transition-colors focus-visible:outline-none focus-visible:text-gold"
           >
             <Phone className="w-3.5 h-3.5" aria-hidden="true" />
             +251 111 223 344
@@ -165,7 +169,7 @@ export default function PortalFooter({ pathname }: { pathname: string }) {
         </div>
         <div className="flex items-center gap-4">
           <span>© 2026 ISMS Platform</span>
-          <span className="uppercase tracking-[0.16em] text-[10px] text-slate-600">Web portal · Tenant-scoped</span>
+          <span className="uppercase tracking-[0.16em] text-[10px] text-slate-400 dark:text-slate-600">{t('footer.webPortal')}</span>
         </div>
       </div>
     </footer>

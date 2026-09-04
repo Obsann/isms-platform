@@ -1,11 +1,16 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 
-/** Compact UUID (32 hex) + 8 hex nonce. Chapa rejects tx_ref at/over 50 chars. */
+/** Compact UUID (32 hex) + 8 hex nonce. Chapa checkout tx_ref max is 50 chars. */
 const COMPACT_UUID_RE = '[0-9a-f]{32}';
 const TX_REF_RE = new RegExp(`^isms-(${COMPACT_UUID_RE})([0-9a-f]{8})$`, 'i');
 /** Previous `isms-{32hex}-{12hex}` (50 chars) — still parse for in-flight webhooks. */
 const TX_REF_LEGACY_RE = new RegExp(`^isms-(${COMPACT_UUID_RE})-([0-9a-f]{1,12})$`, 'i');
+/**
+ * Transfer `reference` max is 36 chars (stricter than checkout).
+ * `w` + base64url(16-byte tenant uuid) + 13 hex nonce.
+ */
+const PAYOUT_REF_RE = /^w([A-Za-z0-9_-]{22})([0-9a-f]{13})$/;
 const AMOUNT_RE = /^(0|[1-9]\d*)(\.\d{1,2})?$/;
 
 function compactUuid(uuid: string): string {
@@ -29,10 +34,32 @@ export function buildChapaTxRef(tenantId: string): string {
   return `isms-${compactTenant}${nonce}`;
 }
 
+/** Chapa Transfer `reference` must be ≤ 36 characters. */
+export function buildChapaPayoutRef(tenantId: string): string {
+  const tenantToken = Buffer.from(compactUuid(tenantId), 'hex').toString('base64url');
+  const nonce = randomBytes(7).toString('hex').slice(0, 13);
+  return `w${tenantToken}${nonce}`;
+}
+
 export function parseTenantIdFromTxRef(txRef: string): string | null {
   const trimmed = txRef.trim();
-  const match = TX_REF_RE.exec(trimmed) ?? TX_REF_LEGACY_RE.exec(trimmed);
-  return match?.[1] ? expandCompactUuid(match[1]) : null;
+  const checkout = TX_REF_RE.exec(trimmed) ?? TX_REF_LEGACY_RE.exec(trimmed);
+  if (checkout?.[1]) {
+    return expandCompactUuid(checkout[1]);
+  }
+  const payout = PAYOUT_REF_RE.exec(trimmed);
+  if (!payout?.[1]) {
+    return null;
+  }
+  try {
+    const buf = Buffer.from(payout[1], 'base64url');
+    if (buf.length !== 16) {
+      return null;
+    }
+    return expandCompactUuid(buf.toString('hex'));
+  } catch {
+    return null;
+  }
 }
 
 /**

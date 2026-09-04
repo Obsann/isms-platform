@@ -197,7 +197,7 @@ describe('ChapaService', () => {
     expect(savings.holdFunds).toHaveBeenCalledWith({
       accountId: 'acc-own',
       amount: '100.00',
-      reason: expect.stringMatching(/^chapa-withdrawal:isms-/),
+      reason: expect.stringMatching(/^chapa-withdrawal:/),
     });
     expect(savings.withdrawAgainstHold).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import type { SentMessageInfo, Transporter } from 'nodemailer';
-import type { NotificationResult, SendNotificationInput } from './channel-integration.types';
+import type { NotificationResult, NotificationTemplate, SendNotificationInput } from './channel-integration.types';
 import { composeNotification } from './notification.templates';
 
 /** Nest token for the Nodemailer transport — not part of the module's public surface. */
@@ -58,14 +58,14 @@ export class NotificationService {
     }
 
     const overrideTo = this.config.get<string>('SMTP_OVERRIDE_TO')?.trim();
-    const recipient = overrideTo || input.to;
+    const recipient = resolveNotificationRecipient(input.template, input.to, overrideTo);
     if (!recipient) {
       throw new Error('Notification recipient email is empty');
     }
 
     const composed = composeNotification(input.template, input.data);
     const intendedNote =
-      overrideTo && overrideTo !== input.to ? `Intended recipient: ${input.to}\n\n` : '';
+      overrideTo && recipient !== input.to.trim() ? `Intended recipient: ${input.to}\n\n` : '';
 
     const mail = {
       from,
@@ -163,6 +163,37 @@ export function readSmtpValue(config: ConfigService, ...keys: string[]): string 
     }
   }
   return '';
+}
+
+/**
+ * `SMTP_OVERRIDE_TO` is for Task 25 demo receipts to seed `@*.dev` mailboxes.
+ * OTP and welcome mail must reach the person who requested them — otherwise
+ * only the override inbox can reset a password.
+ */
+export function resolveNotificationRecipient(
+  template: NotificationTemplate,
+  intendedTo: string,
+  overrideTo: string | undefined,
+): string {
+  const intended = intendedTo.trim();
+  const override = overrideTo?.trim();
+  if (!override) {
+    return intended;
+  }
+  if ((template === 'otp' || template === 'member-welcome') && !isDemoMailbox(intended)) {
+    return intended;
+  }
+  return override;
+}
+
+function isDemoMailbox(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase() ?? '';
+  return (
+    domain.endsWith('.dev') ||
+    domain.endsWith('.example') ||
+    domain.endsWith('.test') ||
+    domain === 'localhost'
+  );
 }
 
 function wait(ms: number): Promise<void> {

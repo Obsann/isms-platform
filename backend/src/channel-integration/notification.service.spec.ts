@@ -225,6 +225,28 @@ describe('NotificationService.send', () => {
     expect(sendMail.mock.calls[0][0].to).toBe('inbox@example.com');
     expect(sendMail.mock.calls[0][0].text).toContain('Intended recipient: member@sacco.example');
   });
+
+  it('sends OTP to the requester instead of SMTP_OVERRIDE_TO', async () => {
+    const overrideConfig = {
+      get: (key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          SMTP_FROM: 'isms@test.local',
+          SMTP_OVERRIDE_TO: 'inbox@example.com',
+          SMTP_RETRY_DELAY_MS: '0',
+        };
+        return values[key] ?? fallback;
+      },
+    } as unknown as ConfigService;
+    const service = new NotificationService(overrideConfig, transporter);
+
+    await service.send({
+      template: 'otp',
+      to: 'teammate@gmail.com',
+      data: { code: '123456', expirySeconds: 300, purpose: 'password reset' },
+    });
+
+    expect(sendMail.mock.calls[0][0].to).toBe('teammate@gmail.com');
+  });
 });
 
 describe('createSmtpTransport', () => {

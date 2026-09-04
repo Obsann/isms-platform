@@ -2,6 +2,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import {
   assertChapaWebhookSignature,
+  buildChapaPayoutRef,
   buildChapaTxRef,
   etbGreaterThan,
   extractChapaTxRef,
@@ -71,6 +72,13 @@ describe('chapa helpers', () => {
       expect(
         parseTenantIdFromTxRef('isms-11111111111141118111111111111111-a1b2c3d4e5f6'),
       ).toBe('11111111-1111-4111-8111-111111111111');
+    });
+
+    it('round-trips tenant id in a Chapa transfer reference of at most 36 chars', () => {
+      const tenantId = '11111111-1111-4111-8111-111111111111';
+      const txRef = buildChapaPayoutRef(tenantId);
+      expect(txRef.length).toBeLessThanOrEqual(36);
+      expect(parseTenantIdFromTxRef(txRef)).toBe(tenantId);
     });
 
     it('rejects hyphenated UUID refs that exceed Chapa 50-char limit', () => {

@@ -22,6 +22,7 @@ import type { Account, Member } from '../types';
 import { ChapaPaymentEntity, type ChapaPaymentKind, type ChapaPaymentStatus, type ChapaPayoutChannel } from './chapa-payment.entity';
 import {
   assertChapaWebhookSignature,
+  buildChapaPayoutRef,
   buildChapaTxRef,
   chapaStatusIsFailed,
   chapaStatusIsPaid,
@@ -244,7 +245,7 @@ export class ChapaService {
     });
 
     const tenantId = this.requireTenantId();
-    const txRef = buildChapaTxRef(tenantId);
+    const txRef = buildChapaPayoutRef(tenantId);
     const bankCode = await this.resolvePayoutBankCode(input.channel);
     const repo = this.tenantContext.repo(ChapaPaymentEntity);
     const pending = repo.create({

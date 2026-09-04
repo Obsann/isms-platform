@@ -59,7 +59,7 @@ enforcement is the decorator + guard, not a runtime lookup of that table.
 | POST | `/api/accounts/:id/deposits` | | Yes | Yes | | |
 | POST | `/api/accounts/:id/withdrawals` | | Yes | Yes | | |
 | POST | `/api/accounts/:id/share-purchases` | | Yes | Yes | | |
-| POST | `/api/loans` | | Yes | Yes | Yes | |
+| POST | `/api/loans` | | Yes | Yes | Yes | Yes |
 | GET | `/api/loans` | | Yes | Yes | Yes | |
 | GET | `/api/loans/member/:memberId` | | Yes | Yes | Yes | |
 | GET | `/api/loans/:id` | | Yes | Yes | Yes | |

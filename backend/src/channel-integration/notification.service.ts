@@ -139,13 +139,15 @@ export function createSmtpTransport(config: ConfigService): Transporter | null {
   }
 
   const port = Number(readSmtpValue(config, 'SMTP_PORT') || '587');
-  const secure = readSmtpValue(config, 'SMTP_SECURE') === 'true';
+  const resolvedPort = Number.isFinite(port) ? port : 587;
+  const secureFlag = readSmtpValue(config, 'SMTP_SECURE');
+  const secure = secureFlag ? secureFlag === 'true' : resolvedPort === 465;
   const user = readSmtpValue(config, 'SMTP_USER');
   const pass = readSmtpValue(config, 'SMTP_PASSWORD', 'SMTP_PASS');
 
   return nodemailer.createTransport({
     host,
-    port: Number.isFinite(port) ? port : 587,
+    port: resolvedPort,
     secure,
     auth: user ? { user, pass } : undefined,
   });

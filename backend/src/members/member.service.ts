@@ -10,7 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
-import { In, Not, QueryFailedError } from 'typeorm';
+import { In, Not, QueryFailedError, type Repository } from 'typeorm';
 import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common/tenant-context/tenant-context.service';
 import { StaffAccountService } from '../security-audit';
@@ -121,10 +121,12 @@ export class MemberService {
       throw new UnauthorizedException('No tenant context found');
     }
 
-    const memberNumber = normalizeMemberNumber(input.memberNumber);
     const nationalId = normalizeNationalId(input.idType, input.nationalId);
     const phone = normalizePhone(input.phone);
     const email = normalizeEmail(input.email);
+    const memberNumber = input.memberNumber
+      ? normalizeMemberNumber(input.memberNumber)
+      : await this.allocateNextMemberNumber(repo);
 
     await this.assertUniqueFields(repo, { memberNumber, nationalId, phone, email });
 
@@ -149,9 +151,59 @@ export class MemberService {
       await this.tryProvisionPortalLoginAndEmail(created);
       return created;
     } catch (err) {
+      // Concurrent create may race on auto-number; retry once with a fresh allocation.
+      if (!input.memberNumber && this.isUniqueMemberNumberViolation(err)) {
+        member.memberNumber = await this.allocateNextMemberNumber(repo);
+        try {
+          const saved = await repo.save(member);
+          const created = this.mapToContract(saved);
+          await this.tryProvisionPortalLoginAndEmail(created);
+          return created;
+        } catch (retryErr) {
+          this.rethrowUniqueViolation(retryErr);
+          throw retryErr;
+        }
+      }
       this.rethrowUniqueViolation(err);
       throw err;
     }
+  }
+
+  /**
+   * Next unique `MEM-#####` in the current tenant (RLS). Starts at `MEM-10001`
+   * when the tenant has no numeric member numbers yet.
+   */
+  private async allocateNextMemberNumber(repo: Repository<MemberEntity>): Promise<string> {
+    const rows = await repo
+      .createQueryBuilder('member')
+      .select('member.memberNumber', 'memberNumber')
+      .where(`member.member_number ~ '^MEM-[0-9]+$'`)
+      .getRawMany<{ memberNumber: string }>();
+
+    let maxSuffix = 10000;
+    for (const row of rows) {
+      const match = /^MEM-(\d+)$/i.exec(row.memberNumber);
+      if (!match) continue;
+      const value = Number.parseInt(match[1], 10);
+      if (Number.isFinite(value) && value > maxSuffix) {
+        maxSuffix = value;
+      }
+    }
+
+    const next = maxSuffix + 1;
+    const suffix = next <= 99999 ? String(next).padStart(5, '0') : String(next);
+    return `MEM-${suffix}`;
+  }
+
+  private isUniqueMemberNumberViolation(err: unknown): boolean {
+    if (!(err instanceof QueryFailedError)) {
+      return false;
+    }
+    const driver = err as QueryFailedError & { driverError?: { code?: string; constraint?: string } };
+    return (
+      driver.driverError?.code === '23505' &&
+      (driver.driverError.constraint ?? '').includes('member_number')
+    );
   }
 
   /** `GET /api/members/{id}` */

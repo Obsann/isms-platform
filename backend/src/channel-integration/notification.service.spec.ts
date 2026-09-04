@@ -1,7 +1,8 @@
 /// <reference types="jest" />
 import { ConfigService } from '@nestjs/config';
+import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import { NotificationService, readSmtpValue } from './notification.service';
+import { createSmtpTransport, NotificationService, readSmtpValue } from './notification.service';
 import { composeNotification, formatMoney } from './notification.templates';
 
 describe('formatMoney', () => {
@@ -223,5 +224,77 @@ describe('NotificationService.send', () => {
 
     expect(sendMail.mock.calls[0][0].to).toBe('inbox@example.com');
     expect(sendMail.mock.calls[0][0].text).toContain('Intended recipient: member@sacco.example');
+  });
+});
+
+describe('createSmtpTransport', () => {
+  it('defaults secure to true when port is 465', () => {
+    const spy = jest.spyOn(nodemailer, 'createTransport');
+    const config = {
+      get: (key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          SMTP_HOST: 'smtp.gmail.com',
+          SMTP_PORT: '465',
+        };
+        return values[key] ?? fallback;
+      },
+    } as unknown as ConfigService;
+
+    createSmtpTransport(config);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+      }),
+    );
+    spy.mockRestore();
+  });
+
+  it('defaults secure to false when port is 587', () => {
+    const spy = jest.spyOn(nodemailer, 'createTransport');
+    const config = {
+      get: (key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          SMTP_HOST: 'smtp.gmail.com',
+          SMTP_PORT: '587',
+        };
+        return values[key] ?? fallback;
+      },
+    } as unknown as ConfigService;
+
+    createSmtpTransport(config);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+      }),
+    );
+    spy.mockRestore();
+  });
+
+  it('respects explicit SMTP_SECURE override', () => {
+    const spy = jest.spyOn(nodemailer, 'createTransport');
+    const config = {
+      get: (key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          SMTP_HOST: 'smtp.gmail.com',
+          SMTP_PORT: '465',
+          SMTP_SECURE: 'false',
+        };
+        return values[key] ?? fallback;
+      },
+    } as unknown as ConfigService;
+
+    createSmtpTransport(config);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: false,
+      }),
+    );
+    spy.mockRestore();
   });
 });

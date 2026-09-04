@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, UserCheck, AlertCircle, AlertTriangle, Plus, Trash2, CheckCircle2, Loader2 } from 'lucide-react';
+import { ShieldCheck, UserCheck, AlertCircle, AlertTriangle, Plus, Trash2, CheckCircle2, Loader2, Lock, Calculator, Calendar } from 'lucide-react';
 import type { Member } from '@/types';
 import FormFieldGroup from './FormFieldGroup';
 import CurrencyDisplay from '@/components/currency/CurrencyDisplay';
 import { getMemberBalance, type MemberBalanceInfo } from '@/lib/api-client';
+import { useAuthUser } from '@/components/auth/useAuthUser';
 
 export interface GuarantorPledgeInput {
   guarantorMemberId: string;
@@ -34,17 +35,11 @@ interface ApplyLoanModalProps {
 
 const SAVINGS_MULTIPLIER = 3;
 
-export default function ApplyLoanModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  members,
-  lockedMemberId,
-  allowGuarantors = true,
-}: ApplyLoanModalProps) {
-  const [selectedMemberId, setSelectedMemberId] = useState<string>(
-    lockedMemberId || members[0]?.id || '',
-  );
+export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: ApplyLoanModalProps) {
+  const authUser = useAuthUser();
+  const isStaff = authUser?.role === 'tenant-admin' || authUser?.role === 'loan-officer' || authUser?.role === 'super-admin' || authUser?.role === 'teller';
+
+  const [selectedMemberId, setSelectedMemberId] = useState<string>(members[0]?.id || '');
   const [requestedAmount, setRequestedAmount] = useState<number>(25000);
   const [termMonths, setTermMonths] = useState<number>(12);
   const [purpose, setPurpose] = useState<string>('Business Expansion');
@@ -103,9 +98,9 @@ export default function ApplyLoanModal({
     };
   }, [isOpen, currentMemberId]);
 
-  // Fetch balances for potential guarantors to show available capacity
+  // Fetch balances for potential guarantors (staff-only underwriting capacity)
   useEffect(() => {
-    if (!isOpen || members.length === 0) return;
+    if (!isOpen || members.length === 0 || !isStaff) return;
 
     let isMounted = true;
     const availableGuarantorIds = members
@@ -135,11 +130,11 @@ export default function ApplyLoanModal({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, currentMemberId, members]);
+  }, [isOpen, currentMemberId, members, isStaff]);
 
   if (!isOpen) return null;
 
-  // Calculate live eligibility
+  // Calculate live eligibility & collateral shortfall
   const availableSavings = borrowerBalance
     ? borrowerBalance.accounts
         .filter((a) => a.type === 'savings' && a.status === 'active')
@@ -150,8 +145,20 @@ export default function ApplyLoanModal({
   const isExceedingCeiling = borrowerBalance !== null && requestedAmount > maxEligibleLoan;
   const isEligible = requestedAmount > 0 && !isExceedingCeiling && !isLoadingBalance;
 
+  // Collateral coverage metrics
+  const totalGuarantorPledges = guarantors.reduce((sum, g) => sum + g.pledgedAmount, 0);
+  const isSelfSecured = requestedAmount <= availableSavings && availableSavings > 0;
+  const collateralShortfall = Math.max(0, requestedAmount - availableSavings);
+  const remainingGap = Math.max(0, collateralShortfall - totalGuarantorPledges);
+  const totalSecuredAmount = Math.min(requestedAmount, availableSavings) + totalGuarantorPledges;
+  const coveragePercent = requestedAmount > 0 ? Math.min(100, Math.round((totalSecuredAmount / requestedAmount) * 100)) : 0;
+  const estimatedMonthly = termMonths > 0 ? Math.round(requestedAmount / termMonths) : 0;
+
   const handleAddGuarantor = () => {
-    if (!selectedGuarantorId) return;
+    if (!selectedGuarantorId) {
+      alert('Please select a guarantor member.');
+      return;
+    }
     if (selectedGuarantorId === currentMemberId) {
       alert('A borrower cannot act as guarantor for their own loan.');
       return;
@@ -164,8 +171,12 @@ export default function ApplyLoanModal({
     }
 
     const maxGuarantorCapacity = guarantorBalances[selectedGuarantorId] ?? 0;
-    if (pledgedAmount > maxGuarantorCapacity && maxGuarantorCapacity > 0) {
-      alert(`Pledged amount (${pledgedAmount.toLocaleString()} ETB) exceeds the guarantor's available savings (${maxGuarantorCapacity.toLocaleString()} ETB).`);
+    if (maxGuarantorCapacity <= 0) {
+      alert(`Member ${gMember.fullName} has 0 ETB in available savings and cannot act as a guarantor.`);
+      return;
+    }
+    if (pledgedAmount > maxGuarantorCapacity) {
+      alert(`Pledged amount (${pledgedAmount.toLocaleString()} ETB) exceeds the guarantor's available savings balance (${maxGuarantorCapacity.toLocaleString()} ETB).`);
       return;
     }
 
@@ -178,7 +189,7 @@ export default function ApplyLoanModal({
       },
     ]);
     setSelectedGuarantorId('');
-    setPledgedAmount(5000);
+    setPledgedAmount(1000);
   };
 
   const handleRemoveGuarantor = (id: string) => {
@@ -232,7 +243,7 @@ export default function ApplyLoanModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">New Loan Application</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Automated eligibility evaluation & collateral management</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Automated SACCO eligibility & collateral management</p>
             </div>
           </div>
           <button
@@ -244,7 +255,7 @@ export default function ApplyLoanModal({
           </button>
         </div>
 
-        {/* Top Error Alert Banner if submission failed */}
+        {/* Top Error Alert Banner */}
         {formError && (
           <div className="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
@@ -284,13 +295,13 @@ export default function ApplyLoanModal({
             </FormFieldGroup>
           )}
 
-          {/* Real-time Borrower Eligibility Status Card */}
+          {/* Real-time Eligibility & Policy Card */}
           <div className="p-4 rounded-xl border bg-gradient-to-br from-slate-50 to-indigo-50/40 dark:from-slate-900/60 dark:to-indigo-950/20 border-indigo-200/80 dark:border-indigo-800/50 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  SACCO Policy & Eligibility Calculator
+                  SACCO Eligibility & Policy Ceiling
                 </span>
               </div>
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200">
@@ -310,7 +321,7 @@ export default function ApplyLoanModal({
                 </span>
               </div>
               <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
-                <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Multiplier Limit</span>
+                <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Lending Multiplier</span>
                 <span className="font-bold text-slate-900 dark:text-slate-100">3× Savings</span>
               </div>
               <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
@@ -321,7 +332,7 @@ export default function ApplyLoanModal({
               </div>
             </div>
 
-            {/* Ceiling Warning or Success Badge */}
+            {/* Dynamic Status / Warning Alerts */}
             {borrowerBalance && (
               <>
                 {isExceedingCeiling ? (
@@ -331,38 +342,68 @@ export default function ApplyLoanModal({
                       <span>Requested Amount Exceeds 3× Savings Ceiling</span>
                     </div>
                     <p className="text-[11px] leading-relaxed">
-                      Borrower has <strong>{availableSavings.toLocaleString()} ETB</strong> in active savings, making the maximum eligible loan <strong>{maxEligibleLoan.toLocaleString()} ETB</strong>. The requested amount of <strong>{requestedAmount.toLocaleString()} ETB</strong> cannot be approved.
+                      Borrower has <strong>{availableSavings.toLocaleString()} ETB</strong> in active savings, making the maximum loan limit <strong>{maxEligibleLoan.toLocaleString()} ETB</strong>. SACCO regulations forbid borrowing more than 3× savings.
                     </p>
                     <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                      👉 Please decrease the requested amount to ≤ {maxEligibleLoan.toLocaleString()} ETB to submit.
+                      👉 Please decrease the requested amount to ≤ {maxEligibleLoan.toLocaleString()} ETB.
                     </p>
                   </div>
-                ) : availableSavings > 0 ? (
+                ) : isSelfSecured ? (
                   <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="text-[11px] font-medium">
-                      <strong>Eligible:</strong> Requested amount is within the maximum allowed limit of {maxEligibleLoan.toLocaleString()} ETB.
+                      <strong>100% Self-Secured:</strong> Requested amount is fully covered by the borrower&apos;s own savings. No guarantor pledge required.
                     </span>
+                  </div>
+                ) : collateralShortfall > 0 ? (
+                  <div className="p-2.5 rounded-lg border border-blue-200 dark:border-blue-800/60 bg-blue-50/70 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-[11px]">Collateral Security Gap:</span>
+                      <span className="font-bold">{collateralShortfall.toLocaleString()} ETB</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${coveragePercent}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                      <span>Self-Secured: {Math.min(requestedAmount, availableSavings).toLocaleString()} ETB</span>
+                      <span>Guarantors: {totalGuarantorPledges.toLocaleString()} ETB ({coveragePercent}% covered)</span>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
-                    <span className="text-[11px]">Borrower currently has no active savings balance. Initial deposit is required for credit eligibility.</span>
+                    <span className="text-[11px]">Borrower currently has no active savings balance. Initial deposit required for credit eligibility.</span>
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Amount & Term Grid */}
+          {/* Amount, Term & Repayment Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormFieldGroup label="Requested Amount (ETB)">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Requested Amount (ETB)</label>
+                {maxEligibleLoan > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setRequestedAmount(maxEligibleLoan)}
+                    disabled={isSubmitting}
+                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 hover:underline"
+                  >
+                    Max ({maxEligibleLoan.toLocaleString()} ETB)
+                  </button>
+                )}
+              </div>
               <input
                 type="number"
                 value={requestedAmount}
                 onChange={(e) => setRequestedAmount(Number(e.target.value))}
-                min="1000"
-                step="1000"
+                min="1"
+                step="any"
                 disabled={isSubmitting}
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-slate-900 dark:text-slate-100 text-sm font-medium outline-none transition-all ${
                   isExceedingCeiling
@@ -370,9 +411,10 @@ export default function ApplyLoanModal({
                     : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus:ring-2 focus:ring-indigo-500'
                 }`}
               />
-            </FormFieldGroup>
+            </div>
 
-            <FormFieldGroup label="Term (Months)">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">Term (Months)</label>
               <input
                 type="number"
                 value={termMonths}
@@ -382,10 +424,40 @@ export default function ApplyLoanModal({
                 disabled={isSubmitting}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
               />
-            </FormFieldGroup>
+              <div className="flex items-center gap-1.5 mt-2">
+                {[6, 12, 24, 36].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setTermMonths(m)}
+                    disabled={isSubmitting}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors ${
+                      termMonths === m
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {m}m
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <FormFieldGroup label="Loan Purpose">
+          {/* Estimated Monthly Installment Guidance */}
+          <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+              <Calculator className="w-4 h-4 text-indigo-500" />
+              <span>Estimated Monthly Repayment:</span>
+            </div>
+            <div className="text-right">
+              <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{estimatedMonthly.toLocaleString()} ETB</span>
+              <span className="text-[10px] text-slate-400 block">Flexible teller payments accepted</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">Loan Purpose</label>
             <input
               type="text"
               value={purpose}
@@ -394,10 +466,35 @@ export default function ApplyLoanModal({
               placeholder="e.g. Working Capital, Equipment Purchase, Agricultural Inputs"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
             />
-          </FormFieldGroup>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {[
+                '💼 Working Capital',
+                '🚜 Agricultural Inputs',
+                '🛠️ Equipment Purchase',
+                '📚 Education & Tuition',
+                '🏠 Home Improvement',
+              ].map((p) => {
+                const clean = p.replace(/^[^\s]+ /, '');
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPurpose(clean)}
+                    disabled={isSubmitting}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+                      purpose === clean
+                        ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          {/* Guarantors Section (Task 17 Collateral - Optional, staff only) */}
-          {showGuarantors && (
+          {/* Guarantors Section (Optional Collateral - Privacy Gated) */}
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -406,13 +503,20 @@ export default function ApplyLoanModal({
                   Guarantor Pledges (Optional Collateral)
                 </h4>
               </div>
-              <span className="text-[11px] font-medium text-slate-500 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                {guarantors.length} Attached
-              </span>
+              <div className="flex items-center gap-2">
+                {!isStaff && (
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Privacy Protected
+                  </span>
+                )}
+                <span className="text-[11px] font-medium text-slate-500 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                  {guarantors.length} Attached
+                </span>
+              </div>
             </div>
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              Guarantors are optional for standard loans. Pledging places an unwithdrawable lien on the guarantor&apos;s savings account until the loan is settled.
+              Guarantors provide supplementary collateral for the loan shortfall. Pledging locks funds on the guarantor&apos;s savings account via a core ledger hold.
             </p>
 
             {/* List attached guarantors */}
@@ -450,9 +554,13 @@ export default function ApplyLoanModal({
                   .filter((m) => m.id !== currentMemberId)
                   .map((m) => {
                     const capacity = guarantorBalances[m.id];
-                    const capText = capacity !== undefined ? ` — Available: ${capacity.toLocaleString()} ETB` : '';
+                    const isZero = capacity !== undefined && capacity <= 0;
+                    // Privacy: Only staff see available capacity figures
+                    const capText = isStaff && capacity !== undefined
+                      ? (capacity > 0 ? ` — Available: ${capacity.toLocaleString()} ETB` : ` — (0 ETB - Ineligible)`)
+                      : '';
                     return (
-                      <option key={m.id} value={m.id}>
+                      <option key={m.id} value={m.id} disabled={isZero}>
                         {m.fullName} ({m.memberNumber}){capText}
                       </option>
                     );
@@ -462,11 +570,11 @@ export default function ApplyLoanModal({
               <div className="flex gap-2">
                 <input
                   type="number"
-                  value={pledgedAmount}
+                  value={pledgedAmount || ''}
                   onChange={(e) => setPledgedAmount(Number(e.target.value))}
                   placeholder="Pledged ETB"
-                  step="1000"
-                  min="500"
+                  min="1"
+                  step="any"
                   disabled={isSubmitting}
                   className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
                 />

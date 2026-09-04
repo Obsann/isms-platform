@@ -23,6 +23,8 @@ export function composeNotification(
       return composeLoanApproved(data);
     case 'otp':
       return composeOtp(data);
+    case 'member-welcome':
+      return composeMemberWelcome(data);
   }
 }
 
@@ -89,6 +91,32 @@ function composeLoanApproved(data: Record<string, string | number>): ComposedMes
     'Funds will be available after disbursement. Contact your SACCO office with any questions.',
   ]
     .filter((line) => line !== '')
+    .join('\n');
+
+  return { subject, text, html: toHtml(subject, text) };
+}
+
+function composeMemberWelcome(data: Record<string, string | number>): ComposedMessage {
+  const memberName = field(data, 'memberName', 'member');
+  const email = field(data, 'email');
+  const password = field(data, 'password');
+  const tenantCode = field(data, 'tenantCode');
+  const saccoName = field(data, 'saccoName', 'your SACCO');
+  const loginUrl = field(data, 'loginUrl');
+
+  const subject = `${saccoName} member portal login`;
+  const text = [
+    `Hello ${memberName},`,
+    '',
+    `Your ${saccoName} member portal account is ready. Sign in with the email and temporary password below.`,
+    loginUrl ? `Sign in: ${loginUrl}` : '',
+    `Tenant code: ${tenantCode}`,
+    `Email: ${email}`,
+    `Temporary password: ${password}`,
+    '',
+    'Change this password after you sign in (Profile → Change Password). Do not share it with anyone.',
+  ]
+    .filter((line, i, lines) => line !== '' || (i > 0 && lines[i - 1] !== ''))
     .join('\n');
 
   return { subject, text, html: toHtml(subject, text) };

@@ -14,6 +14,7 @@ import { useLang } from "@/components/i18n";
 export default function LoginForm() {
   const router = useRouter();
   const { t } = useLang();
+  const [resetNotice, setResetNotice] = useState(false);
   const [tenantCode, setTenantCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,6 +27,7 @@ export default function LoginForm() {
     if (user) {
       router.replace(portalHome(user.role));
     }
+    setResetNotice(new URLSearchParams(window.location.search).get("reset") === "1");
   }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -145,6 +147,21 @@ export default function LoginForm() {
                   </button>
                 </div>
               </FormFieldGroup>
+
+              <div className="flex justify-end -mt-2">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-slate-500 hover:text-gold"
+                >
+                  {t("login.forgotPassword")}
+                </Link>
+              </div>
+
+              {resetNotice && (
+                <p className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-400" role="status">
+                  {t("login.resetSuccess")}
+                </p>
+              )}
 
               {error && (
                 <p className="text-[13px] font-semibold text-rose-600" role="alert">

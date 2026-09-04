@@ -68,9 +68,10 @@ From [`.cursor/rules/decisions.mdc`](../../.cursor/rules/decisions.mdc):
 | **D6** | Jest unit tests required for balanced-posting rejection and RLS isolation. No coverage gate yet. |
 
 **Chapa (later opt-in).** D1 originally mocked all mobile money. Member **C2B deposits**
-can now go through Chapa when `CHAPA_SECRET_KEY` is set on the API (Render only).
-Without the key, checkout stays mock: savings credit only after simulate + verify.
-B2C wallet withdrawals stay teller-side. Unsigned callback `status` is never trusted.
+and **B2C withdrawals** can now go through Chapa when `CHAPA_SECRET_KEY` is set on the
+API (Render only). Without the key, checkout/payout stays mock: savings move only after
+simulate + verify. Teller cash withdrawal remains available. Unsigned callback `status`
+is never trusted.
 
 ---
 
@@ -83,7 +84,7 @@ B2C wallet withdrawals stay teller-side. Unsigned callback `status` is never tru
 - Teller desk with optimistic UI and IndexedDB offline outbox + idempotent replay
 - Tenant Admin reports and HTML documents from live ledger / loan / member rows
 - Super Admin tenant provisioning
-- Member portal: live balance, statement, loans; Chapa C2B deposit (live or mock)
+- Member portal: live balance, statement, loans; Chapa C2B deposit and B2C withdrawal (live or mock)
 - SMTP notifications (Nodemailer) for deposit, withdrawal, loan approval, OTP
 - Backup sidecar + restore rehearsal that re-ran the RLS check
 - Welcome page, light/dark theme, Google Translate (`en` / `am` / `om`)
@@ -215,9 +216,9 @@ their own row (login email matched to `members.email`; JWT `sub` is staff id).
 
 **Task 24 — Member Self-Service Portal UI** (Liya)  
 Balance, statement, loans from the real API. Mobile money: Chapa C2B deposit
-(hosted checkout when keys are set; mock confirm otherwise). B2C withdraw is not
-offered — teller cash withdrawal instead. Success is shown only after verify posts
-the ledger.
+(hosted checkout when keys are set; mock confirm otherwise) and Chapa B2C
+withdrawal to Telebirr / M-PESA (hold, then debit after transfer verify). Success
+is shown only after verify posts the ledger.
 
 **Task 25 — Notification service** (Liya)  
 Nodemailer SMTP for deposit, withdrawal, loan approval, and OTP. SMTP failure must
@@ -225,8 +226,9 @@ not undo a posted financial transaction. Keys in `backend/` only.
 
 **Task 26 — Mobile money webhook contracts** (Liya)  
 OpenAPI shapes for generic C2B/B2C (Telebirr, M-PESA Ethiopia, CBE Birr) in
-[`../openapi/`](../openapi/). Live Chapa C2B is a separate, opt-in path
-(`POST /api/webhooks/chapa` + member initialize/verify). No USSD session contract.
+[`../openapi/`](../openapi/). Live Chapa C2B deposits and B2C withdrawals are a
+separate, opt-in path (`POST /api/webhooks/chapa` + member initialize/verify).
+No USSD session contract.
 
 ### Week 5 — Integration, testing, UAT
 

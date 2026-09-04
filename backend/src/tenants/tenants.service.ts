@@ -1,6 +1,7 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Optional } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import type { DataSource } from 'typeorm';
+import { TenantContextService } from '../common';
 import type { TenantStatus } from './tenant.entity';
 import { TenantEntity } from './tenant.entity';
 
@@ -28,7 +29,21 @@ export interface TenantListItem {
  */
 @Injectable()
 export class TenantsService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    @Optional() private readonly tenantContext?: TenantContextService,
+  ) {}
+
+  /**
+   * Use the request query runner when one is open so RLS sees `app.tenant_id`
+   * and we do not borrow a second pool client mid-transaction (pg deprecation).
+   */
+  private repo() {
+    if (this.tenantContext?.peekStore()) {
+      return this.tenantContext.repo(TenantEntity);
+    }
+    return this.dataSource.getRepository(TenantEntity);
+  }
 
   async resolveActiveByCode(code: string): Promise<ResolvedTenant | null> {
     const rows = await this.dataSource.query<ResolvedTenant[]>(
@@ -43,7 +58,7 @@ export class TenantsService {
   }
 
   async list(statusFilter?: TenantStatus): Promise<TenantListItem[]> {
-    const repo = this.dataSource.getRepository(TenantEntity);
+    const repo = this.repo();
     const where: any = {};
     if (statusFilter) {
       where.status = statusFilter;
@@ -53,7 +68,7 @@ export class TenantsService {
   }
 
   async create(payload: { name: string; code: string; status?: TenantStatus }): Promise<TenantListItem> {
-    const repo = this.dataSource.getRepository(TenantEntity);
+    const repo = this.repo();
     const code = payload.code.trim().toLowerCase();
     const name = payload.name.trim();
 
@@ -79,14 +94,14 @@ export class TenantsService {
   }
 
   async get(id: string): Promise<TenantListItem | null> {
-    const repo = this.dataSource.getRepository(TenantEntity);
+    const repo = this.repo();
     const r = await repo.findOneBy({ id });
     if (!r) return null;
     return { id: r.id, name: r.name, code: r.code, status: r.status, createdAt: r.createdAt.toISOString() };
   }
 
   async update(id: string, patch: { name?: string; status?: TenantStatus }): Promise<TenantListItem | null> {
-    const repo = this.dataSource.getRepository(TenantEntity);
+    const repo = this.repo();
     const r = await repo.findOneBy({ id });
     if (!r) return null;
     if (patch.name !== undefined) r.name = patch.name;
@@ -96,7 +111,7 @@ export class TenantsService {
   }
 
   async remove(id: string): Promise<void> {
-    const repo = this.dataSource.getRepository(TenantEntity);
+    const repo = this.repo();
     await repo.delete({ id });
   }
 }

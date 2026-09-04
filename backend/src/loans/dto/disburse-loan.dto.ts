@@ -1,4 +1,4 @@
-import { IsNumberString, IsUUID } from 'class-validator';
+import { IsNumberString, IsOptional, IsString, Matches, IsUUID } from 'class-validator';
 
 export class DisburseLoanDto {
   /** The savings account the disbursement is credited to. */
@@ -11,4 +11,9 @@ export class DisburseLoanDto {
    */
   @IsNumberString()
   amount!: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{6}$/, { message: 'otp must be a 6-digit code' })
+  otp?: string;
 }

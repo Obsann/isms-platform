@@ -13,6 +13,7 @@ import { TenantContextService } from '../common';
 import { SyncConflictException } from '../common/sync-conflict.exception';
 import { LedgerService, fromCents, toCents } from '../ledger';
 import { MemberService } from '../members';
+import { OtpService } from '../security-audit';
 import { SavingsSharesService } from '../savings-shares';
 import { LoanGuarantorEntity } from './entities/loan-guarantor.entity';
 import { LoanRepaymentEntity } from './entities/loan-repayment.entity';
@@ -62,6 +63,7 @@ export class LoanService {
     private readonly memberService: MemberService,
     private readonly notifications: NotificationService,
     private readonly configService: ConfigService,
+    private readonly otp: OtpService,
   ) {}
 
   // ------------------------------------------------------------------ apply
@@ -218,6 +220,14 @@ export class LoanService {
         `Disbursement amount ${input.amount} exceeds approved amount ${loan.approvedAmount}`,
       );
     }
+
+    await this.otp.requireForHighValue({
+      staffId: input.initiatedByStaffId,
+      purpose: 'loan-disbursement',
+      code: input.otp,
+      amount: input.amount,
+      loanId: input.loanId,
+    });
 
     loan.status = 'disbursed';
     loan.disbursedAmount = input.amount;

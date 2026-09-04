@@ -21,6 +21,7 @@ import { FormFieldGroup } from '@/components/forms/FormFieldGroup';
 import { apiClient, getSessionUser } from '@/lib/api-client';
 import type { AuthUser } from '@/types';
 import { useLang } from '@/components/i18n';
+import OtpRequestField from '@/components/auth/OtpRequestField';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -37,6 +38,7 @@ interface PasswordForm {
   current: string;
   next: string;
   confirm: string;
+  otp: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -50,7 +52,7 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
   const [error, setError] = useState<string | null>(null);
 
   // Password change form
-  const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '' });
+  const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '', otp: '' });
   const [pwVisible, setPwVisible] = useState({ current: false, next: false, confirm: false });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwSuccess, setPwSuccess] = useState(false);
@@ -101,15 +103,20 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
       setPwError('New password and confirmation do not match.');
       return;
     }
+    if (!/^\d{6}$/.test(pwForm.otp)) {
+      setPwError('Enter the 6-digit email verification code.');
+      return;
+    }
 
     setPwSaving(true);
     try {
       await apiClient.post('/auth/change-password', {
         currentPassword: pwForm.current,
         newPassword: pwForm.next,
+        otp: pwForm.otp,
       });
       setPwSuccess(true);
-      setPwForm({ current: '', next: '', confirm: '' });
+      setPwForm({ current: '', next: '', confirm: '', otp: '' });
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -316,7 +323,9 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
                   <Key className="w-4 h-4 text-gold" />
                   Change Password
                 </CardTitle>
-                <CardDescription>Update your account password for security</CardDescription>
+                <CardDescription>
+                  Update your password. A one-time code is emailed to your login address first.
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -390,6 +399,13 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
                     </div>
                   </FormFieldGroup>
                 </div>
+
+                <OtpRequestField
+                  purpose="password-change"
+                  value={pwForm.otp}
+                  onChange={(otp) => handlePwChange('otp', otp)}
+                  disabled={pwSaving}
+                />
 
                 {/* Password validation feedback */}
                 {pwForm.next.length > 0 && (
@@ -502,7 +518,7 @@ export default function ProfilePage({ eyebrow = 'profile.eyebrowAccount', platfo
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">2FA</p>
-                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Not configured</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Email OTP on sensitive actions</p>
                   </div>
                 </div>
               </div>

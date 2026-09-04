@@ -1,22 +1,44 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { NotificationService } from '../channel-integration';
 import { TenantContextService } from '../common';
-import { StaffAccountService, type StaffCredential } from '../security-audit';
+import {
+  OTP_PURPOSE_LABEL,
+  OtpService,
+  StaffAccountService,
+  type IssueOtpResult,
+  type OtpPurpose,
+  type StaffCredential,
+} from '../security-audit';
 import { TenantsService } from '../tenants';
 import { PLATFORM_TENANT_CODE, type LoginResponse } from '../types';
-import type { LoginDto } from './dto/login.dto';
 import type { JwtPayload } from './auth.types';
+import type { LoginDto } from './dto/login.dto';
 
 const INVALID_CREDENTIALS = 'Invalid tenant code, email, or password';
+const FORGOT_PASSWORD_ACK =
+  'If an account exists for that tenant and email, a verification code has been sent.';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly tenantsService: TenantsService,
     private readonly staffAccountService: StaffAccountService,
     private readonly tenantContext: TenantContextService,
     private readonly jwtService: JwtService,
+    private readonly otp: OtpService,
+    private readonly notifications: NotificationService,
+    private readonly config: ConfigService,
   ) {}
 
   async login(dto: LoginDto): Promise<LoginResponse> {
@@ -42,11 +64,106 @@ export class AuthService {
     };
   }
 
+  async requestOtp(
+    staffId: string,
+    purpose: OtpPurpose,
+    extras?: { amount?: string; accountId?: string; loanId?: string },
+  ): Promise<IssueOtpResult> {
+    if (purpose === 'password-reset') {
+      throw new BadRequestException('Use the forgot-password form to reset a password');
+    }
+
+    const summary = await this.staffAccountService.findSummaryById(staffId);
+    if (!summary?.email) {
+      throw new UnauthorizedException('Account not found');
+    }
+
+    if (purpose === 'large-withdrawal') {
+      if (!extras?.amount || !extras.accountId) {
+        throw new BadRequestException('amount and accountId are required for a large-withdrawal code');
+      }
+      if (!this.otp.amountRequiresOtp(extras.amount)) {
+        throw new BadRequestException(
+          `OTP is only required for withdrawals of ${this.otp.highValueThreshold()} ETB or more`,
+        );
+      }
+    }
+
+    if (purpose === 'loan-disbursement') {
+      if (!extras?.amount || !extras.loanId) {
+        throw new BadRequestException('amount and loanId are required for a loan-disbursement code');
+      }
+      if (!this.otp.amountRequiresOtp(extras.amount)) {
+        throw new BadRequestException(
+          `OTP is only required for disbursements of ${this.otp.highValueThreshold()} ETB or more`,
+        );
+      }
+    }
+
+    const { challenge, code } = await this.otp.issue({
+      tenantId: summary.tenantId,
+      staffId,
+      email: summary.email,
+      purpose,
+      context:
+        purpose === 'password-change'
+          ? undefined
+          : { amount: extras?.amount, accountId: extras?.accountId, loanId: extras?.loanId },
+    });
+
+    await this.deliverOtp(summary.email, code, purpose, challenge.expiresInSeconds);
+    return challenge;
+  }
+
+  async forgotPassword(tenantCode: string, email: string): Promise<{ message: string }> {
+    const staff = await this.lookupActiveStaff(tenantCode, email);
+    if (staff) {
+      try {
+        const { challenge, code } = await this.otp.issue({
+          tenantId: staff.tenantId,
+          staffId: staff.id,
+          email: staff.email,
+          purpose: 'password-reset',
+        });
+        await this.deliverOtp(staff.email, code, 'password-reset', challenge.expiresInSeconds);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Forgot-password OTP failed for ${email}: ${message}`);
+      }
+    }
+    return { message: FORGOT_PASSWORD_ACK };
+  }
+
+  async resetPassword(input: {
+    tenantCode: string;
+    email: string;
+    otp: string;
+    newPassword: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const staff = await this.lookupActiveStaff(input.tenantCode, input.email);
+    if (!staff) {
+      throw new UnauthorizedException('Invalid reset request');
+    }
+
+    await this.tenantContext.runInTenantContext(staff.tenantId, async () => {
+      await this.otp.verifyAndConsume({
+        staffId: staff.id,
+        purpose: 'password-reset',
+        code: input.otp,
+      });
+      const newHash = await bcrypt.hash(input.newPassword, 10);
+      await this.staffAccountService.updatePassword(staff.id, newHash);
+    });
+
+    return { success: true, message: 'Password reset successfully. You can sign in now.' };
+  }
+
   async changePassword(
     staffId: string,
     tenantId: string | null,
     currentPass: string,
     newPass: string,
+    otp: string,
   ): Promise<{ success: boolean; message: string }> {
     let credential: StaffCredential | null = null;
 
@@ -64,11 +181,55 @@ export class AuthService {
     }
 
     await this.assertPassword(currentPass, credential.passwordHash);
+    await this.otp.verifyAndConsume({
+      staffId,
+      purpose: 'password-change',
+      code: otp,
+    });
 
     const newHash = await bcrypt.hash(newPass, 10);
     await this.staffAccountService.updatePassword(staffId, newHash);
 
     return { success: true, message: 'Password updated successfully' };
+  }
+
+  private async lookupActiveStaff(tenantCode: string, email: string): Promise<StaffCredential | null> {
+    if (tenantCode === PLATFORM_TENANT_CODE) {
+      return this.staffAccountService.findActivePlatformByEmail(email);
+    }
+    const tenant = await this.tenantsService.resolveActiveByCode(tenantCode);
+    if (!tenant) {
+      return null;
+    }
+    return this.tenantContext.runInTenantContext(tenant.id, () =>
+      this.staffAccountService.findActiveByTenantAndEmail(tenant.id, email),
+    );
+  }
+
+  private async deliverOtp(
+    to: string,
+    code: string,
+    purpose: OtpPurpose,
+    expirySeconds: number,
+  ): Promise<void> {
+    try {
+      await this.notifications.send({
+        template: 'otp',
+        to,
+        data: {
+          code,
+          expirySeconds,
+          purpose: OTP_PURPOSE_LABEL[purpose],
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isProd = this.config.get<string>('NODE_ENV') === 'production';
+      if (isProd) {
+        throw new UnprocessableEntityException('Could not send the verification email. Try again shortly.');
+      }
+      this.logger.warn(`OTP email not sent (${message}). Development code for ${purpose}: ${code}`);
+    }
   }
 
   private async authenticateTenantStaff(dto: LoginDto): Promise<StaffCredential> {

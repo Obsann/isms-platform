@@ -18,6 +18,7 @@ export interface QueuedTellerOperation {
   loanId?: string;
   amount: string;
   narration?: string;
+  otp?: string;
   status: OutboxItemStatus;
   createdAt: string;
   lastError?: string;

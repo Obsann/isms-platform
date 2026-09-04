@@ -2,7 +2,7 @@
 import { ConfigService } from '@nestjs/config';
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import { createSmtpTransport, NotificationService } from './notification.service';
+import { createSmtpTransport, NotificationService, readSmtpValue } from './notification.service';
 import { composeNotification, formatMoney } from './notification.templates';
 
 describe('formatMoney', () => {
@@ -55,6 +55,22 @@ describe('composeNotification', () => {
     expect(message.text).toContain('12 months');
   });
 
+  it('composes a member welcome email with login details', () => {
+    const message = composeNotification('member-welcome', {
+      memberName: 'Abebe Kebede Bikila',
+      email: 'abebe.bikila@tenant-a.dev',
+      password: 'Isms-abc123xy9!',
+      tenantCode: 'tenant-a',
+      saccoName: 'Tsehay Sacco',
+      loginUrl: 'http://localhost:3000/login',
+    });
+    expect(message.subject).toContain('Tsehay Sacco');
+    expect(message.text).toContain('abebe.bikila@tenant-a.dev');
+    expect(message.text).toContain('Isms-abc123xy9!');
+    expect(message.text).toContain('tenant-a');
+    expect(message.text).toContain('http://localhost:3000/login');
+  });
+
   it('composes an OTP email', () => {
     const message = composeNotification('otp', {
       code: '482910',
@@ -64,6 +80,23 @@ describe('composeNotification', () => {
     expect(message.subject).toContain('login');
     expect(message.text).toContain('482910');
     expect(message.text).toContain('300 seconds');
+  });
+});
+
+describe('readSmtpValue', () => {
+  it('strips wrapping quotes and falls back across aliases', () => {
+    const config = {
+      get: (key: string) => {
+        const values: Record<string, string> = {
+          SMTP_HOST: '"smtp.gmail.com"',
+          SMTP_PASSWORD: '',
+        };
+        return values[key];
+      },
+    } as unknown as ConfigService;
+
+    expect(readSmtpValue(config, 'SMTP_HOST')).toBe('smtp.gmail.com');
+    expect(readSmtpValue(config, 'SMTP_PASSWORD', 'SMTP_PASS')).toBe('');
   });
 });
 

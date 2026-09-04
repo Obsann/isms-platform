@@ -33,7 +33,13 @@ export class NotificationService {
       this.logger.warn(
         'SMTP is not configured — deposit, withdrawal, loan-approval, and OTP emails will not send',
       );
+    } else {
+      this.logger.log('SMTP transport ready');
     }
+  }
+
+  isConfigured(): boolean {
+    return Boolean(this.transporter);
   }
 
   /**
@@ -127,22 +133,36 @@ export class NotificationService {
 }
 
 export function createSmtpTransport(config: ConfigService): Transporter | null {
-  const host = config.get<string>('SMTP_HOST')?.trim();
+  const host = readSmtpValue(config, 'SMTP_HOST');
   if (!host) {
     return null;
   }
 
-  const port = Number(config.get<string>('SMTP_PORT', '587'));
-  const secure = config.get<string>('SMTP_SECURE', String(port === 465)) === 'true';
-  const user = config.get<string>('SMTP_USER')?.trim();
-  const pass = config.get<string>('SMTP_PASSWORD') ?? '';
+  const port = Number(readSmtpValue(config, 'SMTP_PORT') || '587');
+  const resolvedPort = Number.isFinite(port) ? port : 587;
+  const secureFlag = readSmtpValue(config, 'SMTP_SECURE');
+  const secure = secureFlag ? secureFlag === 'true' : resolvedPort === 465;
+  const user = readSmtpValue(config, 'SMTP_USER');
+  const pass = readSmtpValue(config, 'SMTP_PASSWORD', 'SMTP_PASS');
 
   return nodemailer.createTransport({
     host,
-    port: Number.isFinite(port) ? port : 587,
+    port: resolvedPort,
     secure,
     auth: user ? { user, pass } : undefined,
   });
+}
+
+/** ConfigService, then process.env. Strips wrapping quotes from `.env` values. */
+export function readSmtpValue(config: ConfigService, ...keys: string[]): string {
+  for (const key of keys) {
+    const raw = config.get<string>(key) ?? process.env[key] ?? '';
+    const value = raw.trim().replace(/^['"]|['"]$/g, '');
+    if (value) {
+      return value;
+    }
+  }
+  return '';
 }
 
 function wait(ms: number): Promise<void> {

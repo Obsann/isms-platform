@@ -25,6 +25,7 @@ export interface WithdrawalPayload {
   amount: Amount;
   reference?: string;
   narration?: string;
+  otp?: string;
 }
 
 export interface RepayLoanPayload {

@@ -1,7 +1,12 @@
 import type { Amount, MemberId } from '../types';
 
 /** Email templates standing in for the SMS/WhatsApp gateway this phase. */
-export type NotificationTemplate = 'deposit-posted' | 'withdrawal-posted' | 'loan-approved' | 'otp';
+export type NotificationTemplate =
+  | 'deposit-posted'
+  | 'withdrawal-posted'
+  | 'loan-approved'
+  | 'otp'
+  | 'member-welcome';
 
 export interface SendNotificationInput {
   template: NotificationTemplate;
@@ -15,6 +20,7 @@ export interface SendNotificationInput {
    *   balanceAfter, accountNumber, reference?
    * - `loan-approved`: memberName, loanNumber, amount, currency, termMonths?
    * - `otp`: code, expirySeconds, purpose?
+   * - `member-welcome`: memberName, email, password, tenantCode, saccoName, loginUrl?
    */
   data: Record<string, string | number>;
 }

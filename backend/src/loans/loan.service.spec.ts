@@ -37,6 +37,8 @@ describe('LoanService - Business Rules & RBAC Threshold (Tasks 16–18, D-30-01,
 
   beforeEach(() => {
     jest.clearAllMocks();
+    const mockOtp = { requireForHighValue: jest.fn().mockResolvedValue(undefined) };
+
     service = new LoanService(
       mockTenantContext as never,
       mockSavingsSharesService as never,
@@ -44,6 +46,7 @@ describe('LoanService - Business Rules & RBAC Threshold (Tasks 16–18, D-30-01,
       mockMemberService as never,
       mockNotifications as never,
       mockConfigService as never,
+      mockOtp as never,
     );
   });
 

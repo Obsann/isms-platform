@@ -71,7 +71,7 @@ export function toChapaPhone(e164: string): string {
 }
 
 export function readChapaSecret(raw: string | undefined): string {
-  return raw?.trim() ?? '';
+  return (raw ?? '').trim().replace(/^['"]|['"]$/g, '');
 }
 
 export function isPlaceholderChapaKey(secret: string): boolean {
@@ -228,19 +228,45 @@ export function assertChapaWebhookSignature(input: {
   }
 }
 
-export function extractChapaTxRef(body: Record<string, unknown>): string | null {
-  const direct = body.tx_ref ?? body.trx_ref;
-  if (typeof direct === 'string' && direct.trim()) {
-    return direct.trim();
-  }
-  const data = body.data;
-  if (data && typeof data === 'object') {
-    const nested = (data as Record<string, unknown>).tx_ref;
-    if (typeof nested === 'string' && nested.trim()) {
-      return nested.trim();
+function isIsmsTxRef(value: string): boolean {
+  return parseTenantIdFromTxRef(value) !== null;
+}
+
+function firstIsmsRef(...candidates: unknown[]): string | null {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim() && isIsmsTxRef(candidate.trim())) {
+      return candidate.trim();
     }
   }
   return null;
+}
+
+export function extractChapaTxRef(body: Record<string, unknown>): string | null {
+  const data = body.data && typeof body.data === 'object' ? (body.data as Record<string, unknown>) : {};
+  const isms = firstIsmsRef(body.tx_ref, body.trx_ref, body.reference, data.tx_ref, data.reference);
+  if (isms) {
+    return isms;
+  }
+  const direct = body.tx_ref ?? body.trx_ref ?? body.reference;
+  if (typeof direct === 'string' && direct.trim()) {
+    return direct.trim();
+  }
+  const nested = data.tx_ref ?? data.reference;
+  if (typeof nested === 'string' && nested.trim()) {
+    return nested.trim();
+  }
+  return null;
+}
+
+/** Compare two already-normalized ETB strings (`1500.00`). */
+export function etbGreaterThan(left: string, right: string): boolean {
+  return etbToCents(left) > etbToCents(right);
+}
+
+function etbToCents(value: string): bigint {
+  const [whole, fraction = ''] = value.split('.');
+  const padded = fraction.padEnd(2, '0').slice(0, 2);
+  return BigInt(whole || '0') * 100n + BigInt(padded || '0');
 }
 
 export function chapaStatusIsPaid(status: unknown): boolean {
@@ -260,6 +286,8 @@ export function chapaStatusIsFailed(status: unknown): boolean {
     normalized === 'failed' ||
     normalized === 'cancelled' ||
     normalized === 'canceled' ||
-    normalized === 'expired'
+    normalized === 'expired' ||
+    normalized === 'reverted' ||
+    normalized === 'reversed'
   );
 }

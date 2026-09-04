@@ -35,7 +35,14 @@ interface ApplyLoanModalProps {
 
 const SAVINGS_MULTIPLIER = 3;
 
-export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: ApplyLoanModalProps) {
+export default function ApplyLoanModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  members,
+  lockedMemberId,
+  allowGuarantors = true,
+}: ApplyLoanModalProps) {
   const authUser = useAuthUser();
   const isStaff = authUser?.role === 'tenant-admin' || authUser?.role === 'loan-officer' || authUser?.role === 'super-admin' || authUser?.role === 'teller';
 
@@ -495,101 +502,102 @@ export default function ApplyLoanModal({ isOpen, onClose, onSubmit, members }: A
           </div>
 
           {/* Guarantors Section (Optional Collateral - Privacy Gated) */}
-          <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-indigo-500" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Guarantor Pledges (Optional Collateral)
-                </h4>
-              </div>
-              <div className="flex items-center gap-2">
-                {!isStaff && (
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Privacy Protected
+          {showGuarantors && (
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-indigo-500" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Guarantor Pledges (Optional Collateral)
+                  </h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isStaff && (
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Privacy Protected
+                    </span>
+                  )}
+                  <span className="text-[11px] font-medium text-slate-500 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                    {guarantors.length} Attached
                   </span>
-                )}
-                <span className="text-[11px] font-medium text-slate-500 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                  {guarantors.length} Attached
-                </span>
+                </div>
               </div>
-            </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              Guarantors provide supplementary collateral for the loan shortfall. Pledging locks funds on the guarantor&apos;s savings account via a core ledger hold.
-            </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Guarantors provide supplementary collateral for the loan shortfall. Pledging locks funds on the guarantor&apos;s savings account via a core ledger hold.
+              </p>
 
-            {/* List attached guarantors */}
-            {guarantors.length > 0 && (
-              <div className="space-y-2 pt-1">
-                {guarantors.map((g) => (
-                  <div key={g.guarantorMemberId} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{g.guarantorName}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-indigo-600 dark:text-indigo-400">Pledged: {g.pledgedAmount.toLocaleString()} ETB</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveGuarantor(g.guarantorMemberId)}
-                        disabled={isSubmitting}
-                        className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+              {/* List attached guarantors */}
+              {guarantors.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  {guarantors.map((g) => (
+                    <div key={g.guarantorMemberId} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{g.guarantorName}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400">Pledged: {g.pledgedAmount.toLocaleString()} ETB</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGuarantor(g.guarantorMemberId)}
+                          disabled={isSubmitting}
+                          className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            {/* Add Guarantor row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200/70 dark:border-slate-800">
-              <select
-                value={selectedGuarantorId}
-                onChange={(e) => setSelectedGuarantorId(e.target.value)}
-                disabled={isSubmitting}
-                className="sm:col-span-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">Select Guarantor Member...</option>
-                {members
-                  .filter((m) => m.id !== currentMemberId)
-                  .map((m) => {
-                    const capacity = guarantorBalances[m.id];
-                    const isZero = capacity !== undefined && capacity <= 0;
-                    // Privacy: Only staff see available capacity figures
-                    const capText = isStaff && capacity !== undefined
-                      ? (capacity > 0 ? ` — Available: ${capacity.toLocaleString()} ETB` : ` — (0 ETB - Ineligible)`)
-                      : '';
-                    return (
-                      <option key={m.id} value={m.id} disabled={isZero}>
-                        {m.fullName} ({m.memberNumber}){capText}
-                      </option>
-                    );
-                  })}
-              </select>
-
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={pledgedAmount || ''}
-                  onChange={(e) => setPledgedAmount(Number(e.target.value))}
-                  placeholder="Pledged ETB"
-                  min="1"
-                  step="any"
+              {/* Add Guarantor row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200/70 dark:border-slate-800">
+                <select
+                  value={selectedGuarantorId}
+                  onChange={(e) => setSelectedGuarantorId(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddGuarantor}
-                  disabled={isSubmitting || !selectedGuarantorId}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0 disabled:opacity-50 transition-colors shadow-sm"
+                  className="sm:col-span-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add
-                </button>
+                  <option value="">Select Guarantor Member...</option>
+                  {members
+                    .filter((m) => m.id !== currentMemberId)
+                    .map((m) => {
+                      const capacity = guarantorBalances[m.id];
+                      const isZero = capacity !== undefined && capacity <= 0;
+                      // Privacy: Only staff see available capacity figures
+                      const capText = isStaff && capacity !== undefined
+                        ? (capacity > 0 ? ` — Available: ${capacity.toLocaleString()} ETB` : ` — (0 ETB - Ineligible)`)
+                        : '';
+                      return (
+                        <option key={m.id} value={m.id} disabled={isZero}>
+                          {m.fullName} ({m.memberNumber}){capText}
+                        </option>
+                      );
+                    })}
+                </select>
+
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={pledgedAmount || ''}
+                    onChange={(e) => setPledgedAmount(Number(e.target.value))}
+                    placeholder="Pledged ETB"
+                    min="1"
+                    step="any"
+                    disabled={isSubmitting}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddGuarantor}
+                    disabled={isSubmitting || !selectedGuarantorId}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
           )}
 
           {/* Footer Actions */}

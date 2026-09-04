@@ -1,375 +1,666 @@
-# ISMS internship MVP — final report
+# ISMS internship MVP — final report (broad handover)
 
-Internship handover for the Integrated SACCO Management System. Task briefs below
-follow [`../TASKS.md`](../TASKS.md). Report summaries follow the companion docs in
-[`../README.md`](../README.md). MVP scope is [`.cursor/rules/decisions.mdc`](../../.cursor/rules/decisions.mdc),
-not the SDS.
+This is the **internship handover report** for the Integrated SACCO Management System
+(ISMS). It is written so someone who did not sit in the daily stand-ups can still
+explain the product, the team, the architecture, the six-week build, the recorded
+scope cuts, how to run it, how it was tested, and what is deliberately **not** in
+MVP.
+
+Task numbers follow [`../TASKS.md`](../TASKS.md). The same plan by person is
+[`../TEAM_ASSIGNMENTS.md`](../TEAM_ASSIGNMENTS.md). Agent-enforced coding rules live
+under [`.cursor/rules/`](../../.cursor/rules/), not as a second copy of this file.
+**MVP truth** is [`.cursor/rules/decisions.mdc`](../../.cursor/rules/decisions.mdc),
+not the background SDS [`../SACCO_PROPOSAL.md`](../SACCO_PROPOSAL.md).
+
+Operator click-paths are in the portal manuals in this folder. This report is the
+**why / what / who / how it hangs together** document.
 
 ---
 
-## 1. Product
+## Table of contents
 
-ISMS is a **multi-tenant SACCO** platform: one NestJS API (`backend/`) and one
-Next.js app (`frontend/`) with four portals on a single Postgres 16 database.
+1. [Executive summary](#1-executive-summary)
+2. [Problem, context, and why a platform](#2-problem-context-and-why-a-platform)
+3. [Product: portals, tenants, seed](#3-product-portals-tenants-seed)
+4. [Team, verticals, and ownership](#4-team-verticals-and-ownership)
+5. [Software development methodology (SDLC)](#5-software-development-methodology-sdlc)
+6. [OOP, clean architecture, modular monolith (not microservices)](#6-oop-clean-architecture-modular-monolith-not-microservices)
+7. [Design patterns and SOLID as they appear in the code](#7-design-patterns-and-solid-as-they-appear-in-the-code)
+8. [DevSecOps: security in the pipeline](#8-devsecops-security-in-the-pipeline)
+9. [Recorded MVP decisions (D1–D6) and later opt-ins](#9-recorded-mvp-decisions-d1d6-and-later-opt-ins)
+10. [Architecture deep dive](#10-architecture-deep-dive)
+11. [What shipped (feature catalogue)](#11-what-shipped-feature-catalogue)
+12. [Week-by-week task briefs (1–35)](#12-week-by-week-task-briefs-135)
+13. [Vertical narratives](#13-vertical-narratives)
+14. [Companion documents](#14-companion-documents)
+15. [How to run locally and verify](#15-how-to-run-locally-and-verify)
+16. [Production / internship hosting](#16-production--internship-hosting)
+17. [Limitations, post-MVP, residual closeout](#17-limitations-post-mvp-residual-closeout)
+18. [Glossary](#18-glossary)
 
-| Portal | Seed role | Who uses it |
+---
+
+## 1. Executive summary
+
+ISMS is a **multi-tenant web platform for Ethiopian SACCOs**: one NestJS API, one
+Next.js + Tailwind frontend, one Postgres 16 database, **four portals**, many
+SACCOs (tenants) isolated by **Postgres row-level security (RLS)**, not by a
+database per SACCO and not by a microservice per SACCO.
+
+Six interns built it in **six weeks** as **full-stack verticals** (the same person
+owns backend and UI for their area). **Obsan** owned the **platform** everyone else
+stands on: authentication, tenant context / RLS, RBAC, the double-entry **ledger**,
+teller **offline sync**, and deployment. Other verticals: members (Melkamu),
+teller/savings (Jerry), loans (Abenezer), admin/reporting (Biruk), member
+self-service and notifications (Liya).
+
+The internship stack is **TypeScript** (NestJS + Next.js), **not** the course
+example of .NET 9. The **methodology** matches a modular monolith + multi-tenant
+SACCO product: layered modules, OOP services, SOLID-ish boundaries, secrets and
+authorization in the development pipeline (DevSecOps as practiced here).
+
+**Money never moves except through the ledger.** **Tenants never see each other’s
+rows** if the API runs as `isms_app` with RLS forced. **Roles fail closed.**
+Currency on screen is always a full figure (`45,230.00 ETB`), never `45.2K`.
+
+Demo SACCOs after `npm run seed`: **Tsehay Sacco** (login code `tenant-a`) and
+**Chereka Sacco** (`tenant-b`). Shared local password: `DevPassword!123` — rotate
+before any real user.
+
+---
+
+## 2. Problem, context, and why a platform
+
+Ethiopian SACCOs (savings and credit cooperatives) typically run member books,
+teller cash, share capital, and small loans. Paper or single-SACCO spreadsheets do
+not share a **platform operator** who can provision a new SACCO without cloning a
+whole server. A naive multi-tenant app that filters `WHERE tenant_id = ?` in every
+query **fails closed incorrectly**: one missed `WHERE` leaks another SACCO’s
+members and balances.
+
+ISMS answers that with:
+
+- One deployable **modular monolith** (simpler than microservices for a six-week
+  internship).
+- **RLS** so isolation is enforced in Postgres even if application code is sloppy.
+- A **ledger** so savings, shares, and loans cannot invent their own balances.
+- Four **portals** so a teller, a manager, a member, and a platform operator do not
+  share one “god UI.”
+
+The background SDS (`SACCO_PROPOSAL.md`) describes a larger product (live national
+ID, USSD, editable chart of accounts, live Telebirr/M-PESA/CBE). The internship
+**explicitly cut** those (section 9). This report always prefers the recorded
+decisions over the SDS when they disagree.
+
+---
+
+## 3. Product: portals, tenants, seed
+
+### 3.1 Four portals
+
+| Portal | Seed role(s) | Job |
 |---|---|---|
-| Super Admin | `super-admin` | Platform operator — provision / suspend SACCOs |
-| Tenant Admin | `tenant-admin`, `loan-officer` | SACCO manager and loan officer |
-| Teller | `teller` | Counter staff — cash, shares, repayments |
-| Member | `member` | Web self-service only (no USSD) |
+| Super Admin | `super-admin` | Provision / suspend **whole SACCOs**. Platform-level; not day-to-day teller work. |
+| Tenant Admin | `tenant-admin`, `loan-officer` | SACCO manager dashboard, reports, member registration (admin), loan approval. Loan officer shares this shell but must not get teller-only or admin-only buttons they are not allowed (RBAC + UI gating). |
+| Teller | `teller` | Counter: search member, deposit, withdraw, share purchase, loan repayment; offline outbox when the network drops. |
+| Member | `member` | Web self-service: balance, statement, own loans (including apply), Chapa deposit/withdraw. **No USSD.** |
 
-Demo SACCOs after `npm run seed`: **Tsehay Sacco** (`tenant-a`) and **Chereka Sacco**
-(`tenant-b`). Login still uses those codes, not the display names. Shared local
-password: `DevPassword!123` (rotate before real users).
+Login is always `{ tenantCode, email, password }`. Super Admin uses the reserved
+tenant code `platform` (not a row in `tenants` in the same way; `tenant_id` on that
+staff row is NULL).
 
-### Team and verticals
+### 3.2 Seeded tenants and people
 
-Six people, six weeks, full-stack verticals (same person owns backend and UI):
+After `npm run seed` (database owner role, not `isms_app`):
 
-| Owner | Vertical |
+| Tenant code | Display name | Typical staff |
+|---|---|---|
+| `platform` | — | `superadmin@platform.dev` |
+| `tenant-a` | Tsehay Sacco | `admin@`, `teller@`, `loan-officer@tenant-a.dev` |
+| `tenant-b` | Chereka Sacco | same pattern `@tenant-b.dev` |
+
+Seeded member portal users (email must match the `members` row): e.g.
+`abebe.bikila@tenant-a.dev` / `tenant-a`. A **teller** email is not a member portal
+login.
+
+Password for all seed accounts: `DevPassword!123`.
+
+D5 originally described staff roles; member portal logins are provisioned for seed
+members and, later, for newly registered members (welcome email + temporary
+password) when that path is enabled.
+
+### 3.3 What a member journey looks like (happy path)
+
+1. Tenant admin or teller **registers** the member (manual `nationalId` + `idType`;
+   no Fayda). Member number may be auto-assigned `MEM-#####` if omitted.
+2. If the member has an email, the API can create a `staff_accounts` row with role
+   `member` and email a temporary password (SMTP).
+3. Teller opens a **savings** account and posts a **deposit** through the ledger.
+4. Member may **apply for a loan**; ceiling = available savings × 3 (env). Staff
+   approve; disbursement and repayment post through the ledger. Guarantor pledges
+   **hold** the guarantor’s savings, they do not raise the borrower’s ceiling.
+5. Member may **deposit via Chapa** hosted checkout if `CHAPA_SECRET_KEY` is set;
+   savings credit only after **verify**. Withdrawals to Telebirr/M-PESA similarly
+   hold then debit after transfer verify. Without the key, Pay is disabled and
+   withdrawals can be simulated.
+
+---
+
+## 4. Team, verticals, and ownership
+
+Six people, six weeks, **not** a backend team vs frontend team. Each vertical is
+end-to-end so there is a single owner for “members are wrong in the UI and the API.”
+
+| Owner | Vertical | Sits on |
+|---|---|---|
+| **Obsan** | Platform: auth, RLS, RBAC, ledger, offline-sync, deploy | — (foundation) |
+| **Melkamu** | Member management: registration, search, CSV, auto member numbers | Tasks 2–4, 7, 22 |
+| **Jerry** | Transactions / Teller Desk: savings, shares, counter UI | Ledger (13), members |
+| **Abenezer** | Loans & credit: eligibility, guarantors, approval, disbursement | Ledger, holds (12), members |
+| **Biruk** | Admin & reporting: Super Admin, Tenant Admin, documents | Ledger, members, loans |
+| **Liya** | Member self-service: portal, SMTP, OpenAPI MoMo shapes | Members, savings, loans |
+
+**Merge order (do not ignore in an oral exam):** ledger (13) before more savings
+and before loans post money; RBAC (22) before every vertical claims “we secured
+the route”; Jerry’s online teller (14) before Obsan’s offline layer (15); Task 5
+shared types **once, together**, not two PRs.
+
+**Reviews:** anything touching ledger, JWT, tenant-context/RLS, RBAC, or shared
+platform tables needs **Obsan**. Vertical code needs another vertical owner.
+Shared types need the consumer’s owner.
+
+---
+
+## 5. Software development methodology (SDLC)
+
+This internship did not run a textbook waterfall with a 200-page spec frozen on
+day one. It also did not “everyone codes on `main`.” It was a **planned, iterative,
+task-numbered SDLC**:
+
+1. **Requirements / SDS** — problem and FRs in `SACCO_PROPOSAL.md`.
+2. **Scope lock** — D1–D6 recorded so the SDS does not silently expand MVP.
+3. **Planning** — `TASKS.md`: owner, dependencies, **verify** step per task.
+4. **Design** — module map, RBAC matrix, OpenAPI webhook contracts, ledger as the
+   only balance API.
+5. **Implementation** — branches `task<N>-<name>-<short-desc>`, commits
+   `Task <N>: …`.
+6. **Integration** — Task 27 walkthrough; Week 5 scripts (RLS, RBAC, audit, outbox).
+7. **Test / UAT** — Jest (D6), test-case matrix (Task 30), sign-off sheet (35).
+8. **Deploy / operate** — runbook (32), backup rehearsal (33), manuals (34).
+
+**Git:** trunk-based PRs into `main`. No force-push to `main`. Never edit an
+already-applied migration. Conflicts in ledger/auth/types are treated as serious;
+migration conflicts are regenerated, not hand-merged.
+
+That is the “software development methodology” for this project: **Agile-shaped
+delivery with a master task list**, not Scrum theatre and not a single release
+after six silent weeks.
+
+---
+
+## 6. OOP, clean architecture, modular monolith (not microservices)
+
+### 6.1 OOP (objects and classes)
+
+The course slide said “object and class.” This codebase is TypeScript classes:
+
+- **Entities** (`MemberEntity`, `TenantEntity`, `ChapaPaymentEntity`) map tables.
+- **Services** (`MemberService`, `LedgerService`, `OtpService`, `ChapaService`)
+  hold business rules.
+- **Controllers** map HTTP to services and DTOs.
+- **Guards / interceptors** are classes that implement Nest interfaces.
+
+Nest **dependency injection** constructs **objects** of those classes per
+application lifetime (singletons by default). Tests substitute mocks (`useValue`)
+for the same constructor tokens.
+
+**Encapsulation:** `LoanModule` calls `LedgerService` / `SavingsSharesService`
+through DI. It does not `UPDATE accounts SET balance`. **Inheritance:** tenant
+tables extend `TenantScopedEntity` / `BaseEntity`. **Polymorphism (practical):**
+one `NotificationService.send()` dispatches templates; one `RolesGuard` reads
+`@Roles()` metadata.
+
+### 6.2 Clean / multi-layered architecture
+
+Task 1 asked for module folders matching clean / multi-layered architecture.
+The request path is:
+
+```
+HTTP → DTO validation → JwtAuthGuard → RolesGuard → TenantContextGuard
+    → Controller → Service → TypeORM on the request QueryRunner (RLS)
+    → AuditLogInterceptor (writes) → TenantContextInterceptor (commit/rollback)
+```
+
+Controllers do not post the ledger. Frontend portals do not import each other;
+shared UI lives in `components/`; all HTTP goes through `lib/api-client/`.
+
+### 6.3 Modular monolith, not microservices
+
+There is **one** Nest process, **one** Next app, **one** Postgres. `members`,
+`loans`, `ledger` are **modules**, not separately deployed services. That is
+intentional: six weeks, six people, one internship demo.
+
+If the product were split later, those module boundaries (exported services only,
+no internal imports) are the seams. **We did not split them.**
+
+**Multi-tenant** is the other architecture label: one app, many SACCOs, isolation
+by RLS + JWT `tenantId`.
+
+### 6.4 Course stack vs this stack
+
+| Course example (Guba Tech note) | This internship |
 |---|---|
-| **Obsan** | Platform — auth, RLS, RBAC, ledger, offline-sync, deploy |
-| **Melkamu** | Member management — registration, search, CSV onboarding |
-| **Jerry** | Transactions / teller desk — savings, shares, counter UI |
-| **Abenezer** | Loans & credit — eligibility, guarantors, approval, disbursement |
-| **Biruk** | Admin & reporting — Super Admin, Tenant Admin, documents |
-| **Liya** | Member self-service — portal, SMTP, mobile-money contracts |
+| Backend .NET 9 Web API | NestJS (Node/TypeScript) |
+| Frontend Next.js + Tailwind | Same idea: Next.js App Router + Tailwind |
+| Modular monolith + multi-tenant | Same |
+| Microservices | **Not used** |
+
+Say this out loud if they read the .NET slide: methodology matches; implementation
+language/framework for the API does not.
 
 ---
 
-## 2. Architecture (what to remember)
+## 7. Design patterns and SOLID as they appear in the code
 
-- **Ledger is never bypassed.** Balance changes go through `LedgerService` posting.
-  Unbalanced debit/credit pairs are rejected, not half-applied.
-- **RLS, not caller `WHERE tenant_id`.** Tenant-scoped tables use Postgres RLS with
-  `app.current_tenant_id` set per request. Super Admin tenant CRUD is platform-level
-  (outside per-tenant RLS) and the UI flags that.
-- **Modules talk through NestJS DI.** No `../other-module/internal/...` imports.
-- **Frontend portals do not import each other.** Shared pieces live in `components/`.
-  All API calls go through `lib/api-client`. Currency is always full figures
-  (`45,230.00 ETB`).
-- **Secrets stay on the API.** SMTP and Chapa keys are `backend/` env only — never
-  Vercel / `frontend/.env`.
+Do not claim “we implemented the entire GoF catalogue.” Claim these, with a place
+in the repo:
 
----
-
-## 3. Recorded MVP decisions
-
-From [`.cursor/rules/decisions.mdc`](../../.cursor/rules/decisions.mdc):
-
-| ID | Decision |
+| Pattern | Where |
 |---|---|
-| **D1** | No live Fayda (or other ID) verification. No USSD. Registration stores `nationalId` + `idType` only. Generic Telebirr / M-PESA / CBE Birr stay **documented + mocked**. |
-| **D2** | No tenant-editable chart of accounts. Ledger uses hard-coded posting pairs. |
-| **D3** | Loan ceiling = sum of member **available** savings (`balance - heldAmount`) × `SAVINGS_LOAN_MULTIPLIER` (default `3`). Guarantor pledges do **not** raise the borrower's ceiling. |
-| **D4** | Task 12 exposes `holdFunds` / `releaseHold`. Task 17 releases when a loan is fully repaid or cancelled. |
-| **D5** | `npm run seed` creates one platform `super-admin` and per-tenant `tenant-admin`, `teller`, `loan-officer` (same known password). |
-| **D6** | Jest unit tests required for balanced-posting rejection and RLS isolation. No coverage gate yet. |
+| Dependency injection | Nest `@Injectable()`, `AppModule` composition root |
+| Module / facade | Each vertical exports service + public DTOs |
+| Pipeline (middleware, guard, interceptor) | Tenant ALS → JWT → roles → RLS tx → audit → commit |
+| Decorator | `@Roles`, `@Public`, `@CurrentUser` |
+| Repository (constrained) | `TenantContextService.repo(Entity)` — never an unscoped pool repo for RLS tables |
+| Factory | SMTP transport, temporary passwords, Chapa `tx_ref` |
+| Template method / strategy | Notification templates; OTP purposes |
+| Outbox | Teller IndexedDB queue + idempotent replay |
+| Fail-closed authorization | Missing role → 403 before the service |
 
-**Chapa (later opt-in).** D1 originally mocked all mobile money. Member **C2B deposits**
-and **B2C withdrawals** can now go through Chapa when `CHAPA_SECRET_KEY` is set on the
-API (Render only). Without the key, checkout/payout stays mock: savings move only after
-simulate + verify. Teller cash withdrawal remains available. Unsigned callback `status`
-is never trusted.
+**SOLID (internship-honest):**
 
----
-
-## 4. What shipped
-
-- Multi-tenant JWT auth and fail-closed RBAC ([`../rbac-matrix.md`](../rbac-matrix.md))
-- Member registration with manual ID fields; CSV onboarding wizard
-- Savings/shares deposits, withdrawals, share purchases through the ledger
-- Loans: eligibility multiplier, approval threshold, guarantor holds, disbursement, repayment
-- Teller desk with optimistic UI and IndexedDB offline outbox + idempotent replay
-- Tenant Admin reports and HTML documents from live ledger / loan / member rows
-- Super Admin tenant provisioning
-- Member portal: live balance, statement, loans; Chapa C2B deposit and B2C withdrawal (live or mock)
-- SMTP notifications (Nodemailer) for deposit, withdrawal, loan approval, OTP
-- Backup sidecar + restore rehearsal that re-ran the RLS check
-- Welcome page, light/dark theme, Google Translate (`en` / `am` / `om`)
-- Internship hosting path: Vercel (frontend) + Render (API + Postgres)
+- **S** — Ledger posts money; auth issues JWT; OTP hashes codes; notifications send
+  mail. A withdrawal controller does not implement all four.
+- **O** — New email template or OTP purpose without rewriting deposit posting.
+- **L** — Tests replace `ConfigService` / tenant context with fakes that still
+  satisfy the constructor.
+- **I** — Modules do not export controllers and internal helpers.
+- **D** — Savings depends on `LedgerService`, not on SQL column writes. Login
+  depends on `resolve_tenant_by_code`, not on a superuser scan of `tenants`.
 
 ---
 
-## 5. Task briefs
+## 8. DevSecOps: security in the pipeline
 
-Numbered build order from [`../TASKS.md`](../TASKS.md). Same plan by person:
-[`../TEAM_ASSIGNMENTS.md`](../TEAM_ASSIGNMENTS.md).
+Here DevSecOps means: **security and tenancy are part of every task and every PR**,
+not a week-6 bolt-on.
+
+| Practice | In ISMS |
+|---|---|
+| Secrets | `.env` gitignored; only `.env.example` committed; SMTP/Chapa **backend only** |
+| App vs owner DB roles | API: `isms_app` (RLS applies). Migrations/seed: `postgres` / owner |
+| AuthN | JWT; tenant code at login; bcrypt passwords |
+| AuthZ | `RolesGuard` + `docs/rbac-matrix.md`; fail closed |
+| Tenant isolation | `FORCE ROW LEVEL SECURITY`; `set_config(..., is_local => true)` |
+| Money integrity | Ledger only; unbalanced post rejected |
+| Audit | State-changing HTTP logged in the same transaction |
+| Git hygiene | PRs, no `.env` on GitHub, migrations additive |
+| Deploy | Runbook; CORS exact origin; JWT secret not `dev-local-…` in real hosting |
+| Backup | Dump/restore rehearsal; RLS re-check as `isms_app`, not superuser |
+| Step-up auth (later) | Email OTP for password reset/change and high-value cash (≥ 100,000 ETB) |
+
+`POST /api/webhooks/chapa` is `@Public()` **and** HMAC-verified. Unsigned query
+`status` from a browser return URL is **never** trusted to credit savings.
+
+---
+
+## 9. Recorded MVP decisions (D1–D6) and later opt-ins
+
+From `decisions.mdc` (2026-08-10). Prefer these over the SDS.
+
+| ID | Decision | Consequence |
+|---|---|---|
+| **D1** | No live Fayda / ID verification. No USSD at all. ID is typed fields. Generic MoMo documented + mocked. | Task 9 cancelled. Member portal is web-only. `channel-integration` kept for SMTP + contracts. |
+| **D2** | No tenant-editable chart of accounts. | Ledger hard-codes posting pairs (cash, savings, shares, loan principal). Named CoA is post-MVP. |
+| **D3** | Loan ceiling = Σ available savings × multiplier (default 3). | `availableBalance = balance - heldAmount`. Guarantor pledges do **not** raise the borrower ceiling. |
+| **D4** | `holdFunds` / `releaseHold` in savings. Loans release on full repay or cancel. | Manual release is for corrections only. |
+| **D5** | Seed: platform super-admin + per-tenant admin, teller, loan-officer. Same known password. | Demo logins in section 15. |
+| **D6** | Jest. Before Week 5, unit tests for unbalanced ledger rejection **and** RLS isolation. No coverage % gate. | `npm test`, `npm run rls:check`. |
+
+**Later than D1 (opt-in, still internship):** Chapa **C2B deposits** and **B2C
+withdrawals** when `CHAPA_SECRET_KEY` is set on the **API**. Empty key → member
+wallet stays mock: hosted Pay is disabled; withdrawals can be simulated; **teller
+cash** still works. Keys never go in `frontend/.env` or Vercel.
+
+**Later platform UX:** email OTP (forgot password, change password, large
+withdrawal/disbursement); welcome email when a member portal login is provisioned.
+These sit on Liya’s notification module and Obsan’s auth/tenant stack; they are
+not a replacement for Tasks 1–35.
+
+---
+
+## 10. Architecture deep dive
+
+### 10.1 Repo layout
+
+Nothing product-related at repo root except standard git/CI/compose files.
+Everything else is `backend/`, `frontend/`, or `docs/`.
+
+### 10.2 Backend modules (Nest)
+
+`AppModule` is the **only** composition root that imports every feature module.
+Cross-module calls: exported **service**, never `../loans/internal/...`.
+
+Notable modules: `auth`, `tenants`, `members`, `ledger`, `savings-shares`, `loans`,
+`security-audit`, `channel-integration`, `documents-reporting`,
+`member-self-service`, `common` (guards, tenant context), `database`.
+
+### 10.3 Tenant context and RLS
+
+Connections come from a **pool**. A session `SET app.tenant_id` without
+`SET LOCAL` would leak to the next request. The platform opens a **dedicated
+QueryRunner + transaction** per authenticated request, sets
+`set_config('app.tenant_id', $1, true)`, and commits or rolls back in an
+interceptor.
+
+Policies typically: `tenant_id = app_current_tenant_id()`. The `tenants` table is
+special (`id = app_current_tenant_id() OR app_current_tenant_id() IS NULL`) so
+Super Admin can list SACCOs when tenant context is null.
+
+Bootstrap: resolving `tenantCode` at login uses `resolve_tenant_by_code` (SECURITY
+DEFINER) because RLS would otherwise deadlock “need tenant to read tenant.”
+
+### 10.4 Ledger
+
+Any balance change → `LedgerService` posting function. Debit and credit legs in
+one transaction; inequality → reject. Reports (trial balance, statements) **read**
+the same books. Seed/migrations after Week 2 must not poke balances.
+
+Hard-coded MVP pairs (D2): cash deposit/withdraw, share purchase, loan disburse,
+loan repayment principal. Names like CASH, MEMBER_SAVINGS, SHARE_CAPITAL,
+LOANS_RECEIVABLE are implementation labels, not a user-editable CoA.
+
+### 10.5 Frontend
+
+App Router groups: `(super-admin)`, `(tenant-admin)`, `(teller)`, `(member)`. No
+cross-portal imports. JWT in the client; **authorization is still the API**.
+i18n / Google Translate (`en` / `am` / `om`), light/dark theme, welcome page.
+
+### 10.6 Request you can narrate
+
+Teller posts a deposit: JWT (`teller`, `tenant-a`) → Roles allow deposit → RLS
+session is Tsehay’s UUID → savings service calls ledger → two `ledger_entries` →
+account balance derived from postings → audit row → commit → optional SMTP
+enqueue (failure does not roll back the money).
+
+---
+
+## 11. What shipped (feature catalogue)
+
+- Multi-tenant JWT auth; reserved `platform` code for Super Admin
+- Fail-closed RBAC (`docs/rbac-matrix.md`)
+- Member CRUD, search, CSV onboarding, optional auto `MEM-#####`
+- Manual ID fields only (no Fayda)
+- Savings and shares: deposit, withdraw, share purchase, holds
+- Loans: apply (staff + member for self), eligibility ×3, approval threshold,
+  guarantor holds, disburse, repay — all via ledger
+- Teller desk optimistic UI + IndexedDB outbox + SyncConflict
+- Super Admin tenant provision/suspend
+- Tenant Admin KPIs, reports, HTML documents (statement, agreement, receipt,
+  share certificate) from live data
+- Member portal: balance, statement, loans, Chapa wallet (live or mock)
+- SMTP: deposit, withdrawal, loan approval, OTP, member-welcome
+- Backup sidecar + restore rehearsal + RLS re-check
+- Hosting path: Vercel frontend + Render API/Postgres
+- Forgot-password / OTP step-up on high-value cash and password change (later)
+
+---
+
+## 12. Week-by-week task briefs (1–35)
+
+Numbered build order from `TASKS.md`. Verify steps are the original “done”
+criteria.
 
 ### Week 0 — Before Week 1
 
-Repo layout (`backend/`, `frontend/`, `docs/`), Cursor conventions, `.env.example`
-with no real secrets, Docker Compose Postgres, TypeORM as the ORM. Live Fayda
-sandbox was **cancelled** with D1.
+Repo (`backend/`, `frontend/`, `docs/`), Cursor conventions, `.env.example` with
+**no real secrets**, Docker Compose Postgres (host port **5532**), TypeORM chosen.
+Live Fayda sandbox **cancelled** (D1).
 
 ### Week 1 — Foundation
 
 **Task 1 — Backend platform scaffold** (Obsan)  
-NestJS TypeScript API with module folders matching the architecture: `members`,
-`savings-shares`, `loans`, `documents-reporting`, `security-audit`,
-`channel-integration`, plus `common/` and `database/`. Health-check route. Modules
-export services/DTOs only.
+NestJS TypeScript API, module folders, health-check, modules export services/DTOs
+only, no cross-internal imports.
 
 **Task 2 — Database schema v1** (Obsan)  
-TypeORM entities for `tenants`, `members`, `staff_accounts`, `roles_permissions`,
-`accounts`. Every non-platform table has indexed `tenant_id` and an RLS policy stub.
-Initial migration runs against local Postgres.
+Entities: `tenants`, `members`, `staff_accounts`, `roles_permissions`, `accounts`.
+Indexed `tenant_id`, RLS stubs, first migration.
 
-**Task 3 — Auth & tenant-context middleware** (Obsan)  
-`POST /api/auth/login` issues a JWT with `staff_id`, `tenant_id`, `role`. Per-request
-tenant context sets the Postgres RLS session variable. `@Roles(...)` skeleton.
-A tenant-A request cannot read a tenant-B row.
+**Task 3 — Auth and tenant-context middleware** (Obsan)  
+`POST /api/auth/login` JWT (`staff_id` / `sub`, `tenant_id`, `role`). Per-request
+RLS. `@Roles` skeleton. Tenant A cannot read tenant B.
 
-**Task 4 — Login screen & role-based routing** (Obsan)  
-Login calls the real auth endpoint, stores the JWT, redirects by role, and blocks
-the other three portals. Depends on Task 7’s shell.
+**Task 4 — Login screen and role-based routing** (Obsan)  
+Real login, JWT storage, four portals, client guard. Depends on Task 7 shell.
 
-**Task 5 — Shared type contracts** (Obsan + Melkamu, together)  
-Mirrored TypeScript interfaces: `Member`, `Account`, `Loan`, `Transaction`,
-`AuthUser`, `ReportingSummary` in `backend/src/types` and `frontend/src/types`.
-Done once, live — not generated twice in parallel.
+**Task 5 — Shared type contracts** (Obsan + Melkamu, **together, live**)  
+`Member`, `Account`, `Loan`, `Transaction`, `AuthUser`, `ReportingSummary` mirrored
+backend/frontend. One agreement, one merge.
 
 **Task 6 — Frontend app scaffold** (Melkamu)  
-Next.js App Router with route groups `(super-admin)`, `(tenant-admin)`, `(teller)`,
-`(member)`, plus `components/`, `types/`, `lib/api-client`. Placeholder pages per
-portal.
+Next.js App Router groups, `components/`, `types/`, `lib/api-client`, placeholder
+pages.
 
-**Task 7 — Design system & shared UI kit** (Liya)  
-Tailwind + shared kit: data table, form field group, status badge, full-figure
-currency display, portal shell/nav. Portals reuse these instead of copying UI.
+**Task 7 — Design system and shared UI kit** (Liya)  
+Tailwind kit: table, form field group, status badge, full-figure currency, portal
+shell. Portals reuse; they do not fork CSS.
 
 ### Week 2 — Members and savings core
 
 **Task 8 — Member Management API** (Melkamu)  
-`POST /api/members`, `GET /api/members/{id}`, `GET /api/members?search=`,
-`PATCH /api/members/{id}`. Tenant-scoped; staff directory search is not for members.
+Create, get, search, patch. Tenant-scoped. Staff directory is not the member list.
 
-**Task 9 — Fayda National ID verification** (Melkamu) — **CANCELLED**  
-No outbound ID call, no `VerificationResult`. ID is a stored field pair only.
+**Task 9 — Fayda National ID** (Melkamu) — **CANCELLED (D1)**  
+No outbound call, no `VerificationResult`.
 
-**Task 10 — Member registration & profile UI** (Melkamu)  
-Teller and Tenant Admin registration / search / profile. `nationalId` and `idType`
-(`national_id` | `passport` | `other`) as ordinary fields — no verification badge.
+**Task 10 — Member registration and profile UI** (Melkamu)  
+Teller / Tenant Admin registration, search, profile. Ordinary ID fields. Later:
+auto member numbers; loan officers on the admin shell cannot register/delete.
 
 **Task 11 — Legacy data onboarding** (Melkamu)  
-CSV import: schema mapping, staging/validation preview, commit. Per-row errors,
-not a blanket failure.
+CSV: map columns, stage, validate, commit. Per-row errors, not all-or-nothing.
 
-**Task 12 — Savings & Shares backend** (Jerry)  
-Deposits, withdrawals, share purchases, balances, loan-eligibility ceiling, and
-`holdFunds` / `releaseHold` for collateral. Available balance excludes held amounts.
+**Task 12 — Savings and Shares backend** (Jerry)  
+Deposits, withdrawals, share purchases, balances, eligibility ceiling,
+`holdFunds` / `releaseHold`. Available balance excludes holds.
 
 **Task 13 — Double-entry ledger engine** (Obsan)  
-Every monetary movement posts as a balanced pair of `LedgerEntry` rows in one
-atomic transaction. Task 12 (and later loans) route through it. Forced unbalanced
-posting is rejected.
+Balanced `LedgerEntry` pairs, atomic. Task 12 (and later loans) route through it.
+Unbalanced posting rejected. Merge before further money features.
 
 ### Week 3 — Teller desk, loans, offline sync
 
 **Task 14 — Teller Desk UI** (Jerry)  
-Deposit, withdrawal, share purchase, loan repayment with optimistic UI: show the
-new balance immediately, reconcile with the server, roll back visibly on rejection.
+Deposit, withdrawal, share purchase, loan repayment. Optimistic balance; visible
+rollback on 4xx/5xx.
 
 **Task 15 — Offline-sync infrastructure** (Obsan)  
-IndexedDB outbox, idempotency keys, background drain on reconnect. Server replay of
-the same reference/amount is idempotent; a different amount is `409 SyncConflict`
-and shows as `needs_review` on the teller device — never silent overwrite.
+IndexedDB outbox, idempotency keys, drain on reconnect. Same reference+amount →
+idempotent success. Same reference, different amount → `409 SyncConflict` /
+`needs_review`. Depends on online Task 14.
 
-**Task 16 — Loan & Credit backend** (Abenezer)  
-Apply, eligibility (savings multiplier), approval workflow, disbursement and
-repayment — all posted through the ledger. Amounts above the ceiling are rejected.
+**Task 16 — Loan and Credit backend** (Abenezer)  
+Apply, eligibility, approval, disburse, repay — ledger posting. Over-ceiling
+rejected.
 
-**Task 17 — Guarantor & collateral logic** (Abenezer)  
-Pledge records hold funds on the **guarantor’s** savings via Task 12. That hold
-reduces the guarantor’s withdrawable balance; it does not inflate the borrower
-ceiling. Holds release on full repayment or cancellation.
+**Task 17 — Guarantor and collateral** (Abenezer)  
+Pledges hold **guarantor** savings. Do not inflate borrower ceiling. Release on
+full repay or cancel (D4).
 
 **Task 18 — Loan UI** (Abenezer)  
-Application, approval, status on Teller and Tenant Admin. Real API statuses only
-(offline demo fallbacks removed in defect D-30-03).
+Application, approval, status on Teller and Tenant Admin. Real API statuses
+(offline demo fallbacks removed in defect D-30-03). Members can apply for
+**themselves** (email-linked member id).
 
 ### Week 4 — Admin, member portal, security
 
 **Task 19 — Super Admin console** (Biruk)  
-Platform tenant CRUD / provisioning. UI flags platform-level actions. Seeded
-tenants appear as Tsehay Sacco and Chereka Sacco.
+Platform tenant CRUD. UI flags platform-level actions. Seeded names Tsehay /
+Chereka; login codes unchanged.
 
-**Task 20 — Document & Reporting engine** (Biruk)  
-Member statement, loan agreement, receipts, share certificates from live ledger
-rows. Aggregates: loan portfolio, savings summary, trial balance (debits = credits).
+**Task 20 — Document and Reporting engine** (Biruk)  
+Statement, loan agreement, receipts, share certificates from live rows.
+Aggregates: loan portfolio, savings summary, **trial balance** (debits = credits).
 
-**Task 21 — Tenant Admin dashboard & reporting UI** (Biruk)  
-KPI cards (members, savings, shares, outstanding loans), pending approvals, report
-views. Figures match Task 20 endpoints; amounts unabbreviated.
+**Task 21 — Tenant Admin dashboard and reporting UI** (Biruk)  
+KPI cards, pending approvals, report views. Figures match Task 20; unabbreviated
+money.
 
-**Task 22 — Security & Audit framework** (Obsan)  
-Full `@Roles(...)` guard against [`../rbac-matrix.md`](../rbac-matrix.md). Audit log
-records every state-changing action (actor, tenant, timestamp). Unauthorized roles
-are 403 before business logic. GET/HEAD and `@Public()` routes are not audited as
-writes.
+**Task 22 — Security and Audit framework** (Obsan)  
+Full `@Roles` vs RBAC matrix. Audit: actor, action, entity, timestamp, same
+transaction as the write. GET/HEAD and `@Public()` not treated as writes.
+Unauthorized → 403 **before** business logic. Vertical owners then decorate their
+own routes.
 
 **Task 23 — Member Self-Service backend** (Liya)  
-Thin reads: `GET /api/members/{id}/balance|statement|loans`. Members may only read
-their own row (login email matched to `members.email`; JWT `sub` is staff id).
-`GET /api/self-service/me` resolves that link.
+Thin reads: balance, statement, loans. Member may only read **own** row (login
+email ↔ `members.email`). `GET /api/self-service/me` (and alias) resolves the link.
+JWT `sub` is staff id, not member id.
 
 **Task 24 — Member Self-Service Portal UI** (Liya)  
-Balance, statement, loans from the real API. Mobile money: Chapa C2B deposit
-(hosted checkout when keys are set; mock confirm otherwise) and Chapa B2C
-withdrawal to Telebirr / M-PESA (hold, then debit after transfer verify). Success
-is shown only after verify posts the ledger.
+Balance, statement, loans from the real API. Chapa C2B (hosted checkout when the
+API has a real secret; otherwise Pay stays disabled). Chapa B2C to Telebirr /
+M-PESA: hold, then ledger after verify. Success only after verify. Generic MoMo
+staging UI is not the member wallet.
 
 **Task 25 — Notification service** (Liya)  
-Nodemailer SMTP for deposit, withdrawal, loan approval, and OTP. SMTP failure must
-not undo a posted financial transaction. Keys in `backend/` only.
+Nodemailer: deposit, withdrawal, loan approval, OTP. SMTP failure must **not**
+undo a posted financial transaction (`enqueue`). Keys in `backend/` only. Port 465
+defaults to TLS unless `SMTP_SECURE` overrides.
 
 **Task 26 — Mobile money webhook contracts** (Liya)  
-OpenAPI shapes for generic C2B/B2C (Telebirr, M-PESA Ethiopia, CBE Birr) in
-[`../openapi/`](../openapi/). Live Chapa C2B deposits and B2C withdrawals are a
-separate, opt-in path (`POST /api/webhooks/chapa` + member initialize/verify).
-No USSD session contract.
+OpenAPI C2B/B2C shapes (Telebirr, M-PESA Ethiopia, CBE Birr) in `docs/openapi/`.
+No USSD session contract. Live Chapa is a **separate** opt-in (`/api/webhooks/chapa`
++ member initialize/verify), not a substitute for those generic contracts.
 
 ### Week 5 — Integration, testing, UAT
 
 **Task 27 — End-to-end integration pass** (whole team, Obsan coordinates)  
-Each portal: login → primary action → logout against real API. Checklist:
+Each portal: login → primary action → logout against **real** endpoints. Checklist:
 [`../integration-pass.md`](../integration-pass.md). Local Docker pass recorded
 2026-09-01.
 
-**Task 28 — RLS concurrent tenant load check** (Obsan)  
-Two tenants with overlapping-looking member data; concurrent reads. No cross-tenant
-row. Script: `npm run rls:check`.
+**Task 28 — RLS concurrent tenant load** (Obsan)  
+Two+ tenants, overlapping-looking member data, concurrent reads. No cross-tenant
+row. `npm run rls:check`.
 
-**Task 29 — Offline outbox load / edge cases** (Obsan + Jerry)  
-Network loss and conflicting offline posts against the same account. Script:
-[`../offline-outbox-verification.md`](../offline-outbox-verification.md). Conflict
-is reviewable, not silent.
+**Task 29 — Offline outbox edge cases** (Obsan + Jerry)  
+Network loss; two conflicting offline posts on the same account. Conflict is
+reviewable. [`../offline-outbox-verification.md`](../offline-outbox-verification.md).
 
-**Task 30 — Test case matrix & structured UAT** (Melkamu + Biruk)  
-Each SDS functional requirement mapped to a test case with pass/fail:
-[`../test-case-matrix.md`](../test-case-matrix.md). FR-1.1 through FR-7.2 recorded
-**PASS** (FR-6.3 is spec-only per D1).
+**Task 30 — Test case matrix and structured UAT** (Melkamu + Biruk)  
+Each in-scope FR → test case: [`../test-case-matrix.md`](../test-case-matrix.md).
+FR-1.1–FR-7.2 recorded PASS where in scope (FR-6.3 spec-only per D1).
 
-**Task 31 — Bug triage & tracking** (Abenezer)  
-Defects D-30-01…04 from integration/UAT: eligibility vs pledges, approval
-threshold, leftover loan-UI mocks, missing `@Roles` on loans. All **resolved**.
-Log lives in the same matrix document.
+**Task 31 — Bug triage** (Abenezer)  
+D-30-01…04: eligibility vs pledges, approval threshold, leftover loan-UI mocks,
+missing `@Roles` on loans. Resolved. Log in the matrix doc.
 
 ### Week 6 — Deployment and handover
 
-**Task 32 — Deployment runbook & hardening** (Obsan)  
-Postgres + API + frontend provision, secrets rotation, rollback.
-[`../deployment-runbook.md`](../deployment-runbook.md). Internship default is
-**Vercel** (`frontend/`) + **Render** (API + Postgres). Verify: a second person
+**Task 32 — Deployment runbook and hardening** (Obsan)  
+Postgres + Nest + Next, secrets rotation, rollback.
+[`../deployment-runbook.md`](../deployment-runbook.md). Default internship path:
+**Vercel** (`frontend/`) + **Render** (API + Postgres). Verify: a **second person**
 follows the runbook without asking the author.
 
-**Task 33 — Backup & disaster-recovery rehearsal** (Melkamu)  
-Nightly Docker sidecar dumps, 7-day retention, restore into spare DB
-`isms_restore_check`, then re-run Task 28 RLS. Runbook:
-[`../backup-disaster-recovery.md`](../backup-disaster-recovery.md). Log:
-[`../backup-rehearsal-log.md`](../backup-rehearsal-log.md) — **PASS** 2026-08-31.
+**Task 33 — Backup and disaster-recovery rehearsal** (Melkamu)  
+Nightly Docker sidecar dumps, 7-day retention, restore into spare
+`isms_restore_check`, re-run Task 28 as `isms_app`.
+[`../backup-disaster-recovery.md`](../backup-disaster-recovery.md),
+[`../backup-rehearsal-log.md`](../backup-rehearsal-log.md) — PASS 2026-08-31.
 
 **Task 34 — Documentation** (whole team; Liya compiles)  
-Admin + per-portal manuals in this folder, plus this report. Each section should
-be followable by someone who did not build that part.
+Admin + per-portal manuals + **this report**. Each section followable by someone
+who did not build that part.
 
 **Task 35 — Final UAT sign-off** (whole team, Obsan leads)  
-Re-run signed-off use cases on the **deployed** system and collect signatures.
-Sheet: [`../uat-sign-off.md`](../uat-sign-off.md). Local Docker pass is not
-production go-live.
+Re-run signed-off use cases on the **deployed** system. Sheet:
+[`../uat-sign-off.md`](../uat-sign-off.md). Local Docker pass is **not** production
+go-live.
 
 ---
 
-## 6. Companion reports (broad)
+## 13. Vertical narratives
 
-These are the other handover docs. This report does not replace them.
+### 13.1 Platform (Obsan)
 
-### Software design background — `docs/SACCO_PROPOSAL.md`
+Without this vertical there is no trustworthy multi-tenant demo. Narrate in this
+order if time is short: **Task 3 (RLS) → 13 (ledger) → 22 (RBAC/audit) → 15
+(offline) → 32 (deploy)**. Mention Task 5 with Melkamu, and that you **coordinate**
+27 and **lead** 35.
 
-Chapter-by-chapter SDS for a multi-tenant Ethiopian SACCO platform (problem,
-objectives, modules, FRs). Use it for *why* the product exists. Do **not** treat
-it as MVP truth: Fayda, USSD, CoA, role names, and live MoMo differ from
-`decisions.mdc` and the RBAC matrix.
+Platform work later in the internship also includes: CLI migrations always as
+DB owner (so `isms_app` is not asked to `CREATE TABLE`); tenant lookups for
+welcome email on the request QueryRunner; OTP challenges table and auth routes;
+Chapa secret treated as live only when non-empty and not a placeholder.
 
-### RBAC — `docs/rbac-matrix.md` (Task 22)
+### 13.2 Members (Melkamu)
 
-Role-to-endpoint table enforced by `RolesGuard`. SDS names map to seed roles:
-Sys. Admin → `super-admin`, Manager → `tenant-admin`, plus `teller`,
-`loan-officer`, `member`. No auditor login and no Fayda-verifier role. Member
-Chapa routes are member-only; `POST /api/webhooks/chapa` is `@Public()` + HMAC.
-`roles_permissions` table is a stub for post-MVP overrides.
+Staff register people. IDs are data, not a government API. CSV onboarding for
+legacy lists. Auto member numbers reduce collisions. Delete/cascade must not 500
+if optional tables (Chapa, staged MoMo) are missing on an old DB — still, run
+migrations.
 
-### Test matrix & defects — `docs/test-case-matrix.md` (Tasks 30–31)
+### 13.3 Teller / savings (Jerry)
 
-Traces FR-1.1–FR-7.2 to a test case, role, expected result, and code path. All
-in-scope FRs **PASS**. Four defects (eligibility pledges, manager threshold,
-loan-UI mocks, loan `@Roles`) logged and closed. Verification mixed Jest, seed,
-and RBAC scripts.
+The counter is where cash meets the ledger. Optimistic UI is a UX choice;
+**truth** is the API. Offline is Obsan’s library under Jerry’s desk. Large cash
+out may require OTP (later).
 
-### Integration pass — `docs/integration-pass.md` (Task 27)
+### 13.4 Loans (Abenezer)
 
-Portal walkthrough against `localhost:4000/api`. Super Admin lists tenants;
-Tenant Admin reports/statement for `MEM-10001`; Teller search + deposit; Member
-own balance (other member 403). 2026-09-01: RLS, RBAC 20/20, audit log, offline
-outbox 5/5, trial balance balanced. Remaining: production URL walkthrough and
-team signatures.
+Ceiling from **available** savings × 3. Holds are collateral mechanics, not extra
+borrowing power. Approval is role-gated (teller cannot approve). Disbursement and
+repayment are ledger events. Members apply only for the member row linked to their
+login email.
 
-### Offline outbox — `docs/offline-outbox-verification.md` (Task 29)
+### 13.5 Admin and reporting (Biruk)
 
-Same `reference` + amount → idempotent 201. Same reference, different amount →
-409 `SyncConflict`. Teller UI queues while offline and marks conflicts
-`needs_review`. Script: `backend/scripts/verify-offline-outbox.ps1`.
+Super Admin is dangerous on purpose (whole tenants). Tenant Admin sees KPIs that
+must match Task 20. Trial balance is a **ledger invariant** demo: if it does not
+sum to zero, someone bypassed posting.
 
-### Deployment — `docs/deployment-runbook.md` (Task 32)
+### 13.6 Member self-service and channels (Liya)
 
-Secrets (`JWT_SECRET`, DB, SMTP, Chapa on API only), migrate as owner, run API as
-`isms_app` so RLS is not bypassed, `CORS_ORIGIN` = exact frontend origin (no
-trailing slash), frontend `NEXT_PUBLIC_API_URL` including `/api`. Managed path:
-Render Blueprint (`render.yaml`) + Vercel root `frontend`. Rollback: stop writes,
-restore dump, redeploy previous build, re-run `rls:check`.
+Portal is read-thin plus Chapa initialize/verify. SMTP is best-effort after money
+moves. OpenAPI documents gateways you did **not** go live with. Chapa is the
+optional live path for this demo.
 
-### Backup / DR — `docs/backup-disaster-recovery.md` + `backup-rehearsal-log.md` (Task 33)
+---
 
-Sidecar dump of `isms_dev` on start then every 24h; keep 7 dumps in gitignored
-`backups/`. Rehearse restore into `isms_restore_check` (does not wipe live).
-Connect as `isms_app` for RLS checks — `postgres` superuser would make the check
-meaningless. Recorded pass: 2026-08-31 (Melkamu).
+## 14. Companion documents
 
-### UAT sign-off — `docs/uat-sign-off.md` (Task 35)
+This report does not replace:
 
-Use-case re-run sheet (registration, ledger deposit/withdraw, loan threshold,
-statements, RBAC, audit, RLS, offline outbox). Local session 2026-09-01 passed
-most FRs; FR-3.1 (eligibility) was unit-tested, not re-clicked in UI. **Not
-approved for production go-live** until: second person follows the runbook on a
-real host; sheet re-run against those URLs; remaining teammate + instructor
-signatures.
-
-### OpenAPI / channel — `docs/openapi/` (Task 26)
-
-Generic MoMo C2B/B2C webhook shapes + Prism mock notes. Chapa C2B is the live
-opt-in implementation: initialize checkout, HMAC webhook, verify-then-ledger.
-B2C remains teller cash for this release.
-
-### Team process — `docs/TEAM_STATUS.md`
-
-Living branch/PR board (last snapshot 2026-09-01). Treat git/`main` as source of
-truth for what is deployed. Closeout still called out Task 32 second-person
-rehearsal and Task 35 signatures.
-
-### Operator manuals — `docs/manuals/`
-
-| Manual | Audience |
+| Document | Use |
 |---|---|
-| [Admin / platform](./admin-manual.md) | Super Admin, deploy operators |
-| [Tenant Admin](./tenant-admin.md) | SACCO manager |
-| [Teller desk](./teller.md) | Counter staff |
-| [Loans](./loan-officer.md) | Loan officer and approving manager |
-| [Member portal](./member-portal.md) | Members on the web portal |
+| [`../SACCO_PROPOSAL.md`](../SACCO_PROPOSAL.md) | Why SACCOs; **not** MVP truth |
+| [`../rbac-matrix.md`](../rbac-matrix.md) | Role × endpoint |
+| [`../test-case-matrix.md`](../test-case-matrix.md) | FR → test; defects |
+| [`../integration-pass.md`](../integration-pass.md) | Portal walkthrough |
+| [`../offline-outbox-verification.md`](../offline-outbox-verification.md) | Idempotency + conflict |
+| [`../deployment-runbook.md`](../deployment-runbook.md) | Production steps |
+| [`../backup-disaster-recovery.md`](../backup-disaster-recovery.md) | Dump/restore |
+| [`../uat-sign-off.md`](../uat-sign-off.md) | Signatures |
+| [`../openapi/`](../openapi/) | Generic MoMo contracts |
+| [`../TEAM_STATUS.md`](../TEAM_STATUS.md) | Living board; git is truth |
+| [Admin](./admin-manual.md), [Tenant Admin](./tenant-admin.md), [Teller](./teller.md), [Loans](./loan-officer.md), [Member](./member-portal.md) | Click-paths |
 
 ---
 
-## 7. How to run locally
+## 15. How to run locally and verify
 
 ```bash
 docker compose up -d
@@ -377,9 +668,12 @@ cd backend && cp .env.example .env && npm install && npm run migration:run && np
 cd frontend && npm install && npm run dev
 ```
 
-API: `http://localhost:4000/api` · Web: `http://localhost:3000`
+Fill `backend/.env`: `JWT_SECRET`, DB (Compose publishes **5532**), optional
+`SMTP_*`, optional `CHAPA_SECRET_KEY`. Migrations need a role that can
+`CREATE TABLE` (local `postgres` / `DB_ADMIN_*`). `start:dev` should use
+`DB_USERNAME=isms_app` so RLS is real.
 
-Seed logins (password `DevPassword!123`):
+API: `http://localhost:4000/api` · Web: `http://localhost:3000`
 
 | Tenant code | Email | Portal |
 |---|---|---|
@@ -387,9 +681,14 @@ Seed logins (password `DevPassword!123`):
 | `tenant-a` | `admin@tenant-a.dev` | Tenant Admin |
 | `tenant-a` | `loan-officer@tenant-a.dev` | Tenant Admin (loans) |
 | `tenant-a` | `teller@tenant-a.dev` | Teller |
-| `tenant-a` | `abebe.bikila@tenant-a.dev` | Member (must be this email, not teller) |
+| `tenant-a` | `abebe.bikila@tenant-a.dev` | Member |
 
-### Verify
+Password: `DevPassword!123`.
+
+**Chapa Pay:** only if `CHAPA_SECRET_KEY` is a real `CHASECK_TEST-…` / `CHASECK-…`
+(≥ 20 chars, not a placeholder) **and the API was restarted**. An empty
+`CHAPA_SECRET_KEY=` in `.env` keeps the banner *Live checkout needs
+CHAPA_SECRET_KEY* and disables Pay. That is correct behaviour, not a frontend bug.
 
 ```powershell
 cd backend
@@ -400,29 +699,60 @@ powershell -ExecutionPolicy Bypass -File scripts/verify-audit-log.ps1
 powershell -ExecutionPolicy Bypass -File scripts/verify-offline-outbox.ps1
 ```
 
-Portal walkthrough: [`../integration-pass.md`](../integration-pass.md).  
-Production: [`../deployment-runbook.md`](../deployment-runbook.md).
+---
+
+## 16. Production / internship hosting
+
+Typical pair: frontend `https://isms-platform-red.vercel.app`, API
+`https://isms-platform-qsu2.onrender.com/api`. After merge to `main`:
+
+1. Render pre-deploy `npm run release` (migrate + seed). Confirm `/api/health`.
+2. Vercel root `frontend`; `NEXT_PUBLIC_API_URL` **includes** `/api`.
+3. Render `CORS_ORIGIN` = Vercel origin, **no trailing slash**.
+4. Chapa **on Render only**: secret, webhook secret, callback
+   `https://<api-host>/api/webhooks/chapa`, `FRONTEND_URL` = Vercel origin.
+
+Rollback: stop writes, restore dump, redeploy previous build, `rls:check` as
+`isms_app`.
 
 ---
 
-## 8. Production notes (internship hosting)
+## 17. Limitations, post-MVP, residual closeout
 
-Typical live pair: frontend `https://isms-platform-red.vercel.app`, API
-`https://isms-platform-qsu2.onrender.com/api`. After merging work to `main`:
+**Out of MVP (by decision or time):** live Fayda; any USSD; tenant-editable CoA;
+live Telebirr / M-PESA / CBE Birr as first-class gateways (OpenAPI only); auditor
+role; coverage % CI gate; SMS/WhatsApp instead of email.
 
-1. Render pre-deploy runs `npm run release` (migrate + seed). Confirm `/api/health`.
-2. Vercel root directory `frontend`; `NEXT_PUBLIC_API_URL` must include `/api`.
-3. Render `CORS_ORIGIN` = Vercel origin **with no trailing slash**.
-4. Optional live Chapa on **Render only**: `CHAPA_SECRET_KEY`, `CHAPA_WEBHOOK_SECRET`,
-   `CHAPA_CALLBACK_URL=https://<api-host>/api/webhooks/chapa`, `FRONTEND_URL` = Vercel
-   origin. Leave the secret empty to keep mock checkout.
+**Chapa** is opt-in, not a full wallet: no key → no hosted Pay. Merchant wallet
+balance and Chapa dashboard transfer approval still matter for live B2C.
+
+**Residual closeout (do not pretend these are done if they are not):**
+
+- Task 35 signatures against a **deployed** URL, not only localhost.
+- Task 32: second person follows the runbook without asking Obsan.
+- Rotate `DevPassword!123` and `JWT_SECRET` before real members.
+- Local UAT 2026-09-01 passed most FRs; FR-3.1 eligibility was unit-tested more
+  than re-clicked. Sheet: `uat-sign-off.md`.
 
 ---
 
-## 9. Residual closeout
+## 18. Glossary
 
-- Task 35 sign-off must be completed against a **deployed** URL, not only localhost.
-- Task 32 requires a second person to follow the runbook without asking the original author.
-- Rotate `DevPassword!123` before any real member or staff use.
-- Fayda, USSD, tenant-editable CoA, and live Telebirr / M-PESA / CBE Birr remain
-  post-MVP. Chapa C2B is opt-in and still not a full wallet (no member B2C).
+| Term | Meaning here |
+|---|---|
+| SACCO | Savings and Credit Cooperative |
+| Tenant | One SACCO on the shared platform |
+| RLS | Postgres row-level security keyed by `app.tenant_id` |
+| Ledger | Only legal path to change balances |
+| Available balance | `balance - heldAmount` |
+| Hold | Collateral lock on savings (guarantor or in-flight payout) |
+| Modular monolith | One API process, many modules, not microservices |
+| Outbox | Offline queue of teller operations |
+| SyncConflict | 409 when idempotency key reused with a different payload |
+| `isms_app` | DB role the API uses so RLS cannot be bypassed |
+| `platform` | Login tenant code for Super Admin |
+
+---
+
+*End of broad final report. For day-to-day clicks, use the portal manuals in this
+folder. For “is this in MVP?”, use `decisions.mdc`, not the SDS.*

@@ -30,6 +30,7 @@ import {
 } from '@/lib/api-client';
 import { StatusBadge } from '@/components/badges/StatusBadge';
 import { TablePagination } from '@/components/ui/TablePagination';
+import { useAuthUser } from '@/components/auth/useAuthUser';
 import type { Member, PaginatedResult } from '@/types';
 import MemberFormModal from './MemberFormModal';
 import { MEMBER_EMAIL_PATTERN, PHONE_PATTERN } from '@/lib/member-field-rules';
@@ -49,7 +50,6 @@ function errorMessage(err: unknown): string {
 
 function buildUpdatePayload(payload: CreateMemberPayload, original: Member): UpdateMemberPayload {
   const next: UpdateMemberPayload = {};
-  if (payload.memberNumber !== original.memberNumber) next.memberNumber = payload.memberNumber;
   if (payload.firstName !== original.firstName) next.firstName = payload.firstName;
   if ((payload.middleName ?? '') !== (original.middleName ?? '')) next.middleName = payload.middleName;
   if (payload.lastName !== original.lastName) next.lastName = payload.lastName;
@@ -69,6 +69,7 @@ function buildUpdatePayload(payload: CreateMemberPayload, original: Member): Upd
 }
 
 export default function MemberManagementView({ portalType }: MemberManagementViewProps) {
+  const user = useAuthUser();
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -231,7 +232,9 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
   };
 
   const importHref = `/${portalType}/members/import`;
-  const canPermanentlyDelete = portalType === 'tenant-admin';
+  /** Loan officers share the tenant-admin portal but cannot register/update/delete members. */
+  const canManageMembers = user?.role === 'teller' || user?.role === 'tenant-admin';
+  const canPermanentlyDelete = user?.role === 'tenant-admin';
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-12">
@@ -248,31 +251,43 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
             Member Directory &amp; Registration
           </h1>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5">
-            Register members, search profiles, and bulk-import legacy member records. This tenant cannot see another SACCO&apos;s members.
+            {canManageMembers
+              ? "Register members, search profiles, and bulk-import legacy member records. This tenant cannot see another SACCO's members."
+              : 'Search and view member profiles. Registration is limited to tenant admin and teller accounts.'}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href={importHref}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-gold/60 transition-all cursor-pointer shadow-sm"
-          >
-            <Upload className="w-3.5 h-3.5 text-amber-800 dark:text-gold" />
-            <span>Import Legacy CSV</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setFormError(null);
-              setEditingMember(null);
-              setFormMode('create');
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light transition-all cursor-pointer shadow-sm"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Register Member</span>
-          </button>
-        </div>
+        {canManageMembers && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={importHref}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-gold/60 transition-all cursor-pointer shadow-sm"
+            >
+              <Upload className="w-3.5 h-3.5 text-amber-800 dark:text-gold" />
+              <span>Import Legacy CSV</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setEditingMember(null);
+                setFormMode('create');
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-midnight text-gold hover:bg-midnight-light dark:bg-gold dark:text-midnight dark:hover:bg-gold-light transition-all cursor-pointer shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Register Member</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {!canManageMembers && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-950 dark:text-amber-100 text-xs font-medium">
+          You are signed in as <strong>{user?.role ?? 'unknown'}</strong>. Member registration requires{' '}
+          <strong>tenant-admin</strong> (<span className="font-mono">admin@tenant-a.dev</span>) or{' '}
+          <strong>teller</strong> (<span className="font-mono">teller@tenant-a.dev</span>).
+        </div>
+      )}
 
       {successMsg && (
         <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs font-medium shadow-sm">
@@ -393,30 +408,34 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                         >
                           <Eye className="w-3.5 h-3.5 text-amber-800 dark:text-gold" />
                         </button>
-                        <button
-                          type="button"
-                          title="Edit"
-                          onClick={() => {
-                            setFormError(null);
-                            setEditingMember(m);
-                            setFormMode('edit');
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        </button>
-                        <button
-                          type="button"
-                          title={canPermanentlyDelete ? 'Deactivate, reactivate, or delete' : 'Set inactive or active'}
-                          onClick={() => openMemberActionDialog(m)}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700"
-                        >
-                          {canPermanentlyDelete ? (
-                            <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                          ) : (
-                            <UserX className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-                          )}
-                        </button>
+                        {canManageMembers && (
+                          <>
+                            <button
+                              type="button"
+                              title="Edit"
+                              onClick={() => {
+                                setFormError(null);
+                                setEditingMember(m);
+                                setFormMode('edit');
+                              }}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                            </button>
+                            <button
+                              type="button"
+                              title={canPermanentlyDelete ? 'Deactivate, reactivate, or delete' : 'Set inactive or active'}
+                              onClick={() => openMemberActionDialog(m)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700"
+                            >
+                              {canPermanentlyDelete ? (
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                              ) : (
+                                <UserX className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                              )}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -502,36 +521,39 @@ export default function MemberManagementView({ portalType }: MemberManagementVie
                   <Receipt className="w-3.5 h-3.5" /> Transact in Desk
                 </Link>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMember(null);
-                  setEditingMember(selectedMember);
-                  setFormMode('edit');
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1.5"
-              >
-                <Pencil className="w-3.5 h-3.5" /> Edit
-              </button>
-              {selectedMember.status === 'inactive' ? (
+              {canManageMembers && (
                 <button
                   type="button"
-                  disabled={isActionLoading}
-                  onClick={() => quickSetStatus(selectedMember, 'active')}
-                  className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-xl border border-emerald-200 dark:border-emerald-900/50 inline-flex items-center gap-1.5 disabled:opacity-50"
+                  onClick={() => {
+                    setSelectedMember(null);
+                    setEditingMember(selectedMember);
+                    setFormMode('edit');
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1.5"
                 >
-                  <UserCheck className="w-3.5 h-3.5" /> Set active
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={() => quickSetStatus(selectedMember, 'inactive')}
-                  className="px-4 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-xl border border-amber-200 dark:border-amber-900/50 inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <UserX className="w-3.5 h-3.5" /> Set inactive
+                  <Pencil className="w-3.5 h-3.5" /> Edit
                 </button>
               )}
+              {canManageMembers &&
+                (selectedMember.status === 'inactive' ? (
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() => quickSetStatus(selectedMember, 'active')}
+                    className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-xl border border-emerald-200 dark:border-emerald-900/50 inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" /> Set active
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() => quickSetStatus(selectedMember, 'inactive')}
+                    className="px-4 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-xl border border-amber-200 dark:border-amber-900/50 inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <UserX className="w-3.5 h-3.5" /> Set inactive
+                  </button>
+                ))}
               {canPermanentlyDelete && (
                 <button
                   type="button"

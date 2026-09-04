@@ -8,7 +8,6 @@ import {
   DOB_MESSAGE,
   EMAIL_MESSAGE,
   MEMBER_EMAIL_PATTERN,
-  MEMBER_NUMBER_MESSAGE,
   NAME_MESSAGE,
   NAME_PATTERN,
   NATIONAL_ID_MESSAGE,
@@ -20,7 +19,6 @@ import {
   isDobAtLeast18,
   lettersOnly,
   maxAdultDobIsoDate,
-  memberNumberSuffix,
   nonZeroDigitsOnly,
   parseFinDigits,
   parsePassport,
@@ -49,7 +47,6 @@ interface FormState {
   passportPrefix: 'EP' | 'E';
   passportDigits: string;
   otherId: string;
-  memberSuffix: string;
   phoneLocal: string;
   email: string;
   status: MemberStatus;
@@ -67,7 +64,6 @@ function fromMember(member?: Member | null): FormState {
     passportPrefix: passport.prefix,
     passportDigits: passport.digits,
     otherId: member?.idType === 'other' ? (member.nationalId ?? '') : '',
-    memberSuffix: memberNumberSuffix(member?.memberNumber),
     phoneLocal: parsePhoneLocal(member?.phone),
     email: member?.email ?? '',
     status: member?.status ?? 'active',
@@ -108,7 +104,6 @@ export default function MemberFormModal({
     if (!form.middleName) next.middleName = 'Middle name is required';
     else if (!NAME_PATTERN.test(form.middleName)) next.middleName = NAME_MESSAGE;
     if (!NAME_PATTERN.test(form.lastName)) next.lastName = NAME_MESSAGE;
-    if (!/^\d{5}$/.test(form.memberSuffix)) next.memberNumber = MEMBER_NUMBER_MESSAGE;
     if (!form.dateOfBirth) next.dateOfBirth = 'Date of birth is required';
     else if (!isDobAtLeast18(form.dateOfBirth)) next.dateOfBirth = DOB_MESSAGE;
     if (form.idType === 'national_id' && form.finDigits.length !== 12) {
@@ -140,7 +135,6 @@ export default function MemberFormModal({
     if (Object.keys(next).length > 0) return;
 
     const payload: CreateMemberPayload = {
-      memberNumber: `MEM-${form.memberSuffix}`,
       firstName: form.firstName,
       middleName: form.middleName,
       lastName: form.lastName,
@@ -324,28 +318,21 @@ export default function MemberFormModal({
             <h4 className="font-bold text-amber-800 dark:text-gold uppercase tracking-wider text-[11px] border-b border-slate-200/80 dark:border-slate-800 pb-1">
               3. Contact &amp; Membership
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {mode === 'edit' && member?.memberNumber && (
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Member Number *</label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-2.5 h-9 rounded-l-lg border border-r-0 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 font-mono font-bold text-slate-600">
-                    MEM-
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    required
-                    minLength={5}
-                    maxLength={5}
-                    value={form.memberSuffix}
-                    onChange={(e) => setForm((p) => ({ ...p, memberSuffix: digitsOnly(e.target.value, 5) }))}
-                    placeholder="90000"
-                    className="flex-1 h-9 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-r-lg font-mono"
-                  />
-                </div>
-                <p className="mt-1 text-[10px] text-slate-500">Exactly 5 digits. Example MEM-90000.</p>
-                {err('memberNumber') && <p className="mt-1 text-[10px] text-rose-600">{err('memberNumber')}</p>}
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Member Number</label>
+                <p className="h-9 px-3 flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono font-bold text-amber-800 dark:text-gold">
+                  {member.memberNumber}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-500">Assigned by the system and cannot be changed.</p>
               </div>
+            )}
+            {mode === 'create' && (
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-2">
+                Member number is assigned automatically (unique <span className="font-mono">MEM-#####</span> for this SACCO).
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Phone Number *</label>
                 <div className="flex">

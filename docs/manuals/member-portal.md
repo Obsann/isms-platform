@@ -24,7 +24,7 @@ self-registration.
 |---|---|
 | Balance | Live savings and share accounts |
 | Statement | Transaction history for your accounts |
-| Loans | Your applications and statuses |
+| Loans | Your applications and statuses — **Apply for loan** uses Abenezer’s `POST /api/loans`; staff approve later |
 | Mobile money | **Chapa hosted checkout** — Pay with Chapa opens checkout.chapa.co. Savings credit after verify. Sandbox phone `0900123456` (OTP `12345`). |
 
 Optional dev-only staged C2B/B2C webhook shapes (never ledger-posted) remain in

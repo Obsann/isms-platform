@@ -1,0 +1,17 @@
+memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
+MEM-ERR-001,Valid,Alem,Member,FIN-ERR-0001-1111,national_id,+251911000001,valid.member@example.com,1990-01-15,active,2024-01-10
+,MissingNumber,Bad,Row,FIN-ERR-0002-2222,national_id,+251911000002,missing.number@example.com,1991-02-20,active,2024-02-11
+MEM-ERR-003,,NoFirst,Name,FIN-ERR-0003-3333,national_id,+251911000003,nofirst@example.com,1992-03-21,pending,2024-03-12
+MEM-ERR-004,NoLast,, ,FIN-ERR-0004-4444,passport,+251911000004,nolast@example.com,1993-04-22,active,2024-04-13
+MEM-ERR-001,Duplicate,Csv,Number,FIN-ERR-0005-5555,national_id,+251911000005,dup.number@example.com,1994-05-23,active,2024-05-14
+MEM-10001,Clash,With,Seed,FIN-ERR-0006-6666,national_id,+251911000006,clash.seed@example.com,1995-06-24,active,2024-06-15
+MEM-ERR-007,Bad,Id,Type,FIN-ERR-0007-7777,drivers_license,+251911000007,bad.idtype@example.com,1996-07-25,active,2024-07-16
+MEM-ERR-008,Bad,Email,Format,FIN-ERR-0008-8888,passport,+251911000008,not-an-email,1997-08-26,active,2024-08-17
+MEM-ERR-009,Bad,Date,Birth,FIN-ERR-0009-9999,national_id,+251911000009,bad.dob@example.com,15/01/1990,active,2024-09-18
+MEM-ERR-010,Bad,Joined,Date,FIN-ERR-0010-1010,national_id,+251911000010,bad.joined@example.com,1998-09-27,active,18-10-2024
+MEM-ERR-011,Bad,Status,Value,FIN-ERR-0011-1112,other,+251911000011,bad.status@example.com,1999-10-28,approved,2024-10-19
+MEM-ERR-012,Dup,Phone,One,FIN-ERR-0012-1212,national_id,+251911000012,dup.phone.one@example.com,1988-11-01,active,2024-11-01
+MEM-ERR-013,Dup,Phone,Two,FIN-ERR-0013-1313,national_id,+251911000012,dup.phone.two@example.com,1989-12-02,pending,2024-11-02
+MEM-ERR-014,Dup,Email,One,FIN-ERR-0014-1414,passport,+251911000014,same.email@example.com,1987-01-03,active,2024-11-03
+MEM-ERR-015,Dup,Email,Two,FIN-ERR-0015-1515,passport,+251911000015,same.email@example.com,1986-02-04,active,2024-11-04
+MEM-ERR-016,Also,Valid,Row,FIN-ERR-0016-1616,other,+251911000016,also.valid@example.com,1985-03-05,inactive,2024-11-05

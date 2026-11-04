@@ -1,0 +1,121 @@
+{
+  "stagingId": "<staging-uuid-from-live-stage-call>",
+  "totalRows": 16,
+  "validRows": 4,
+  "errors": [
+    {
+      "row": 3,
+      "field": "memberNumber",
+      "message": "Member number is required"
+    },
+    {
+      "row": 4,
+      "field": "firstName",
+      "message": "First name is required"
+    },
+    {
+      "row": 5,
+      "field": "lastName",
+      "message": "Last name is required"
+    },
+    {
+      "row": 6,
+      "field": "memberNumber",
+      "message": "Duplicate member number \"MEM-ERR-001\" within CSV"
+    },
+    {
+      "row": 7,
+      "field": "memberNumber",
+      "message": "Member number \"MEM-10001\" is already registered in this SACCO"
+    },
+    {
+      "row": 8,
+      "field": "idType",
+      "message": "ID Type must be \"national_id\", \"passport\", or \"other\""
+    },
+    {
+      "row": 9,
+      "field": "email",
+      "message": "Invalid email address format"
+    },
+    {
+      "row": 10,
+      "field": "dateOfBirth",
+      "message": "Invalid Date of Birth format. Use YYYY-MM-DD"
+    },
+    {
+      "row": 11,
+      "field": "joinedAt",
+      "message": "Invalid Joined Date format. Use YYYY-MM-DD"
+    },
+    {
+      "row": 12,
+      "field": "status",
+      "message": "Status must be \"pending\", \"active\", or \"inactive\""
+    },
+    {
+      "row": 14,
+      "field": "phone",
+      "message": "Phone \"+251911000012\" is duplicated in this CSV"
+    },
+    {
+      "row": 16,
+      "field": "email",
+      "message": "Email \"same.email@example.com\" is duplicated in this CSV"
+    }
+  ],
+  "preview": [
+    {
+      "memberNumber": "MEM-ERR-001",
+      "firstName": "Valid",
+      "middleName": "Alem",
+      "lastName": "Member",
+      "nationalId": "FIN-ERR-0001-1111",
+      "idType": "national_id",
+      "phone": "+251911000001",
+      "email": "valid.member@example.com",
+      "dateOfBirth": "1990-01-15",
+      "status": "active",
+      "joinedAt": "2024-01-10"
+    },
+    {
+      "memberNumber": "MEM-ERR-012",
+      "firstName": "Dup",
+      "middleName": "Phone",
+      "lastName": "One",
+      "nationalId": "FIN-ERR-0012-1212",
+      "idType": "national_id",
+      "phone": "+251911000012",
+      "email": "dup.phone.one@example.com",
+      "dateOfBirth": "1988-11-01",
+      "status": "active",
+      "joinedAt": "2024-11-01"
+    },
+    {
+      "memberNumber": "MEM-ERR-014",
+      "firstName": "Dup",
+      "middleName": "Email",
+      "lastName": "One",
+      "nationalId": "FIN-ERR-0014-1414",
+      "idType": "passport",
+      "phone": "+251911000014",
+      "email": "same.email@example.com",
+      "dateOfBirth": "1987-01-03",
+      "status": "active",
+      "joinedAt": "2024-11-03"
+    },
+    {
+      "memberNumber": "MEM-ERR-016",
+      "firstName": "Also",
+      "middleName": "Valid",
+      "lastName": "Row",
+      "nationalId": "FIN-ERR-0016-1616",
+      "idType": "other",
+      "phone": "+251911000016",
+      "email": "also.valid@example.com",
+      "dateOfBirth": "1985-03-05",
+      "status": "inactive",
+      "joinedAt": "2024-11-05"
+    }
+  ]
+}

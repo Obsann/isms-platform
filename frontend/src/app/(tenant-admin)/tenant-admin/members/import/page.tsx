@@ -234,6 +234,14 @@ export default function LegacyImportPage() {
             >
               Download a sample CSV
             </a>
+            {' · '}
+            <a
+              href="/samples/legacy-members-with-row-errors.csv?v=1"
+              download="sacco-members-with-row-errors.csv"
+              className="font-bold text-amber-800 dark:text-gold hover:underline"
+            >
+              Sample with row errors
+            </a>
           </p>
         </div>
       )}

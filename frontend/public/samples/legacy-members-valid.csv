@@ -1,0 +1,9 @@
+memberNumber,firstName,middleName,lastName,nationalId,idType,phone,email,dateOfBirth,status,joinedAt
+MEM-88001,Kidist,Hailu,Worku,FIN 8801 2002 3003,national_id,+251911234567,kidist.worku@gmail.com,1991-04-18,active,2024-02-10
+MEM-88002,Bereket,Mesfin,Negash,EP880002,passport,+251922345678,bereket.negash@yahoo.com,1987-09-25,pending,2024-04-02
+MEM-88003,Meron,Alemayehu,Kebede,FIN 8803 1111 2222,national_id,+251933456789,meron.kebede@gmail.com,1984-12-08,active,2023-11-20
+MEM-88004,Daniel,Solomon,Tadesse,E880004,passport,+251944567891,daniel.tadesse@gmail.com,1992-05-12,active,2024-07-01
+MEM-88005,Hanna,Girma,Mohammed,LAKE88005,other,+251955678912,hanna.girma@yahoo.com,1989-03-22,active,2024-01-15
+MEM-88006,Yonas,Abebe,Bekele,FIN 8806 3333 4444,national_id,+251966789123,yonas.bekele@gmail.com,1995-08-30,pending,2024-09-01
+MEM-88007,Selam,Tigist,Assefa,EP880007,passport,+251977891234,selam.assefa@gmail.com,1983-11-05,inactive,2023-06-18
+MEM-88008,Fikadu,Haile,Tesfaye,FIN 8808 5555 6666,national_id,+251988912345,fikadu.tesfaye@yahoo.com,1990-01-01,active,2024-11-01
